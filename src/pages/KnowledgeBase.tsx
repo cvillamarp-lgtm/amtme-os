@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,15 +29,20 @@ import {
   useArchiveKnowledgeDoc,
   useUpdateKnowledgeDoc,
 } from "@/hooks/useKnowledgeBase";
+import {
+  knowledgeDocSchema,
+  KNOWLEDGE_DOC_TYPES,
+  type KnowledgeDocInput,
+} from "@/lib/schemas";
 import { Plus, BookOpen, Trash2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const DOC_TYPES = [
-  { value: "sop", label: "SOP (Procedimiento)" },
-  { value: "prompt", label: "Prompt de IA" },
-  { value: "reference", label: "Referencia" },
-  { value: "insight", label: "Insight" },
-];
+const DOC_TYPE_LABELS: Record<string, string> = {
+  sop: "SOP (Procedimiento)",
+  prompt: "Prompt de IA",
+  reference: "Referencia",
+  insight: "Insight",
+};
 
 const TYPE_COLORS: Record<string, string> = {
   sop: "bg-blue-500/10 text-blue-500",
@@ -44,14 +51,124 @@ const TYPE_COLORS: Record<string, string> = {
   insight: "bg-orange-500/10 text-orange-500",
 };
 
-const EMPTY_FORM = { title: "", body: "", doc_type: "sop", tags: "" };
+function tagsFromString(raw?: string): string[] {
+  return raw
+    ? raw
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
+}
 
+// ─── Shared form (create + edit) ──────────────────────────────────────────
+function DocForm({
+  defaultValues,
+  onSave,
+  isPending,
+  submitLabel,
+}: {
+  defaultValues?: Partial<KnowledgeDocInput>;
+  onSave: (data: KnowledgeDocInput) => Promise<void>;
+  isPending: boolean;
+  submitLabel: string;
+}) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+    reset,
+  } = useForm<KnowledgeDocInput>({
+    resolver: zodResolver(knowledgeDocSchema),
+    defaultValues: { doc_type: "sop", ...defaultValues },
+  });
+
+  // Reset when defaultValues changes (edit mode opens with different doc)
+  useEffect(() => {
+    reset({ doc_type: "sop", ...defaultValues });
+  }, [defaultValues, reset]);
+
+  return (
+    <form onSubmit={handleSubmit(onSave)} className="space-y-4 pt-2" noValidate>
+      {/* Title */}
+      <div className="space-y-1">
+        <Label htmlFor="kb-title">Título</Label>
+        <Input
+          id="kb-title"
+          placeholder="Nombre del documento"
+          {...register("title")}
+          aria-invalid={!!errors.title}
+        />
+        {errors.title && (
+          <p className="text-xs text-destructive">{errors.title.message}</p>
+        )}
+      </div>
+
+      {/* Type */}
+      <div className="space-y-1">
+        <Label>Tipo</Label>
+        <Controller
+          name="doc_type"
+          control={control}
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger aria-invalid={!!errors.doc_type}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KNOWLEDGE_DOC_TYPES.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {DOC_TYPE_LABELS[v]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {errors.doc_type && (
+          <p className="text-xs text-destructive">{errors.doc_type.message}</p>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="space-y-1">
+        <Label htmlFor="kb-body">Contenido</Label>
+        <Textarea
+          id="kb-body"
+          placeholder="Escribe el contenido aquí…"
+          rows={7}
+          className="resize-y"
+          {...register("body")}
+          aria-invalid={!!errors.body}
+        />
+        {errors.body && (
+          <p className="text-xs text-destructive">{errors.body.message}</p>
+        )}
+      </div>
+
+      {/* Tags */}
+      <div className="space-y-1">
+        <Label htmlFor="kb-tags">Tags (separados por coma)</Label>
+        <Input
+          id="kb-tags"
+          placeholder="audio, producción, guion"
+          {...register("tags")}
+        />
+      </div>
+
+      <Button type="submit" disabled={isPending} className="w-full">
+        {submitLabel}
+      </Button>
+    </form>
+  );
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────
 export default function KnowledgeBase() {
   const [filterType, setFilterType] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [editDoc, setEditDoc] = useState<any>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -64,121 +181,41 @@ export default function KnowledgeBase() {
   const updateMutation = useUpdateKnowledgeDoc();
   const archiveMutation = useArchiveKnowledgeDoc();
 
-  const handleCreate = async () => {
-    if (!form.title.trim() || !userId) {
-      toast.error("Escribe un título para el documento.");
-      return;
-    }
-    try {
-      await createMutation.mutateAsync({
-        user_id: userId,
-        title: form.title.trim(),
-        body: form.body.trim() || null,
-        doc_type: form.doc_type,
-        tags: form.tags
-          ? form.tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : [],
-        status: "active",
-      });
-      toast.success("Documento creado");
-      setForm(EMPTY_FORM);
-      setCreateOpen(false);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const handleUpdate = async () => {
-    if (!editDoc || !form.title.trim()) return;
-    try {
-      await updateMutation.mutateAsync({
-        id: editDoc.id,
-        title: form.title.trim(),
-        body: form.body.trim() || null,
-        doc_type: form.doc_type,
-        tags: form.tags
-          ? form.tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : [],
-      });
-      toast.success("Documento actualizado");
-      setEditDoc(null);
-      setForm(EMPTY_FORM);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const openEdit = (doc: any) => {
-    setEditDoc(doc);
-    setForm({
-      title: doc.title,
-      body: doc.body || "",
-      doc_type: doc.doc_type,
-      tags: (doc.tags || []).join(", "),
+  const handleCreate = async (data: KnowledgeDocInput) => {
+    if (!userId) return;
+    await createMutation.mutateAsync({
+      user_id: userId,
+      title: data.title,
+      body: data.body?.trim() || null,
+      doc_type: data.doc_type,
+      tags: tagsFromString(data.tags),
+      status: "active",
     });
+    toast.success("Documento creado");
+    setCreateOpen(false);
   };
 
-  const DocForm = ({ onSubmit, label }: { onSubmit: () => void; label: string }) => (
-    <div className="space-y-4 pt-2">
-      <div className="space-y-2">
-        <Label>Título</Label>
-        <Input
-          value={form.title}
-          onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          placeholder="Nombre del documento"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Tipo</Label>
-        <Select
-          value={form.doc_type}
-          onValueChange={(v) => setForm((f) => ({ ...f, doc_type: v }))}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DOC_TYPES.map((dt) => (
-              <SelectItem key={dt.value} value={dt.value}>
-                {dt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Contenido</Label>
-        <Textarea
-          value={form.body}
-          onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
-          placeholder="Escribe el contenido aquí…"
-          rows={7}
-          className="resize-y"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Tags (separados por coma)</Label>
-        <Input
-          value={form.tags}
-          onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-          placeholder="audio, producción, guion"
-        />
-      </div>
-      <Button
-        onClick={onSubmit}
-        disabled={createMutation.isPending || updateMutation.isPending}
-        className="w-full"
-      >
-        {label}
-      </Button>
-    </div>
-  );
+  const handleUpdate = async (data: KnowledgeDocInput) => {
+    if (!editDoc) return;
+    await updateMutation.mutateAsync({
+      id: editDoc.id,
+      title: data.title,
+      body: data.body?.trim() || null,
+      doc_type: data.doc_type,
+      tags: tagsFromString(data.tags),
+    });
+    toast.success("Documento actualizado");
+    setEditDoc(null);
+  };
+
+  const editDefaults = editDoc
+    ? {
+        title: editDoc.title,
+        body: editDoc.body ?? "",
+        doc_type: editDoc.doc_type,
+        tags: (editDoc.tags ?? []).join(", "),
+      }
+    : undefined;
 
   return (
     <div className="page-container animate-fade-in">
@@ -194,9 +231,9 @@ export default function KnowledgeBase() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los tipos</SelectItem>
-            {DOC_TYPES.map((dt) => (
-              <SelectItem key={dt.value} value={dt.value}>
-                {dt.label}
+            {KNOWLEDGE_DOC_TYPES.map((v) => (
+              <SelectItem key={v} value={v}>
+                {DOC_TYPE_LABELS[v]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -204,7 +241,7 @@ export default function KnowledgeBase() {
 
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setForm(EMPTY_FORM)}>
+            <Button>
               <Plus className="h-4 w-4 mr-2" />
               Nuevo documento
             </Button>
@@ -213,18 +250,33 @@ export default function KnowledgeBase() {
             <DialogHeader>
               <DialogTitle>Nuevo documento</DialogTitle>
             </DialogHeader>
-            <DocForm onSubmit={handleCreate} label="Crear documento" />
+            <DocForm
+              onSave={handleCreate}
+              isPending={createMutation.isPending}
+              submitLabel="Crear documento"
+            />
           </DialogContent>
         </Dialog>
       </div>
 
       {/* Edit dialog */}
-      <Dialog open={!!editDoc} onOpenChange={(open) => { if (!open) setEditDoc(null); }}>
+      <Dialog
+        open={!!editDoc}
+        onOpenChange={(open) => {
+          if (!open) setEditDoc(null);
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar documento</DialogTitle>
           </DialogHeader>
-          <DocForm onSubmit={handleUpdate} label="Guardar cambios" />
+          <DocForm
+            key={editDoc?.id} // remount form when editing different doc
+            defaultValues={editDefaults}
+            onSave={handleUpdate}
+            isPending={updateMutation.isPending}
+            submitLabel="Guardar cambios"
+          />
         </DialogContent>
       </Dialog>
 
@@ -234,7 +286,9 @@ export default function KnowledgeBase() {
           <div className="col-span-full text-center py-16 text-muted-foreground">
             <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-25" />
             <p className="font-medium">No hay documentos aún.</p>
-            <p className="text-sm mt-1">Crea el primero haciendo clic en "Nuevo documento".</p>
+            <p className="text-sm mt-1">
+              Crea el primero haciendo clic en "Nuevo documento".
+            </p>
           </div>
         ) : (
           (docs as any[]).map((doc) => (
@@ -247,7 +301,7 @@ export default function KnowledgeBase() {
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={() => openEdit(doc)}
+                      onClick={() => setEditDoc(doc)}
                     >
                       <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
@@ -269,7 +323,7 @@ export default function KnowledgeBase() {
                     TYPE_COLORS[doc.doc_type] || "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {DOC_TYPES.find((t) => t.value === doc.doc_type)?.label || doc.doc_type}
+                  {DOC_TYPE_LABELS[doc.doc_type] || doc.doc_type}
                 </span>
               </CardHeader>
               <CardContent className="flex-1">
