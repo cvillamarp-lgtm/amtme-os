@@ -1,0 +1,1 @@
+ALTER TABLE public.episodes ADD COLUMN cover_image_url text DEFAULT NULL;

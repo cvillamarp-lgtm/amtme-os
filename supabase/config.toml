@@ -1,0 +1,31 @@
+project_id = "vudvgfdoeciurejtbzbw"
+
+[functions.generate-script]
+verify_jwt = false
+
+[functions.generate-image]
+verify_jwt = false
+
+[functions.extract-content]
+verify_jwt = false
+
+[functions.generate-captions]
+verify_jwt = false
+
+[functions.generate-episode-fields]
+verify_jwt = false
+
+[functions.oauth-init]
+verify_jwt = false
+
+[functions.oauth-callback]
+verify_jwt = false
+
+[functions.post-publication]
+verify_jwt = false
+
+[functions.generate-visual-copy]
+verify_jwt = false
+
+[functions.generate-conflict-options]
+verify_jwt = false

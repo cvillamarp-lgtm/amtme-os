@@ -1,0 +1,152 @@
+import { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Pencil, Check, AlertTriangle, Lock, RefreshCw, X, History, ChevronDown } from "lucide-react";
+import { BlockStatus, BlockState, STATUS_VISUALS, FIELD_LABELS, VersionEntry } from "@/lib/block-states";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+interface BlockWrapperProps {
+  fieldName: string;
+  state: BlockState | undefined;
+  children: ReactNode;
+  onRegenerate?: () => void;
+  onApprove?: () => void;
+  onDismissStale?: () => void;
+  onRestoreVersion?: (entry: VersionEntry) => void;
+  isRegenerating?: boolean;
+  versionHistory?: VersionEntry[];
+}
+
+const StatusIcon = ({ status }: { status: BlockStatus }) => {
+  const iconClass = "h-3 w-3";
+  switch (status) {
+    case "generated": return <Sparkles className={iconClass} />;
+    case "edited": return <Pencil className={iconClass} />;
+    case "approved": return <Check className={iconClass} />;
+    case "stale": return <AlertTriangle className={iconClass} />;
+    case "blocked": return <Lock className={iconClass} />;
+    default: return null;
+  }
+};
+
+export function BlockWrapper({
+  fieldName,
+  state,
+  children,
+  onRegenerate,
+  onApprove,
+  onDismissStale,
+  onRestoreVersion,
+  isRegenerating,
+  versionHistory = [],
+}: BlockWrapperProps) {
+  const status: BlockStatus = state?.status || "empty";
+  const visual = STATUS_VISUALS[status];
+  const label = FIELD_LABELS[fieldName] || fieldName;
+
+  return (
+    <div className="relative">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-foreground">{label}</span>
+          <Badge
+            variant="outline"
+            className={`text-[10px] gap-1 ${visual.color} ${visual.bgColor} border-transparent ${visual.animate ? "animate-pulse" : ""}`}
+          >
+            <StatusIcon status={status} />
+            {visual.label}
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-1">
+          {/* Version history dropdown */}
+          {versionHistory.length > 0 && onRestoreVersion && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-muted-foreground">
+                  <History className="h-3 w-3 mr-1" />
+                  {versionHistory.length}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="max-w-xs">
+                {versionHistory.slice().reverse().map((entry, i) => (
+                  <DropdownMenuItem
+                    key={i}
+                    onClick={() => onRestoreVersion(entry)}
+                    className="text-xs"
+                  >
+                    <span className="truncate max-w-[200px]">{entry.value?.slice(0, 60)}...</span>
+                    <span className="text-muted-foreground ml-2 whitespace-nowrap">
+                      {new Date(entry.timestamp).toLocaleDateString()}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Approve button */}
+          {status !== "approved" && status !== "empty" && onApprove && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-[10px] text-emerald-600 hover:text-emerald-700"
+              onClick={onApprove}
+            >
+              <Check className="h-3 w-3 mr-1" />Aprobar
+            </Button>
+          )}
+
+          {/* Regenerate button */}
+          {(status === "stale" || status === "generated") && onRegenerate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-[10px] text-primary hover:text-primary/80"
+              onClick={onRegenerate}
+              disabled={isRegenerating}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isRegenerating ? "animate-spin" : ""}`} />
+              {isRegenerating ? "Regenerando..." : "Regenerar"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Stale message */}
+      {status === "stale" && state?.stale_reason && (
+        <div className="flex items-center justify-between bg-orange-500/5 border border-orange-500/20 rounded-md px-3 py-1.5 mb-2">
+          <p className="text-[11px] text-orange-600">
+            Este contenido quedó desactualizado porque {state.stale_reason}.
+          </p>
+          <div className="flex gap-1 ml-2 shrink-0">
+            {onRegenerate && (
+              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px]" onClick={onRegenerate} disabled={isRegenerating}>
+                Regenerar
+              </Button>
+            )}
+            {onDismissStale && (
+              <Button variant="ghost" size="sm" className="h-5 px-1 text-[10px]" onClick={onDismissStale}>
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Loading overlay during regeneration */}
+      {isRegenerating && (
+        <div className="absolute inset-0 bg-background/60 rounded-md flex items-center justify-center z-10">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Regenerando...
+          </div>
+        </div>
+      )}
+
+      {/* Field content */}
+      {children}
+    </div>
+  );
+}

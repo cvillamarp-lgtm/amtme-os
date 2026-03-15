@@ -1,0 +1,2 @@
+ALTER TABLE public.brand_assets DROP CONSTRAINT brand_assets_type_check;
+ALTER TABLE public.brand_assets ADD CONSTRAINT brand_assets_type_check CHECK (type = ANY (ARRAY['logo','font','color','image','reference_image','identity','mission','values','voice','bio','host','tarot','palette','palette_sb01','typography_sb01','colorway','positioning']::text[]));

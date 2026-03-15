@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "amtme-os",
+      "runtimeExecutable": "/Users/christian/.bun/bin/bun",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5174
+    }
+  ]
+}

@@ -1,0 +1,548 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "fechaAnalisis": "2026-02-13",
+    "totalPiezas": 49,
+    "responsable": "Equipo AMTME"
+  },
+  "piezas": [
+    {
+      "id": "AMTME_CAR_001",
+      "metadata": {
+        "tipo": "Carrusel Instagram (slide 1/4)",
+        "plataforma": "Instagram Feed / Carrusel",
+        "objetivo": "Engagement / Reflexión",
+        "fecha": "2026-02-13",
+        "prioridad": "Media",
+        "responsable": "Equipo AMTME",
+        "estado": "Análisis completo",
+        "version": "v1.0",
+        "imagePath": "/images/1.png",
+        "tieneRostro": false,
+        "esPromo": false
+      },
+      "dimensiones": {
+        "ratio": 0.795,
+        "width": 980,
+        "height": 1232,
+        "pixels": "980×1232",
+        "safeZone": {
+          "x1": 120,
+          "x2": 860,
+          "y1": 110,
+          "y2": 1120,
+          "label": "x=120-860, y=110-1120"
+        },
+        "noGoZones": [
+          { "area": "top", "condition": "y<110" },
+          { "area": "bottom", "condition": "y>1120" },
+          { "area": "left", "condition": "x<120" },
+          { "area": "right", "condition": "x>860" }
+        ],
+        "grid": "Grid 12 columnas, 24px gutter",
+        "margenes": { "horizontal": "120px", "top": "110px", "bottom": "112px" },
+        "gutters": "24px"
+      },
+      "fondo": {
+        "tipo": "Sólido blanco",
+        "decision": "BLANCO",
+        "hex": "#FFFFFF",
+        "regla": "Carrusel educativo/reflexivo sin CTA externa",
+        "justificacion": "Contenido reflexivo con paginación, sin botón CTA, interacción dentro del post"
+      },
+      "estructura": {
+        "bloques": ["M1-Logos plataformas", "M2-Comillas", "M3-H1 titular", "M4-Lockup AMTME", "M5-Paginación"],
+        "composicion": "Vertical centrada, jerarquía top-to-bottom",
+        "jerarquia": ["Logos plataformas", "Comillas decorativas", "H1 titular", "Lockup AMTME"],
+        "flujoLectura": "Top → Center → Bottom-right",
+        "balance": "Centrado horizontal perfecto",
+        "espacioNegativo": "~35%",
+        "coordenadas": {
+          "m1_logos": { "x1": 440, "x2": 540, "y1": 111, "y2": 178, "label": "Logos plataformas top-center" },
+          "m2_comillas": { "x1": 200, "x2": 300, "y1": 300, "y2": 420, "label": "Comillas decorativas" },
+          "m3_h1": { "x1": 240, "x2": 740, "y1": 350, "y2": 650, "label": "H1 titular centrado" },
+          "m4_lockup": { "x1": 561, "x2": 860, "y1": 1078, "y2": 1120, "label": "Lockup AMTME bottom-right" },
+          "m5_paginacion": { "x1": 750, "x2": 850, "y1": 940, "y2": 970, "label": "Paginación 1/4" }
+        }
+      },
+      "contenido": {
+        "h1": {
+          "texto": "Sentir mucho\nno siempre es amar.",
+          "lineas": ["Sentir mucho", "no siempre es amar."],
+          "enfasis": "Corte de línea estratégico",
+          "alineacion": "centro",
+          "anchoMax": 500,
+          "interlinea": 1.25,
+          "ubicacion": "Centro-superior, y=350-650"
+        },
+        "h2": null,
+        "cuerpo": null,
+        "cta": null,
+        "disclaimer": null,
+        "hashtags": null,
+        "altText": "Post de carrusel de Instagram mostrando una frase reflexiva sobre amor y sentimientos del podcast 'A Mí Tampoco Me Explicaron', slide 1 de 4, con logos de Apple Podcasts y Spotify."
+      },
+      "tipografia": {
+        "h1": {
+          "fuente": "Sans geométrica Bold",
+          "ejemplos": ["Montserrat Bold", "Poppins Bold"],
+          "peso": "Bold",
+          "tamano": 70,
+          "unidad": "pt",
+          "tracking": 0,
+          "color": "#013BD8"
+        },
+        "h2": null,
+        "cuerpo": null,
+        "jerarquia": "H1 dominante único, sin H2 ni cuerpo",
+        "legibilidadMovil": "Excelente (>60pt)"
+      },
+      "paleta": {
+        "coloresUsados": ["#FFFFFF", "#013BD8"],
+        "fondo": "#FFFFFF",
+        "h1": "#013BD8",
+        "h2": null,
+        "cta": null,
+        "contraste": {
+          "ratio": 13.5,
+          "nivel": "AAA",
+          "pasa": true
+        },
+        "acentos": "Azul #013BD8 solo para identidad (logos + texto + lockup)"
+      },
+      "elementos": {
+        "lista": ["Comillas decorativas", "Logos Apple Podcasts", "Logo Spotify", "Lockup AMTME", "Paginación 1/4"],
+        "estilo": "Minimalista limpio",
+        "patronDominante": "Comillas como elemento gráfico principal",
+        "iconografia": null,
+        "ilustracion": null,
+        "reglasNoEdicion": [
+          "NO mover lockup de esquina bottom-right",
+          "NO cambiar azul #013BD8 (color identidad marca)",
+          "NO alterar logos plataformas Apple/Spotify",
+          "NO modificar jerarquía H1 centrado dominante"
+        ]
+      },
+      "logos": {
+        "identidadPodcast": true,
+        "principal": {
+          "aplica": true,
+          "nombre": "Lockup AMTME",
+          "ubicacion": { "x1": 561, "x2": 860, "y1": 1078, "y2": 1120 },
+          "tamano": { "width": 299, "height": 42 },
+          "proteccion": 24,
+          "color": "#013BD8"
+        },
+        "plataformas": {
+          "aplica": true,
+          "logos": ["Apple Podcasts", "Spotify"],
+          "ubicacion": { "x1": 440, "x2": 540, "y1": 111, "y2": 178 },
+          "tamano": { "height": 67 },
+          "separacion": 10,
+          "separacionBordes": { "horizontal": 120, "top": 110 }
+        }
+      },
+      "ctaBoton": null,
+      "qa": {
+        "reticula": true,
+        "jerarquia": true,
+        "composicion": true,
+        "safeZones": true,
+        "noGoZones": true,
+        "logos": true,
+        "cta": null,
+        "contraste": true,
+        "ortografia": true,
+        "export": true,
+        "score": 9,
+        "total": 10
+      },
+      "export": {
+        "formato": "PNG",
+        "compresion": 100,
+        "perfilColor": "sRGB",
+        "nombreArchivo": "AMTME_Carrusel_SentirMucho_20260213_v01.png",
+        "carpeta": "Drive/AMTME/Contenido/Carrusel/",
+        "rutaCompleta": "Drive/AMTME/Contenido/Carrusel/AMTME_Carrusel_SentirMucho_20260213_v01.png"
+      }
+    },
+    {
+      "id": "AMTME_PROMO_002",
+      "metadata": {
+        "tipo": "Post promocional 'Nuevo episodio' (vertical)",
+        "plataforma": "Instagram Feed / Reels",
+        "objetivo": "Promoción / CTA conversión",
+        "fecha": "2026-02-13",
+        "prioridad": "Alta",
+        "responsable": "Equipo AMTME",
+        "estado": "Análisis completo",
+        "version": "v1.0",
+        "imagePath": "/images/aoa.jpg",
+        "tieneRostro": true,
+        "esPromo": true
+      },
+      "dimensiones": {
+        "ratio": 0.667,
+        "width": 896,
+        "height": 1344,
+        "pixels": "896×1344",
+        "safeZone": {
+          "x1": 100,
+          "x2": 796,
+          "y1": 90,
+          "y2": 1254,
+          "label": "x=100-796, y=90-1254"
+        },
+        "noGoZones": [
+          { "area": "top", "condition": "y<90" },
+          { "area": "bottom", "condition": "y>1254" },
+          { "area": "left", "condition": "x<100" },
+          { "area": "right", "condition": "x>796" }
+        ],
+        "grid": "Grid 12 columnas, 20px gutter",
+        "margenes": { "horizontal": "100px", "top": "90px", "bottom": "90px" },
+        "gutters": "20px"
+      },
+      "fondo": {
+        "tipo": "Degradado azul difuminado",
+        "decision": "AZUL",
+        "hex": ["#0147FE", "#0065FF", "#028BFD"],
+        "regla": "CTA conversión externa + rostro humano real",
+        "justificacion": "Incluye rostro fotografiado, botón 'ESCUCHA YA', logos plataformas destacados, promoción activa de episodio"
+      },
+      "estructura": {
+        "bloques": ["M1-Rostro humano", "M2-H1 titular", "M3-Logos plataformas", "M4-CTA texto", "M5-Lockup AMTME", "M6-Botón CTA"],
+        "composicion": "Diagonal: rostro izquierda equilibra texto derecha",
+        "jerarquia": ["Rostro humano (ancla)", "H1 amarillo AMOR", "Logos plataformas", "CTA botón"],
+        "flujoLectura": "Izquierda (rostro) → Derecha superior (titular) → Centro (logos/CTA) → Bottom (botón)",
+        "balance": "60% derecha (texto), 40% izquierda (rostro)",
+        "espacioNegativo": "~20%",
+        "coordenadas": {
+          "m1_rostro": { "x1": 0, "x2": 350, "y1": 0, "y2": 1100, "label": "Rostro sangrado izquierda" },
+          "m2_h1": { "x1": 400, "x2": 796, "y1": 150, "y2": 600, "label": "H1 titular derecha" },
+          "m3_logos": { "x1": 350, "x2": 750, "y1": 730, "y2": 800, "label": "Logos plataformas centro" },
+          "m4_cta_texto": { "x1": 350, "x2": 750, "y1": 820, "y2": 850, "label": "CTA texto" },
+          "m5_lockup": { "x1": 400, "x2": 730, "y1": 1170, "y2": 1254, "label": "Lockup AMTME bottom-right" },
+          "m6_boton": { "x1": 320, "x2": 660, "y1": 1120, "y2": 1180, "label": "Botón ESCUCHA YA" }
+        }
+      },
+      "contenido": {
+        "h1": {
+          "texto": "¿Por qué confundes\nAMOR\ncon APEGO?",
+          "lineas": ["¿Por qué confundes", "AMOR", "con APEGO?"],
+          "keywords": ["AMOR", "APEGO"],
+          "enfasis": "AMOR y APEGO en amarillo, tamaño 2x mayor",
+          "alineacion": "derecha",
+          "anchoMax": 396,
+          "interlinea": 1.15,
+          "ubicacion": "Derecha superior, y=150-600"
+        },
+        "h2": null,
+        "cuerpo": null,
+        "cta": "ESCUCHA YA →",
+        "disclaimer": null,
+        "hashtags": ["#amorapego", "#podcast"],
+        "altText": "Post promocional de Instagram mostrando a un hombre con gorra sobre fondo azul vibrante preguntando '¿Por qué confundes AMOR con APEGO?' del podcast 'A Mí Tampoco Me Explicaron', con logos de Apple Podcasts y Spotify y botón 'Escucha Ya'."
+      },
+      "tipografia": {
+        "h1": {
+          "fuente": "Sans geométrica ExtraBold",
+          "ejemplos": ["Poppins ExtraBold", "Montserrat ExtraBold"],
+          "peso": "ExtraBold",
+          "tamanosVariables": {
+            "keywords": { "tamano": 95, "color": "#FEE906" },
+            "resto": { "tamano": 48, "color": "#FFFFFF" }
+          },
+          "tracking": -3,
+          "color": "#FFFFFF"
+        },
+        "cta": {
+          "fuente": "Sans SemiBold",
+          "peso": "SemiBold",
+          "tamano": 18,
+          "color": "#FFFFFF"
+        },
+        "jerarquia": "AMOR/APEGO dominan (2x tamaño), resto jerárquico menor",
+        "legibilidadMovil": "Excelente (keywords >80pt)"
+      },
+      "paleta": {
+        "coloresUsados": ["#0147FE", "#0065FF", "#028BFD", "#FEE906", "#FFFFFF"],
+        "fondo": "Degradado #0147FE → #0065FF → #028BFD",
+        "h1": {
+          "keywords": "#FEE906",
+          "resto": "#FFFFFF"
+        },
+        "cta": "#FFFFFF",
+        "contraste": {
+          "amarilloAzul": { "ratio": 10.2, "nivel": "AAA", "pasa": true },
+          "blancoAzul": { "ratio": 8.4, "nivel": "AAA", "pasa": true }
+        },
+        "acentos": "Amarillo #FEE906 SOLO en keywords críticas (AMOR/APEGO)"
+      },
+      "elementos": {
+        "lista": ["Rostro fotografía real", "Logos Apple/Spotify", "Lockup AMTME", "Botón pill CTA", "Flecha →"],
+        "estilo": "Fotografía profesional + tipografía bold + UI limpio",
+        "patronDominante": "Rostro humano como ancla visual primaria",
+        "iconografia": null,
+        "ilustracion": null,
+        "reglasNoEdicion": [
+          "NO recortar rostro diferente (mantener composición facial)",
+          "NO cambiar amarillo #FEE906 (solo keywords AMOR/APEGO)",
+          "NO mover botón de bottom-center",
+          "NO alterar degradado azul marca"
+        ]
+      },
+      "logos": {
+        "identidadPodcast": true,
+        "principal": {
+          "aplica": true,
+          "nombre": "Lockup AMTME",
+          "ubicacion": { "x1": 400, "x2": 730, "y1": 1170, "y2": 1254 },
+          "tamano": { "width": 330, "height": 84 },
+          "proteccion": 20,
+          "color": "#FFFFFF"
+        },
+        "plataformas": {
+          "aplica": true,
+          "logos": ["Apple Podcasts", "Spotify"],
+          "ubicacion": { "x1": 350, "x2": 750, "y1": 730, "y2": 800 },
+          "tamano": { "height": 70 },
+          "separacion": 10,
+          "separacionBordes": { "horizontal": 100, "top": 90 }
+        }
+      },
+      "ctaBoton": {
+        "tipo": "Botón pill",
+        "texto": "ESCUCHA YA →",
+        "radius": 26,
+        "tamano": { "width": 340, "height": 60 },
+        "ubicacion": { "x1": 320, "x2": 660, "y1": 1120, "y2": 1180 },
+        "distancias": {
+          "aBordes": 164,
+          "aLockup": 50
+        },
+        "tipografia": {
+          "fuente": "Sans SemiBold",
+          "tamano": 18,
+          "color": "#FFFFFF"
+        },
+        "fondo": "Transparente",
+        "borde": { "color": "#FFFFFF", "grosor": 3 },
+        "alineacion": "centro",
+        "padding": { "vertical": 16, "horizontal": 40 },
+        "hover": {
+          "fondo": "#FFFFFF",
+          "texto": "#013BD8"
+        }
+      },
+      "qa": {
+        "reticula": true,
+        "jerarquia": true,
+        "composicion": true,
+        "safeZones": true,
+        "noGoZones": true,
+        "logos": true,
+        "cta": true,
+        "contraste": true,
+        "ortografia": true,
+        "export": true,
+        "score": 10,
+        "total": 10
+      },
+      "export": {
+        "formato": "JPG",
+        "compresion": 90,
+        "perfilColor": "sRGB",
+        "nombreArchivo": "AMTME_PromoAmorApego_20260213_v01.jpg",
+        "carpeta": "Drive/AMTME/Contenido/Promocional/",
+        "rutaCompleta": "Drive/AMTME/Contenido/Promocional/AMTME_PromoAmorApego_20260213_v01.jpg"
+      }
+    }
+  ],
+  "tipos": [
+    {
+      "id": "carrusel_980x1232",
+      "nombre": "Carrusel Instagram",
+      "descripcion": "Slides educativos o reflexivos con paginación",
+      "dimensiones": { "width": 980, "height": 1232, "ratio": 0.795 },
+      "safeZone": "x=120-860, y=110-1120",
+      "modulosObligatorios": [
+        "M1-Logos plataformas (top-center)",
+        "M2-Comillas decorativas",
+        "M3-H1 titular (centrado)",
+        "M4-Lockup AMTME (bottom-right)",
+        "M5-Paginación (1/4, 2/4, etc.)"
+      ],
+      "fondoRegla": {
+        "decision": "BLANCO",
+        "justificacion": "Contenido reflexivo/educativo sin CTA externa",
+        "senales": ["Paginación", "Comillas decorativas", "Texto puro", "Interacción: deslizar"]
+      },
+      "casosUso": ["Carruseles educativos", "Frases reflexivas", "Series de contenido"],
+      "ejemplos": ["AMTME_CAR_001", "AMTME_CAR_002", "AMTME_CAR_003"]
+    },
+    {
+      "id": "promo_rostro_896x1344",
+      "nombre": "Post Promocional con Rostro",
+      "descripcion": "Promoción de episodio con fotografía del host",
+      "dimensiones": { "width": 896, "height": 1344, "ratio": 0.667 },
+      "safeZone": "x=100-796, y=90-1254",
+      "modulosObligatorios": [
+        "M1-Rostro humano (sangrado izquierda)",
+        "M2-H1 titular (derecha)",
+        "M3-Logos plataformas",
+        "M4-CTA texto",
+        "M5-Lockup AMTME",
+        "M6-Botón ESCUCHA"
+      ],
+      "fondoRegla": {
+        "decision": "AZUL DIFUMINADO",
+        "justificacion": "CTA conversión externa + rostro humano real",
+        "senales": ["Rostro fotografía", "Botón CTA", "Logos destacados", "Keywords amarillas"]
+      },
+      "casosUso": ["Lanzamientos de episodios", "Promoción podcast", "Covers con host"],
+      "ejemplos": ["AMTME_PROMO_002", "AMTME_PROMO_018"]
+    }
+  ],
+  "paleta": {
+    "nombre": "Paleta AMTME Oficial",
+    "colores": [
+      {
+        "id": "blanco_fondo",
+        "nombre": "Blanco Fondo",
+        "hex": "#FFFFFF",
+        "rgb": { "r": 255, "g": 255, "b": 255 },
+        "uso": "Fondo posts interactivos/carruseles",
+        "categoria": "Fondo"
+      },
+      {
+        "id": "azul_identidad",
+        "nombre": "Azul Identidad",
+        "hex": "#013BD8",
+        "rgb": { "r": 1, "g": 59, "b": 216 },
+        "uso": "Texto, logos, elementos de marca",
+        "categoria": "Identidad"
+      },
+      {
+        "id": "degradado_inicio",
+        "nombre": "Degradado Azul Inicio",
+        "hex": "#0147FE",
+        "rgb": { "r": 1, "g": 71, "b": 254 },
+        "uso": "Inicio degradado fondo promos",
+        "categoria": "Fondo Promocional"
+      },
+      {
+        "id": "degradado_centro",
+        "nombre": "Degradado Azul Centro",
+        "hex": "#0065FF",
+        "rgb": { "r": 0, "g": 101, "b": 255 },
+        "uso": "Centro degradado fondo promos",
+        "categoria": "Fondo Promocional"
+      },
+      {
+        "id": "degradado_final",
+        "nombre": "Degradado Azul Final",
+        "hex": "#028BFD",
+        "rgb": { "r": 2, "g": 139, "b": 253 },
+        "uso": "Final degradado fondo promos",
+        "categoria": "Fondo Promocional"
+      },
+      {
+        "id": "amarillo_enfasis",
+        "nombre": "Amarillo Énfasis",
+        "hex": "#FEE906",
+        "rgb": { "r": 254, "g": 233, "b": 6 },
+        "uso": "Keywords críticas (AMOR, APEGO)",
+        "categoria": "Énfasis"
+      },
+      {
+        "id": "gris_caja",
+        "nombre": "Gris Caja Interactiva",
+        "hex": "#F7F7F7",
+        "rgb": { "r": 247, "g": 247, "b": 247 },
+        "uso": "Fondo cajas de preguntas",
+        "categoria": "UI"
+      },
+      {
+        "id": "negro_suave",
+        "nombre": "Negro Suave",
+        "hex": "#1A1A1A",
+        "rgb": { "r": 26, "g": 26, "b": 26 },
+        "uso": "Texto secundario",
+        "categoria": "Texto"
+      }
+    ]
+  },
+  "checklistQA": [
+    {
+      "id": "reticula",
+      "label": "Retícula aplicada consistente",
+      "descripcion": "Grid de 12 columnas respetado en todos los módulos",
+      "categoria": "estructura",
+      "obligatorio": true
+    },
+    {
+      "id": "jerarquia",
+      "label": "Jerarquía visual clara (Logos→H1→Lockup)",
+      "descripcion": "Orden de lectura lógico y flujo visual correcto",
+      "categoria": "estructura",
+      "obligatorio": true
+    },
+    {
+      "id": "composicion",
+      "label": "Composición equilibrada",
+      "descripcion": "Balance visual entre elementos y espacio negativo",
+      "categoria": "estructura",
+      "obligatorio": true
+    },
+    {
+      "id": "safeZones",
+      "label": "Safe zones respetadas",
+      "descripcion": "Elementos críticos dentro de zonas seguras según formato",
+      "categoria": "tecnico",
+      "obligatorio": true
+    },
+    {
+      "id": "noGoZones",
+      "label": "Zonas prohibidas libres",
+      "descripcion": "No hay elementos críticos en zonas de recorte",
+      "categoria": "tecnico",
+      "obligatorio": true
+    },
+    {
+      "id": "logos",
+      "label": "Logos correctos y separados",
+      "descripcion": "Logos Apple/Spotify con separación mínima respetada",
+      "categoria": "identidad",
+      "obligatorio": true
+    },
+    {
+      "id": "cta",
+      "label": "CTA legible y bien ubicado",
+      "descripcion": "Botón CTA con contraste suficiente y tamaño mínimo",
+      "categoria": "contenido",
+      "obligatorio": false
+    },
+    {
+      "id": "contraste",
+      "label": "Contraste suficiente (≥8:1)",
+      "descripcion": "Ratio de contraste cumple WCAG AA mínimo",
+      "categoria": "accesibilidad",
+      "obligatorio": true
+    },
+    {
+      "id": "ortografia",
+      "label": "Ortografía validada",
+      "descripcion": "Texto sin errores ortográficos ni gramaticales",
+      "categoria": "contenido",
+      "obligatorio": true
+    },
+    {
+      "id": "export",
+      "label": "Export correcto (formato/nombre/carpeta)",
+      "descripcion": "Naming convention y formato según especificaciones",
+      "categoria": "tecnico",
+      "obligatorio": true
+    }
+  ]
+}
