@@ -1,19 +1,34 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://amitampocomeexplicaron.com",
+  "https://www.amitampocomeexplicaron.com",
+  "https://amtmeos.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const cors = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -27,14 +42,14 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
     const { publication_id } = await req.json();
     if (!publication_id) {
       return new Response(JSON.stringify({ error: "publication_id requerido" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -47,7 +62,7 @@ serve(async (req) => {
 
     if (pubError || !pub) {
       return new Response(JSON.stringify({ error: "Publicación no encontrada" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -69,19 +84,19 @@ serve(async (req) => {
     if (accountError || !account) {
       return new Response(JSON.stringify({
         error: `No hay cuenta de ${platformBase} registrada. Ve a Cuentas → Conectar.`,
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (!account.oauth_connected || !account.access_token) {
       return new Response(JSON.stringify({
         error: `Cuenta de ${platformBase} no autorizada vía OAuth. Ve a Cuentas y presiona "Conectar".`,
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
       return new Response(JSON.stringify({
         error: "Token expirado. Ve a Cuentas y vuelve a conectar tu cuenta.",
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     const accessToken = account.access_token as string;
@@ -92,7 +107,7 @@ serve(async (req) => {
       const igUserId = account.account_id;
       if (!igUserId) {
         return new Response(JSON.stringify({ error: "ID de cuenta de Instagram no encontrado. Reconecta la cuenta." }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
 
@@ -101,7 +116,7 @@ serve(async (req) => {
       if (!imageUrl) {
         return new Response(JSON.stringify({
           error: "Sin imagen para publicar. Agrega una image_url en los metadatos de la publicación.",
-        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
       }
 
       const caption = [
@@ -138,18 +153,18 @@ serve(async (req) => {
     } else if (platformBase === "youtube") {
       return new Response(JSON.stringify({
         error: "YouTube requiere subir un archivo de video. Usa 'Marcar como publicado' manualmente después de subir en YouTube Studio.",
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
 
     // ── TikTok ─────────────────────────────────────────────────────────────
     } else if (platformBase === "tiktok") {
       return new Response(JSON.stringify({
         error: "La publicación automática en TikTok requiere un archivo de video. Usa 'Marcar como publicado' manualmente.",
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
 
     } else {
       return new Response(JSON.stringify({
         error: `Publicación automática en ${platformBase} no disponible. Usa 'Marcar como publicado' manualmente.`,
-      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Update publication to published
@@ -160,12 +175,12 @@ serve(async (req) => {
     }).eq("id", publication_id);
 
     return new Response(JSON.stringify({ success: true, link: publishedLink }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("post-publication error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

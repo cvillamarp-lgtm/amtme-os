@@ -1,9 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://amitampocomeexplicaron.com",
+  "https://www.amitampocomeexplicaron.com",
+  "https://amtmeos.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 // OAuth configuration per platform
 const PLATFORM_CONFIG: Record<string, {
@@ -31,13 +45,14 @@ const PLATFORM_CONFIG: Record<string, {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const cors = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -45,14 +60,14 @@ serve(async (req) => {
 
     if (!platform || !user_id) {
       return new Response(JSON.stringify({ error: "Se requiere platform y user_id" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
     const config = PLATFORM_CONFIG[platform];
     if (!config) {
       return new Response(JSON.stringify({ error: `Plataforma no soportada: ${platform}` }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -61,7 +76,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         error: `${config.clientIdKey} no configurado. Agrega esta variable en los secretos de Supabase (Settings → Edge Functions → Secrets).`,
       }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -81,12 +96,12 @@ serve(async (req) => {
     const authUrl = `${config.authUrl}?${params}`;
 
     return new Response(JSON.stringify({ url: authUrl }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("oauth-init error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
     });
   }
 });

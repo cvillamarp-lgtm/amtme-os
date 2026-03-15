@@ -6,8 +6,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Loader2, Check, AlertTriangle, RefreshCw } from "lucide-react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { BlockWrapper } from "./BlockWrapper";
+
+async function extractFnError(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error as string;
+    } catch {
+      // body not JSON
+    }
+    return error.message;
+  }
+  return error instanceof Error ? error.message : "Error desconocido";
+}
 import {
   BlockStatesMap,
   VersionHistoryMap,
@@ -187,7 +201,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await extractFnError(error));
       if (!data?.value) throw new Error("No value returned");
 
       // Save current to history
