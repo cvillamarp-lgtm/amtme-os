@@ -45,6 +45,7 @@ const EpisodeDetail = lazy(() => import("./pages/EpisodeDetail"));
 const ScriptGenerator = lazy(() => import("./pages/ScriptGenerator"));
 const PromptBuilder = lazy(() => import("./pages/PromptBuilder"));
 const VisualPromptGenerator = lazy(() => import("./pages/VisualPromptGenerator"));
+const AudioStudio = lazy(() => import("./pages/AudioStudio"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,7 +112,8 @@ const App = () => (
                         <Route path="/script-generator" element={<ScriptGenerator />} />
                         <Route path="/prompt-builder" element={<PromptBuilder />} />
                         <Route path="/visual-prompts" element={<VisualPromptGenerator />} />
-                        
+                        <Route path="/audio" element={<AudioStudio />} />
+
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>

@@ -1,4 +1,4 @@
-import { Home, Mic, Factory, FileStack, BarChart3, Settings, ListTodo, FileText, LogOut, FolderOpen, Upload, Lightbulb, ScrollText, Send, FlaskConical, Quote, Users, Palette, Wand2, UserCheck, CalendarDays, Trophy, AtSign, Sun, Moon } from "lucide-react";
+import { Home, Mic, Factory, FileStack, BarChart3, Settings, ListTodo, FileText, LogOut, FolderOpen, Upload, Lightbulb, ScrollText, Send, FlaskConical, Quote, Users, Palette, Wand2, UserCheck, CalendarDays, Trophy, AtSign, Sun, Moon, Waveform } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,6 +34,7 @@ const mainNav: NavItem[] = [
 
 const productionNav: NavItem[] = [
   { label: "Fábrica", url: "/factory", icon: Factory },
+  { label: "Audio", url: "/audio", icon: Waveform },
   { label: "Templates", url: "/templates", icon: FileStack },
   { label: "Publicaciones", url: "/publications", icon: Send },
   { label: "Citas", url: "/quotes", icon: Quote },

@@ -1,0 +1,39 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+export function useQuoteCandidates(audioTakeId?: string) {
+  return useQuery({
+    queryKey: ["quote-candidates", audioTakeId],
+    enabled: Boolean(audioTakeId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quote_candidates" as any)
+        .select("*")
+        .eq("audio_take_id", audioTakeId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
+export function useCreateQuoteCandidate(audioTakeId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const { data, error } = await supabase
+        .from("quote_candidates" as any)
+        .insert(payload)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quote-candidates", audioTakeId] });
+    },
+  });
+}
