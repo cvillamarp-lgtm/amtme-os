@@ -18,7 +18,13 @@ import {
   FileText,
   Scissors,
   Quote,
+  Sparkles,
+  Layers,
+  Package,
+  ShieldCheck,
+  Link as LinkIcon,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -45,6 +51,14 @@ import { useQueueAudioClipExport } from "@/hooks/useAudioClipExport";
 import { TranscriptViewer } from "@/components/audio/TranscriptViewer";
 import { ReusableSegmentsPanel } from "@/components/audio/ReusableSegmentsPanel";
 import { TextBasedEditor } from "@/components/audio/TextBasedEditor";
+import { AssetCandidatesPanel } from "@/components/audio/AssetCandidatesPanel";
+import { RenderPipelinePanel } from "@/components/audio/RenderPipelinePanel";
+import { QAGatesPanel } from "@/components/audio/QAGatesPanel";
+import { useAssetCandidates } from "@/hooks/useAssetCandidates";
+import { useCreateExportPackage, useExportPackages, useAddToPublicationQueue } from "@/hooks/useExportPackages";
+import { generateExportPackageTitle } from "@/lib/export-naming";
+import { buildPublicationChecklist } from "@/lib/publication-checklist";
+import type { EpisodeQAData } from "@/lib/qa-gates";
 
 function formatDuration(ms: number) {
   const totalSeconds = Math.floor(ms / 1000);
@@ -177,6 +191,33 @@ export default function AudioStudio() {
   const createQuoteMutation = useCreateQuoteCandidate(savedTakeId || undefined);
   const { data: quoteCandidates = [] } = useQuoteCandidates(savedTakeId || undefined);
   const queueClipExportMutation = useQueueAudioClipExport();
+
+  // Phase 6-8 hooks
+  const { data: assetCandidates = [] } = useAssetCandidates(savedTakeId || undefined);
+  const createExportPackageMutation = useCreateExportPackage();
+  const addToPublicationQueueMutation = useAddToPublicationQueue();
+  const { data: exportPackages = [] } = useExportPackages(episodeId !== "none" ? episodeId : undefined);
+
+  // Episode title for render/export context
+  const currentEpisodeTitle = useMemo(() => {
+    if (episodeId === "none") return title || "sin-episodio";
+    return episodes.find((e: any) => e.id === episodeId)?.title || title || "episodio";
+  }, [episodeId, episodes, title]);
+
+  // QA data
+  const qaData: EpisodeQAData = useMemo(() => ({
+    hasTake: !!savedTakeId,
+    hasMaster: !!masterBlob || masteringStatus === "ready",
+    hasTranscript: transcriptData?.transcript?.status === "done",
+    hasQuotes: quoteCandidates.length > 0,
+    hasAssets: (assetCandidates as any[]).some(
+      (a) => a.status === "approved" || a.status === "rendered"
+    ),
+    hasExportPackage: exportPackages.length > 0,
+    audioPeakDb: masterAnalysis?.peakDb,
+    audioRmsDb: masterAnalysis?.rmsDb,
+    audioClipping: masterAnalysis?.clippingCount,
+  }), [savedTakeId, masterBlob, masteringStatus, transcriptData, quoteCandidates, assetCandidates, exportPackages, masterAnalysis]);
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
@@ -746,6 +787,150 @@ export default function AudioStudio() {
               )}
             </CardContent>
           </Card>
+
+          {/* Phase 6 — Asset Candidates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Asset Candidates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AssetCandidatesPanel
+                audioTakeId={savedTakeId || undefined}
+                episodeId={episodeId !== "none" ? episodeId : undefined}
+                quoteCandidates={quoteCandidates}
+                userId={currentUserId || undefined}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Phase 7 — Render Pipeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-5 w-5" />
+                Render Pipeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RenderPipelinePanel
+                audioTakeId={savedTakeId || undefined}
+                episodeTitle={currentEpisodeTitle}
+                assetCandidates={assetCandidates}
+                userId={currentUserId || undefined}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Phase 8 — Export Package */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Paquete de exportación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Crea un paquete de exportación para este episodio.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={createExportPackageMutation.isPending || !currentUserId}
+                onClick={async () => {
+                  if (!currentUserId) return;
+                  try {
+                    await createExportPackageMutation.mutateAsync({
+                      user_id: currentUserId,
+                      episode_id: episodeId !== "none" ? episodeId : null,
+                      title: generateExportPackageTitle(currentEpisodeTitle),
+                      status: "draft",
+                    });
+                    toast.success("Paquete de exportación creado");
+                    queryClient.invalidateQueries({ queryKey: ["export-packages"] });
+                  } catch (err: any) { toast.error(err.message); }
+                }}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Crear paquete
+              </Button>
+
+              {exportPackages.length > 0 && (
+                <div className="space-y-2">
+                  {(exportPackages as any[]).slice(0, 3).map((pkg) => (
+                    <div key={pkg.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                      <div>
+                        <p className="text-sm font-medium">{pkg.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{pkg.status}</Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={addToPublicationQueueMutation.isPending || !currentUserId}
+                          onClick={async () => {
+                            if (!currentUserId) return;
+                            const checklist = buildPublicationChecklist("spotify");
+                            try {
+                              await addToPublicationQueueMutation.mutateAsync({
+                                user_id: currentUserId,
+                                export_package_id: pkg.id,
+                                episode_id: episodeId !== "none" ? episodeId : null,
+                                platform: "spotify",
+                                status: "scheduled",
+                                checklist,
+                              });
+                              toast.success("Añadido a la cola de publicación");
+                            } catch (err: any) { toast.error(err.message); }
+                          }}
+                        >
+                          + Cola
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Phase 11 — QA Gates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                QA Gates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <QAGatesPanel data={qaData} />
+            </CardContent>
+          </Card>
+
+          {/* Episode 360 Link */}
+          {episodeId !== "none" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LinkIcon className="h-5 w-5" />
+                  Vista 360° del episodio
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Consulta la vista consolidada de todo el flujo de producción de este episodio.
+                </p>
+                <Button variant="outline" asChild>
+                  <Link to={`/episodes/${episodeId}/360`}>
+                    Abrir Episode 360°
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column */}

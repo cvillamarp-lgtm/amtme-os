@@ -1,4 +1,4 @@
-import { Home, Mic, Factory, FileStack, BarChart3, Settings, ListTodo, FileText, LogOut, FolderOpen, Upload, Lightbulb, ScrollText, Send, FlaskConical, Quote, Users, Palette, Wand2, UserCheck, CalendarDays, Trophy, AtSign, Sun, Moon, Waveform } from "lucide-react";
+import { Home, Mic, Factory, FileStack, BarChart3, Settings, ListTodo, FileText, LogOut, FolderOpen, Upload, Lightbulb, ScrollText, Send, FlaskConical, Quote, Users, Palette, Wand2, UserCheck, CalendarDays, Trophy, AtSign, Sun, Moon, AudioWaveform, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,7 +34,7 @@ const mainNav: NavItem[] = [
 
 const productionNav: NavItem[] = [
   { label: "Fábrica", url: "/factory", icon: Factory },
-  { label: "Audio", url: "/audio", icon: Waveform },
+  { label: "Audio", url: "/audio", icon: AudioWaveform },
   { label: "Templates", url: "/templates", icon: FileStack },
   { label: "Publicaciones", url: "/publications", icon: Send },
   { label: "Citas", url: "/quotes", icon: Quote },
@@ -49,6 +49,7 @@ const systemNav: NavItem[] = [
   { label: "Scorecard", url: "/scorecard", icon: Trophy },
   { label: "Métricas", url: "/metrics", icon: BarChart3 },
   { label: "Tareas", url: "/tasks", icon: ListTodo, badgeKey: "pendingTasks" },
+  { label: "Knowledge", url: "/knowledge", icon: BookOpen },
   { label: "Marca", url: "/brand", icon: Palette },
   { label: "Prompts", url: "/prompt-builder", icon: Wand2 },
   { label: "Sistema", url: "/system", icon: Settings },
