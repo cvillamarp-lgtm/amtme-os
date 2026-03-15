@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Auth() {
   const { user, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -21,19 +20,9 @@ export default function Auth() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Sesión iniciada");
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Revisa tu correo para confirmar tu cuenta");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Sesión iniciada");
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -46,9 +35,7 @@ export default function Auth() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground">AMTME OS</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta"}
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Inicia sesión para continuar</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -60,15 +47,9 @@ export default function Auth() {
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           </div>
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "..." : isLogin ? "Iniciar sesión" : "Registrarse"}
+            {submitting ? "..." : "Iniciar sesión"}
           </Button>
         </form>
-        <p className="text-center text-sm text-muted-foreground">
-          {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
-          <button onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline font-medium">
-            {isLogin ? "Regístrate" : "Inicia sesión"}
-          </button>
-        </p>
       </div>
     </div>
   );
