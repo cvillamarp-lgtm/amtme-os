@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { useAuth } from "@/hooks/useAuth";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
@@ -467,11 +468,10 @@ export default function VisualPromptGenerator() {
     setGeneratingCopy(true);
     setShowCopyForm(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke("generate-visual-copy", {
-        body: { episodio: data.numero, tesis: data.tesis },
-      });
-      if (error) throw new Error(error.message);
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeFunction<{ copy?: Record<string, string> }>(
+        "generate-visual-copy",
+        { episodio: data.numero, tesis: data.tesis },
+      );
       if (result?.copy) {
         setData((prev) => ({ ...prev, ...result.copy }));
         toast.success("✨ Copy generado para las 15 piezas");
@@ -515,13 +515,12 @@ export default function VisualPromptGenerator() {
     setLoadingPieces((prev) => ({ ...prev, [pieza.id]: true }));
     try {
       const prompt = generarPrompt(pieza, data, fondoImg02);
-      const { data: result, error } = await supabase.functions.invoke("generate-image", {
-        body: { prompt, hostReference: pieza.hostRef, mode: "create" },
-      });
-      if (error) throw new Error(error.message);
-      if (result?.error) throw new Error(result.error);
+      const result = await invokeEdgeFunction<{ imageUrl?: string }>(
+        "generate-image",
+        { prompt, hostReference: pieza.hostRef, mode: "create" },
+      );
       if (result?.imageUrl) {
-        setGeneratedImages((prev) => ({ ...prev, [pieza.id]: result.imageUrl }));
+        setGeneratedImages((prev) => ({ ...prev, [pieza.id]: result.imageUrl! }));
         setExpandedId(pieza.id);
         toast.success(`✓ "${pieza.nombre}" generada`);
         await saveAsset(pieza, result.imageUrl);

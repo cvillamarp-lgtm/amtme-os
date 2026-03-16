@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import hostPhoto from "@/assets/host-reference.png";
 
@@ -142,11 +143,11 @@ export default function PromptBuilder() {
     setGenerating(true);
     try {
       const allRefs = [hostBase64, ...referenceImages].filter(Boolean);
-      const { data, error } = await supabase.functions.invoke("generate-image", {
-        body: { prompt, episodeId: linkEpisodeId || undefined, referenceImages: allRefs },
+      const data = await invokeEdgeFunction<{ imageUrl: string }>("generate-image", {
+        prompt,
+        episodeId: linkEpisodeId || undefined,
+        referenceImages: allRefs,
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       const newImage: GeneratedImage = { url: data.imageUrl, prompt, timestamp: Date.now() };
       setGeneratedImages((prev) => [newImage, ...prev]);
@@ -170,11 +171,13 @@ export default function PromptBuilder() {
     setEditing(true);
     try {
       const allRefs = [hostBase64, ...referenceImages].filter(Boolean);
-      const { data, error } = await supabase.functions.invoke("generate-image", {
-        body: { prompt: editPrompt, mode: "edit", imageUrl: selectedImage.url, episodeId: linkEpisodeId || undefined, referenceImages: allRefs },
+      const data = await invokeEdgeFunction<{ imageUrl: string }>("generate-image", {
+        prompt: editPrompt,
+        mode: "edit",
+        imageUrl: selectedImage.url,
+        episodeId: linkEpisodeId || undefined,
+        referenceImages: allRefs,
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       const editedImage: GeneratedImage = { url: data.imageUrl, prompt: `✏️ ${editPrompt} (sobre: ${selectedImage.prompt.substring(0, 50)}...)`, timestamp: Date.now() };
       setGeneratedImages((prev) => [editedImage, ...prev]);

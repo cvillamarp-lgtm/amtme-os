@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
@@ -198,12 +199,11 @@ export default function ContentPipeline() {
     const hostBase64 = await loadHostBase64();
     const referenceImages = hostBase64 ? [hostBase64] : [];
 
-    const { data, error: fnError } = await supabase.functions.invoke("generate-image", {
-      body: { prompt, referenceImages },
+    const result = await invokeEdgeFunction<{ imageUrl?: string }>("generate-image", {
+      prompt,
+      referenceImages,
     });
-    if (fnError) throw new Error(fnError.message);
-    if (data?.error) throw new Error(data.error);
-    return data?.imageUrl ?? null;
+    return result?.imageUrl ?? null;
   };
 
   const handleGenerateSingle = async (piezaId: keyof SeccionB) => {

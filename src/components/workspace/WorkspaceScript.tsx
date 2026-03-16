@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Sparkles, Loader2, Save, Copy, Check, Quote, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeFunction } from "@/lib/supabase-functions";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { useQueryClient } from "@tanstack/react-query";
 
 // Supabase URL with hardcoded fallback for streaming SSE calls
@@ -105,7 +105,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No autenticado");
 
-      const result = await invokeFunction<{
+      const result = await invokeEdgeFunction<{
         quotes?: Array<{ text: string; quote_type: string; timestamp_hint: string }>;
         insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
       }>("extract-from-script", {

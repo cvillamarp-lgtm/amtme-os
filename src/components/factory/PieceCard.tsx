@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Image, Loader2, RefreshCw, CheckCircle2, Copy, Check, Download } from "lucide-react";
 import { toast } from "sonner";
-import { invokeFunction } from "@/lib/supabase-functions";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
 
@@ -36,7 +36,7 @@ export function PieceCard({
     setGenerating(true);
     try {
       const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
-      const data = await invokeFunction<{ imageUrl?: string }>(
+      const data = await invokeEdgeFunction<{ imageUrl?: string }>(
         "generate-image",
         { prompt, hostReference: piece.hostReference }
       );

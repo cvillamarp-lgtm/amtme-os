@@ -6,22 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Save, Loader2, Check, AlertTriangle, RefreshCw } from "lucide-react";
-import { FunctionsHttpError } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { BlockWrapper } from "./BlockWrapper";
-
-async function extractFnError(error: unknown): Promise<string> {
-  if (error instanceof FunctionsHttpError) {
-    try {
-      const body = await error.context.json();
-      if (body?.error) return body.error as string;
-    } catch {
-      // body not JSON
-    }
-    return error.message;
-  }
-  return error instanceof Error ? error.message : "Error desconocido";
-}
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import {
   BlockStatesMap,
   VersionHistoryMap,
@@ -182,26 +169,23 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const regenerateField = async (fieldName: string) => {
     setRegeneratingField(fieldName);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-episode-fields", {
-        body: {
-          mode: "regenerate_field",
-          field_name: fieldName,
-          idea_principal: episode.idea_principal,
-          episode_number: episode.number,
-          current_fields: {
-            working_title: form.working_title,
-            theme: form.theme,
-            core_thesis: form.core_thesis,
-            summary: form.summary,
-            hook: form.hook,
-            cta: form.cta,
-            quote: form.quote,
-            descripcion_spotify: form.descripcion_spotify,
-          },
+      const data = await invokeEdgeFunction<{ value?: string }>("generate-episode-fields", {
+        mode: "regenerate_field",
+        field_name: fieldName,
+        idea_principal: episode.idea_principal,
+        episode_number: episode.number,
+        current_fields: {
+          working_title: form.working_title,
+          theme: form.theme,
+          core_thesis: form.core_thesis,
+          summary: form.summary,
+          hook: form.hook,
+          cta: form.cta,
+          quote: form.quote,
+          descripcion_spotify: form.descripcion_spotify,
         },
       });
 
-      if (error) throw new Error(await extractFnError(error));
       if (!data?.value) throw new Error("No value returned");
 
       // Save current to history

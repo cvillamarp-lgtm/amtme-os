@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 
 export function useAudioTranscript(audioTakeId?: string) {
   return useQuery({
@@ -44,13 +45,7 @@ export function useQueueAudioTranscript() {
       audioTakeId: string;
       language?: string;
     }) => {
-      const { data, error } = await supabase.functions.invoke("queue-audio-transcript", {
-        body: { audioTakeId, language },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error as string);
-      return data;
+      return invokeEdgeFunction("queue-audio-transcript", { audioTakeId, language });
     },
   });
 }

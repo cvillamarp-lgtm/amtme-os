@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { invokeFunction } from "@/lib/supabase-functions";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { Plus, Quote, Star, CheckCircle2, Archive, Sparkles, Clock, Mic, Loader2, Wand2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -392,7 +392,7 @@ export default function QuoteCandidates() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("No autenticado"); return; }
 
-      const result = await invokeFunction<{
+      const result = await invokeEdgeFunction<{
         quotes?: Array<{ text: string; quote_type: string; timestamp_hint: string }>;
       }>("extract-from-script", {
         script,

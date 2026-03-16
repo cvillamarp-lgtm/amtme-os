@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FlaskConical, Plus, Search, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeFunction } from "@/lib/supabase-functions";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -450,7 +450,7 @@ export default function Insights() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("No autenticado"); return; }
 
-      const result = await invokeFunction<{
+      const result = await invokeEdgeFunction<{
         insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
       }>("extract-from-script", {
         script,

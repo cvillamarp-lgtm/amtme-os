@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { useAuth } from "@/hooks/useAuth";
 import { Tables } from "@/integrations/supabase/types";
 import { PageHeader } from "@/components/PageHeader";
@@ -313,19 +314,7 @@ function AccountDetailSheet({
   const syncMutation = useMutation({
     mutationFn: async () => {
       if (!display) throw new Error("No hay cuenta seleccionada");
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : undefined;
-
-      // sync-platform-account handles Instagram, YouTube, and TikTok
-      const { data, error } = await supabase.functions.invoke("sync-platform-account", {
-        body: { platform: display.platform },
-        headers,
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      return data;
+      return invokeEdgeFunction("sync-platform-account", { platform: display.platform });
     },
     onSuccess: () => {
       refetchAccount();
@@ -798,14 +787,12 @@ export default function PlatformAccounts() {
         }).eq("id", existingAccount.id);
       }
 
-      const { data, error } = await supabase.functions.invoke("oauth-init", {
-        body: { platform, user_id: user.id },
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      const result = await invokeEdgeFunction<{ url: string }>("oauth-init", {
+        platform,
+        user_id: user.id,
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
       // Redirect to OAuth provider
-      window.location.href = data.url;
+      window.location.href = result.url;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al iniciar OAuth");
       setConnectingPlatform(null);

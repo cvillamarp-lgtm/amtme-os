@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,15 +129,7 @@ export function InstagramAnalytics() {
   // Refresh insights mutation
   const refreshMutation = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke("fetch-instagram-insights", {
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : undefined,
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      return data;
+      return invokeEdgeFunction("fetch-instagram-insights");
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["instagram-account-stats"] });
@@ -151,21 +144,17 @@ export function InstagramAnalytics() {
   const reconnectMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("No autenticado");
-      const { data: { session } } = await supabase.auth.getSession();
       // Clear old OAuth so the account shows "needs reconnect" state
       await (supabase as any)
         .from("platform_accounts")
         .update({ oauth_connected: false, access_token: null, refresh_token: null, token_expiry: null, account_id: null })
         .eq("platform", "instagram")
         .eq("user_id", user.id);
-      // Get a fresh OAuth URL (with auth_type=rerequest so Facebook re-shows page selection)
-      const { data, error } = await supabase.functions.invoke("oauth-init", {
-        body: { platform: "instagram", user_id: user.id },
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      const result = await invokeEdgeFunction<{ url: string }>("oauth-init", {
+        platform: "instagram",
+        user_id: user.id,
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      return data.url as string;
+      return result.url;
     },
     onSuccess: (url) => {
       window.location.href = url;

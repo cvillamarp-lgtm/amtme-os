@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { SeccionA, SeccionB } from "@/lib/master-template";
 
 export interface ExtractionResult {
@@ -20,14 +20,7 @@ export function useContentExtraction() {
     setEditableSeccionB(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("extract-content", {
-        body: { script },
-      });
-
-      if (fnError) throw new Error(fnError.message);
-      if (data?.error) throw new Error(data.error);
-
-      const extraction = data as ExtractionResult;
+      const extraction = await invokeEdgeFunction<ExtractionResult>("extract-content", { script });
       setResult(extraction);
       setEditableSeccionB(JSON.parse(JSON.stringify(extraction.seccionB)));
     } catch (e) {

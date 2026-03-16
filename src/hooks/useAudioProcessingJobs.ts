@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 
 export function useAudioProcessingJobs(audioTakeId?: string) {
   return useQuery({
@@ -28,16 +29,7 @@ export function useQueueAudioMasterJob() {
       audioTakeId: string;
       preset: "voice_solo" | "voice_music" | "interview";
     }) => {
-      const { data, error } = await supabase.functions.invoke("queue-audio-master", {
-        body: {
-          audioTakeId,
-          preset,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error as string);
-      return data;
+      return invokeEdgeFunction("queue-audio-master", { audioTakeId, preset });
     },
   });
 }

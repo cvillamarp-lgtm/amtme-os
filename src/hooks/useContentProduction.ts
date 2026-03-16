@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeFunction } from "@/lib/supabase-functions";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { VISUAL_PIECES, buildPiecePrompt, type EpisodeInput, type VisualPiece } from "@/lib/visual-templates";
 import { toast } from "sonner";
 
@@ -79,7 +79,7 @@ export function useContentProduction() {
     }
     setLoading(true);
     try {
-      const rawData = await invokeFunction("extract-content", { script, title, theme });
+      const rawData = await invokeEdgeFunction("extract-content", { script, title, theme });
       const parsed = parseExtraction(rawData as Record<string, unknown>);
       if (parsed) {
         setExtraction(parsed);
@@ -173,7 +173,7 @@ export function useContentProduction() {
         copy: (pieceCopy[String(p.id)] || p.copyTemplate).join(" "),
       }));
 
-      const data = await invokeFunction<{ captions?: Array<{ pieceId: number; caption: string; hashtags: string }> }>(
+      const data = await invokeEdgeFunction<{ captions?: Array<{ pieceId: number; caption: string; hashtags: string }> }>(
         "generate-captions",
         { pieces, episodeTitle: title, episodeNumber: epNumber, thesis: extraction.thesis }
       );
@@ -272,7 +272,7 @@ export function useContentProduction() {
       setProdStep("Extrayendo contenido...");
       setProdCurrent(1);
 
-      const rawData = await invokeFunction("extract-content", { script, title, theme });
+      const rawData = await invokeEdgeFunction("extract-content", { script, title, theme });
       const parsed = parseExtraction(rawData as Record<string, unknown>);
       if (!parsed) throw new Error("Respuesta incompleta de IA");
 
@@ -301,7 +301,7 @@ export function useContentProduction() {
           copy: (mergedCopy[String(p.id)] || p.copyTemplate).join(" "),
         }));
 
-        const captionData = await invokeFunction<{
+        const captionData = await invokeEdgeFunction<{
           captions?: Array<{ pieceId: number; caption: string; hashtags: string }>;
         }>("generate-captions", {
           pieces,
@@ -340,7 +340,7 @@ export function useContentProduction() {
         const prompt = buildPiecePrompt(piece, localEpisodeInput, copy);
 
         try {
-          const imgData = await invokeFunction<{ imageUrl?: string }>(
+          const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
             "generate-image",
             { prompt, hostReference: piece.hostReference }
           );
@@ -369,7 +369,7 @@ export function useContentProduction() {
             const prompt = buildPiecePrompt(piece, localEpisodeInput, copy);
             try {
               await new Promise((r) => setTimeout(r, 3000));
-              const imgData = await invokeFunction<{ imageUrl?: string }>(
+              const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
                 "generate-image",
                 { prompt, hostReference: piece.hostReference }
               );

@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 
 export function useQueueAudioClipExport() {
   return useMutation({
@@ -14,18 +14,12 @@ export function useQueueAudioClipExport() {
       endSeconds: number;
       label: string;
     }) => {
-      const { data, error } = await supabase.functions.invoke("queue-audio-clip-export", {
-        body: {
-          audioTakeId,
-          startSeconds,
-          endSeconds,
-          label,
-        },
+      return invokeEdgeFunction("queue-audio-clip-export", {
+        audioTakeId,
+        startSeconds,
+        endSeconds,
+        label,
       });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error as string);
-      return data;
     },
   });
 }

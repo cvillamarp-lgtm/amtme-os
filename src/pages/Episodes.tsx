@@ -15,27 +15,13 @@ import {
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { FunctionsHttpError } from "@supabase/supabase-js";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { toast } from "sonner";
 import { useEpisodes } from "@/hooks/useEpisode";
 import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { initBlockStatesFromAI } from "@/lib/block-states";
 import { useEpisodeDraft } from "@/hooks/useEpisodeDraft";
 import type { ConflictOption } from "@/hooks/useEpisodeDraft";
-
-// ─── Edge function error helper ──────────────────────────────────────────────
-async function extractFnError(error: unknown): Promise<string> {
-  if (error instanceof FunctionsHttpError) {
-    try {
-      const body = await error.context.json();
-      if (body?.error) return body.error as string;
-    } catch {
-      // body not JSON
-    }
-    return error.message;
-  }
-  return error instanceof Error ? error.message : "Error desconocido";
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,21 +162,10 @@ export default function Episodes() {
     if (!draft.idea_principal.trim()) return;
     setGeneratingOptions(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-conflict-options", {
-        body: { idea_principal: draft.idea_principal, tono: draft.tono || "íntimo" },
-      });
-      if (error) {
-        const msg = await extractFnError(error);
-        // If AI key is not configured, gracefully switch to manual mode
-        if (msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("not configured")) {
-          toast.warning("IA no disponible. Puedes escribir el conflicto manualmente.");
-          setManualMode(true);
-          await saveDraft({ step: 2 }, { immediate: true });
-          return;
-        }
-        throw new Error(msg);
-      }
-      if (data?.error) throw new Error(data.error);
+      const data = await invokeEdgeFunction<{ options?: ConflictOption[] }>(
+        "generate-conflict-options",
+        { idea_principal: draft.idea_principal, tono: draft.tono || "íntimo" },
+      );
       if (data?.options) {
         // Persist generated options to DB immediately
         await saveDraft(
@@ -201,8 +176,12 @@ export default function Episodes() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al generar opciones";
-      // On any AI failure, fall back to manual mode automatically
-      toast.error(`${msg} — puedes continuar manualmente.`);
+      // If AI key is not configured, switch to manual mode without a harsh error
+      if (msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("not configured")) {
+        toast.warning("IA no disponible. Puedes escribir el conflicto manualmente.");
+      } else {
+        toast.error(`${msg} — puedes continuar manualmente.`);
+      }
       setManualMode(true);
       await saveDraft({ step: 2 }, { immediate: true });
     } finally {
@@ -249,24 +228,17 @@ export default function Episodes() {
       // ── 2. Generate AI fields ──────────────────────────────────────────────
       setIsGenerating(true);
       try {
-        const { data: fnData, error: fnError } = await supabase.functions.invoke(
+        const fnData = await invokeEdgeFunction<{ fields?: Record<string, string>; metadata?: unknown }>(
           "generate-episode-fields",
           {
-            body: {
-              idea_principal: draft.idea_principal,
-              conflicto_central: finalConflicto || undefined,
-              intencion_del_episodio: finalIntencion || undefined,
-              tono: draft.tono || "íntimo",
-              restricciones: draft.restricciones || undefined,
-              episode_number: nextNumber,
-            },
-          }
+            idea_principal: draft.idea_principal,
+            conflicto_central: finalConflicto || undefined,
+            intencion_del_episodio: finalIntencion || undefined,
+            tono: draft.tono || "íntimo",
+            restricciones: draft.restricciones || undefined,
+            episode_number: nextNumber,
+          },
         );
-
-        if (fnError) {
-          const msg = await extractFnError(fnError);
-          throw new Error(msg);
-        }
 
         if (fnData?.fields) {
           const fields = fnData.fields;
