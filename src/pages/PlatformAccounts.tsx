@@ -97,21 +97,28 @@ function OAuthStatus({ account, onConnect, connecting }: {
   if (account.oauth_connected) {
     const expiry = account.token_expiry ? new Date(account.token_expiry) : null;
     const expired = expiry && expiry < new Date();
-    return (
-      <div className={`flex items-center gap-1.5 text-[11px] ${expired ? "text-amber-500" : "text-emerald-500"}`}>
-        {expired ? (
-          <><AlertCircle className="h-3 w-3" />Token expirado</>
-        ) : (
-          <><CheckCircle2 className="h-3 w-3" />Conectado vía OAuth</>
-        )}
-        {expired && (
+    // Connected but no Business Account ID found (pages weren't selected or Instagram not linked)
+    const incomplete = !account.account_id;
+
+    if (incomplete || expired) {
+      return (
+        <div className="flex items-center gap-1.5 text-[11px] text-amber-500">
+          <AlertCircle className="h-3 w-3" />
+          {incomplete ? "Páginas no vinculadas" : "Token expirado"}
           <button
             onClick={(e) => { e.stopPropagation(); onConnect(); }}
-            className="ml-1 underline underline-offset-2 hover:opacity-80"
+            disabled={connecting}
+            className="ml-1 underline underline-offset-2 hover:opacity-80 disabled:opacity-50"
           >
-            Reconectar
+            {connecting ? "..." : "Reconectar"}
           </button>
-        )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
+        <CheckCircle2 className="h-3 w-3" />Conectado vía OAuth
       </div>
     );
   }
@@ -493,11 +500,25 @@ export default function PlatformAccounts() {
   });
 
   // Trigger OAuth flow for a platform
+  // If already connected (but incomplete/expired), clears the stale token first
   const connectOAuth = async (platform: string) => {
     if (!user) return;
     setConnectingPlatform(platform);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // Clear stale token so the account resets cleanly before re-authorizing
+      const existingAccount = accounts.find((a) => a.platform === platform);
+      if (existingAccount?.oauth_connected) {
+        await supabase.from("platform_accounts").update({
+          oauth_connected: false,
+          access_token: null,
+          refresh_token: null,
+          token_expiry: null,
+          account_id: null,
+        }).eq("id", existingAccount.id);
+      }
+
       const { data, error } = await supabase.functions.invoke("oauth-init", {
         body: { platform, user_id: user.id },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,

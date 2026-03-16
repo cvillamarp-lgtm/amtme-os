@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Plus, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { Tables } from "@/integrations/supabase/types";
+import { InstagramAnalytics } from "@/components/InstagramAnalytics";
 
 export default function MetricsPage() {
   const [open, setOpen] = useState(false);
@@ -73,7 +75,7 @@ export default function MetricsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Métricas</h1>
-          <p className="page-subtitle">Analítica de tu podcast</p>
+          <p className="page-subtitle">Analítica de tu podcast y redes sociales</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -116,97 +118,112 @@ export default function MetricsPage() {
         </Dialog>
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <Card key={i} className="h-28 animate-pulse bg-muted" />)}
-        </div>
-      ) : metrics.length === 0 ? (
-        <div className="empty-state">
-          <BarChart3 className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">Registra tu primera métrica para ver las gráficas</p>
-        </div>
-      ) : (
-        <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {summaryCards.map((card) => (
-              <Card key={card.name} className="stat-card">
-                <CardContent className="p-5">
-                  <p className="text-xs text-muted-foreground mb-1">{card.name}</p>
-                  <div className="flex items-end gap-2">
-                    <p className="text-2xl font-bold font-display text-foreground">
-                      {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
-                    </p>
-                    {card.unit && <span className="text-xs text-muted-foreground mb-1">{card.unit}</span>}
-                  </div>
-                  {card.change !== 0 && (
-                    <div className={`flex items-center gap-1 mt-1 text-xs ${card.change > 0 ? "text-[hsl(var(--chart-2))]" : "text-destructive"}`}>
-                      {card.change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {Math.abs(card.change).toFixed(1)}%
+      <Tabs defaultValue="podcast" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="podcast">🎙️ Podcast</TabsTrigger>
+          <TabsTrigger value="instagram">📸 Instagram</TabsTrigger>
+        </TabsList>
+
+        {/* ── Podcast tab ──────────────────────────────────────────────── */}
+        <TabsContent value="podcast">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => <Card key={i} className="h-28 animate-pulse bg-muted" />)}
+            </div>
+          ) : metrics.length === 0 ? (
+            <div className="empty-state">
+              <BarChart3 className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground">Registra tu primera métrica para ver las gráficas</p>
+            </div>
+          ) : (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {summaryCards.map((card) => (
+                  <Card key={card.name} className="stat-card">
+                    <CardContent className="p-5">
+                      <p className="text-xs text-muted-foreground mb-1">{card.name}</p>
+                      <div className="flex items-end gap-2">
+                        <p className="text-2xl font-bold font-display text-foreground">
+                          {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
+                        </p>
+                        {card.unit && <span className="text-xs text-muted-foreground mb-1">{card.unit}</span>}
+                      </div>
+                      {card.change !== 0 && (
+                        <div className={`flex items-center gap-1 mt-1 text-xs ${card.change > 0 ? "text-[hsl(var(--chart-2))]" : "text-destructive"}`}>
+                          {card.change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {Math.abs(card.change).toFixed(1)}%
+                        </div>
+                      )}
+                      {card.source && <p className="text-[10px] text-muted-foreground/60 mt-1 capitalize">{card.source}</p>}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Chart */}
+              {downloadsData.length > 1 && (
+                <Card className="mt-4">
+                  <CardHeader><CardTitle className="text-sm">Tendencia</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={downloadsData}>
+                          <defs>
+                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                          <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                          <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }} />
+                          <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#colorValue)" strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                  )}
-                  {card.source && <p className="text-[10px] text-muted-foreground/60 mt-1 capitalize">{card.source}</p>}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* History table */}
+              <Card className="mt-4">
+                <CardHeader><CardTitle className="text-sm">Historial</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-muted-foreground border-b border-border">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-medium">Métrica</th>
+                          <th className="text-left py-2 px-3 font-medium">Valor</th>
+                          <th className="text-left py-2 px-3 font-medium">Fuente</th>
+                          <th className="text-left py-2 px-3 font-medium">Fecha</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {[...metrics].reverse().slice(0, 20).map((m) => (
+                          <tr key={m.id} className="surface-hover">
+                            <td className="py-2 px-3 text-foreground">{m.name}</td>
+                            <td className="py-2 px-3 text-foreground">{m.value} {m.unit || ""}</td>
+                            <td className="py-2 px-3 text-muted-foreground capitalize">{m.source || "—"}</td>
+                            <td className="py-2 px-3 text-muted-foreground">{m.date || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-
-          {/* Charts */}
-          {downloadsData.length > 1 && (
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Tendencia</CardTitle></CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={downloadsData}>
-                      <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }} />
-                      <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fill="url(#colorValue)" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            </>
           )}
+        </TabsContent>
 
-          {/* All metrics table */}
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Historial</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-muted-foreground border-b border-border">
-                    <tr>
-                      <th className="text-left py-2 px-3 font-medium">Métrica</th>
-                      <th className="text-left py-2 px-3 font-medium">Valor</th>
-                      <th className="text-left py-2 px-3 font-medium">Fuente</th>
-                      <th className="text-left py-2 px-3 font-medium">Fecha</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {[...metrics].reverse().slice(0, 20).map((m) => (
-                      <tr key={m.id} className="surface-hover">
-                        <td className="py-2 px-3 text-foreground">{m.name}</td>
-                        <td className="py-2 px-3 text-foreground">{m.value} {m.unit || ""}</td>
-                        <td className="py-2 px-3 text-muted-foreground capitalize">{m.source || "—"}</td>
-                        <td className="py-2 px-3 text-muted-foreground">{m.date || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+        {/* ── Instagram tab ─────────────────────────────────────────────── */}
+        <TabsContent value="instagram">
+          <InstagramAnalytics />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

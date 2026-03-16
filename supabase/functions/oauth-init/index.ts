@@ -29,7 +29,10 @@ const PLATFORM_CONFIG: Record<string, {
   instagram: {
     authUrl: "https://www.facebook.com/dialog/oauth",
     clientIdKey: "INSTAGRAM_CLIENT_ID",
-    scope: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
+    scope: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,instagram_manage_insights",
+    // auth_type=rerequest forces Facebook to re-show the page-selection dialog
+    // even if the user previously authorized without selecting pages
+    extraParams: { auth_type: "rerequest" },
   },
   youtube: {
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
