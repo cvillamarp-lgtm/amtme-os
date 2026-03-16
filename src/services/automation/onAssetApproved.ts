@@ -2,14 +2,17 @@
  * Automation: asset candidate approved.
  *
  * Triggers:
- *   - Create a draft publication in publication_queue if one doesn't exist yet.
- *   - Link asset_candidate_id, episode_id, platform (inferred), and copy/notes.
- *   - Idempotent: skips if a publication already exists for this asset.
+ *   1. Create a draft publication in publication_queue if one doesn't exist yet.
+ *      - Links asset_candidate_id, episode_id, platform (inferred), copy base and notes.
+ *      - Idempotent: skips if a publication already exists for this asset.
+ *   2. Populate the publication notes with the asset body_text as caption base.
+ *   3. Re-evaluate episode completion (hasApprovedAssets criterion updates).
  *
  * Called from useUpdateAssetCandidateStatus when status → "approved".
  */
 import { supabase } from "@/integrations/supabase/client";
 import { logAutomation } from "./logAutomation";
+import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
 
 export interface OnAssetApprovedParams {
   assetCandidateId: string;
@@ -35,7 +38,20 @@ function inferPlatformFromAsset(platform?: string | null): string {
   if (lc.includes("youtube") || lc.includes("yt")) return "youtube";
   if (lc.includes("twitter")) return "twitter";
   if (lc.includes("linkedin")) return "linkedin";
-  return platform; // trust the value if already a valid slug
+  return platform;
+}
+
+/**
+ * Build a lightweight caption base from the asset body text.
+ * Formatted as a ready-to-edit social media draft (not AI-generated,
+ * just a structured starting point for the creator).
+ */
+function buildCaptionBase(title: string | null | undefined, bodyText: string | null | undefined): string {
+  const parts: string[] = [];
+  if (title) parts.push(title);
+  if (bodyText && bodyText !== title) parts.push(bodyText);
+  if (parts.length === 0) return "Auto-draft generado al aprobar asset";
+  return parts.join("\n\n") + "\n\n#podcast [editar hashtags]";
 }
 
 export async function onAssetApproved({
@@ -75,6 +91,7 @@ export async function onAssetApproved({
     }
 
     const resolvedPlatform = inferPlatformFromAsset(platform);
+    const captionBase = buildCaptionBase(title, bodyText);
 
     const { data: newPub, error } = await supabase
       .from("publication_queue")
@@ -84,7 +101,8 @@ export async function onAssetApproved({
         asset_candidate_id: assetCandidateId,
         platform: resolvedPlatform,
         status: "draft",
-        notes: title ? `Auto-draft: ${title}` : "Auto-draft generado al aprobar asset",
+        // caption base stored in notes — ready for the creator to refine
+        notes: captionBase,
         checklist: [],
       })
       .select("id")
@@ -98,9 +116,12 @@ export async function onAssetApproved({
       entityId: assetCandidateId,
       episodeId,
       status: "ok",
-      resultSummary: `Draft de publicación creado: ${newPub.id} (${resolvedPlatform})`,
-      metadata: { publicationId: newPub.id, platform: resolvedPlatform },
+      resultSummary: `Draft creado: ${newPub.id} (${resolvedPlatform}) · caption base incluido`,
+      metadata: { publicationId: newPub.id, platform: resolvedPlatform, hasCaptionBase: !!bodyText },
     });
+
+    // Re-evaluate completion — hasApprovedAssets and hasPublication criteria may now be true
+    evaluateEpisodeCompletion(episodeId).catch(() => {});
 
     return { ok: true, publicationId: newPub.id, skipped: false };
   } catch (e: unknown) {

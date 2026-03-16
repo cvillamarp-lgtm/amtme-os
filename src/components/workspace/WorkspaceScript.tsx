@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Loader2, Save, Copy, Check, Quote, FlaskConical } from "lucide-react";
+import { Sparkles, Loader2, Save, Copy, Check, Quote } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { onScriptSaved } from "@/services/automation/onScriptSaved";
+import { evaluateEpisodeCompletion } from "@/services/automation/evaluateEpisodeCompletion";
 
 // Supabase URL with hardcoded fallback for streaming SSE calls
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
@@ -105,15 +106,20 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         episodeNumber: episode.number as string | null,
       });
 
-      if (result.ok && (result.quotesExtracted > 0 || result.insightsExtracted > 0)) {
-        qc.invalidateQueries({ queryKey: ["quote-candidates"] });
-        qc.invalidateQueries({ queryKey: ["insights"] });
-        qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
-        qc.invalidateQueries({ queryKey: ["op-state-quotes", episode.id] });
-        toast.success(
-          `Extraídos: ${result.quotesExtracted} citas · ${result.insightsExtracted} insights`
-        );
-      } else if (!result.ok) {
+      if (result.ok) {
+        if (result.quotesExtracted > 0 || result.insightsExtracted > 0) {
+          qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+          qc.invalidateQueries({ queryKey: ["insights"] });
+          qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
+          qc.invalidateQueries({ queryKey: ["op-state-quotes", episode.id] });
+          toast.success(
+            `Extraídos: ${result.quotesExtracted} citas · ${result.insightsExtracted} insights`
+          );
+        }
+        // Refresh episode state — onScriptSaved already called evaluateEpisodeCompletion
+        // internally, but we need to invalidate the cache here so the UI reflects it.
+        qc.invalidateQueries({ queryKey: ["episode", episode.id] });
+      } else {
         toast.error(`Error en extracción automática: ${result.error}`);
       }
     } finally {
@@ -212,13 +218,13 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         </div>
       </div>
 
-      {/* On-demand extraction actions */}
+      {/* On-demand extraction (also auto-runs on every save) */}
       {hasScript && (
         <div className="surface p-4 space-y-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Extraer del guión con IA
           </p>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button
               size="sm"
               variant="outline"
@@ -232,16 +238,6 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
                 <Quote className="h-3.5 w-3.5" />
               )}
               {autoExtracting ? "Extrayendo..." : "Extraer citas e insights"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => runExtraction(scriptGenerated || scriptBase)}
-              disabled={autoExtracting}
-              className="gap-2"
-            >
-              <FlaskConical className="h-3.5 w-3.5" />
-              Re-extraer
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground">

@@ -11,6 +11,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { logAutomation } from "./logAutomation";
+import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
 
 export interface OnScriptSavedParams {
   episodeId: string;
@@ -108,6 +109,10 @@ export async function onScriptSaved({
       resultSummary: `${quotesExtracted} quotes · ${insightsExtracted} insights extraídos`,
       metadata: { quotesExtracted, insightsExtracted },
     });
+
+    // Re-evaluate completion now that quotes may have been added
+    // (fire-and-forget — the caller is responsible for refreshing the UI)
+    evaluateEpisodeCompletion(episodeId).catch(() => {});
 
     return { ok: true, quotesExtracted, insightsExtracted };
   } catch (e: unknown) {

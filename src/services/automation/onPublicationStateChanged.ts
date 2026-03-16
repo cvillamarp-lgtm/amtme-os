@@ -11,6 +11,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { logAutomation } from "./logAutomation";
+import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
 
 const TRIGGERING_STATUSES = new Set(["scheduled", "published"]);
 
@@ -84,6 +85,11 @@ export async function onPublicationStateChanged({
       resultSummary: `Estado → ${newStatus} · snapshot: ${snapshotCreated}`,
       metadata: { newStatus, platform, snapshotCreated },
     });
+
+    // Re-evaluate completion — hasPublication criterion may now be satisfied
+    if (episodeId) {
+      evaluateEpisodeCompletion(episodeId).catch(() => {});
+    }
 
     return { ok: true, snapshotCreated };
   } catch (e: unknown) {
