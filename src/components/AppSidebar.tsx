@@ -1,4 +1,4 @@
-import { Home, Mic, Factory, FileStack, BarChart3, Settings, ListTodo, FileText, LogOut, FolderOpen, Upload, Lightbulb, ScrollText, Send, FlaskConical, Quote, Users, Palette, Wand2, UserCheck, CalendarDays, Trophy, AtSign, Sun, Moon, AudioWaveform, BookOpen } from "lucide-react";
+import { Home, Mic, Factory, BarChart3, ListTodo, LogOut, Lightbulb, Send, FlaskConical, Users, Sun, Moon, AudioWaveform, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,38 +24,32 @@ interface NavItem {
   badgeKey?: "pendingTasks" | "pendingAssets";
 }
 
+// ── Nav principal: flujo creativo ─────────────────────────────────────────
 const mainNav: NavItem[] = [
-  { label: "Dashboard", url: "/", icon: Home },
-  { label: "Ideas", url: "/ideas", icon: Lightbulb },
-  { label: "Briefs", url: "/briefs", icon: ScrollText },
-  { label: "Episodios", url: "/episodes", icon: Mic },
-  { label: "Biblioteca", url: "/library", icon: FolderOpen, badgeKey: "pendingAssets" },
+  { label: "Dashboard",    url: "/",            icon: Home },
+  { label: "Ideas",        url: "/ideas",        icon: Lightbulb },
+  { label: "Episodios",    url: "/episodes",     icon: Mic },
+  { label: "Fábrica",      url: "/factory",      icon: Factory },
 ];
 
-const productionNav: NavItem[] = [
-  { label: "Fábrica", url: "/factory", icon: Factory },
-  { label: "Audio", url: "/audio", icon: AudioWaveform },
-  { label: "Templates", url: "/templates", icon: FileStack },
+// ── Distribuir: publicación y cuentas ─────────────────────────────────────
+const distributeNav: NavItem[] = [
   { label: "Publicaciones", url: "/publications", icon: Send },
-  { label: "Citas", url: "/quotes", icon: Quote },
-  { label: "Invitados", url: "/guests", icon: UserCheck },
-  { label: "Calendario", url: "/calendar", icon: CalendarDays },
-  { label: "Cuentas", url: "/accounts", icon: Users },
+  { label: "Audio",          url: "/audio",        icon: AudioWaveform },
+  { label: "Cuentas",        url: "/accounts",     icon: Users },
+  { label: "Tareas",         url: "/tasks",        icon: ListTodo, badgeKey: "pendingTasks" },
 ];
 
-const systemNav: NavItem[] = [
-  { label: "Insights", url: "/insights", icon: FlaskConical },
-  { label: "Menciones", url: "/mentions", icon: AtSign },
-  { label: "Scorecard", url: "/scorecard", icon: Trophy },
-  { label: "Métricas", url: "/metrics", icon: BarChart3 },
-  { label: "Tareas", url: "/tasks", icon: ListTodo, badgeKey: "pendingTasks" },
-  { label: "Knowledge", url: "/knowledge", icon: BookOpen },
-  { label: "Marca", url: "/brand", icon: Palette },
-  { label: "Prompts", url: "/prompt-builder", icon: Wand2 },
-  { label: "Sistema", url: "/system", icon: Settings },
-  { label: "Recursos", url: "/resources", icon: FileText },
-  { label: "Importar", url: "/import", icon: Upload },
+// ── Medir: datos y aprendizaje ────────────────────────────────────────────
+const measureNav: NavItem[] = [
+  { label: "Métricas",   url: "/metrics",   icon: BarChart3 },
+  { label: "Insights",   url: "/insights",  icon: FlaskConical },
+  { label: "Knowledge",  url: "/knowledge", icon: BookOpen },
 ];
+
+// Rutas secundarias: siguen activas por URL directo, no aparecen en el nav
+// /briefs /library /templates /quotes /guests /calendar
+// /mentions /scorecard /brand /prompt-builder /system /resources /import
 
 function NavGroup({ label, items, collapsed, counts }: { label: string; items: NavItem[]; collapsed: boolean; counts?: Record<string, number> }) {
   const location = useLocation();
@@ -115,9 +109,9 @@ export function AppSidebar() {
       </div>
 
       <SidebarContent>
-        <NavGroup label="Principal" items={mainNav} collapsed={collapsed} counts={countsMap} />
-        <NavGroup label="Producción" items={productionNav} collapsed={collapsed} counts={countsMap} />
-        <NavGroup label="Sistema" items={systemNav} collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Crear"      items={mainNav}      collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Distribuir" items={distributeNav} collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Medir"      items={measureNav}    collapsed={collapsed} counts={countsMap} />
       </SidebarContent>
 
       <SidebarFooter>

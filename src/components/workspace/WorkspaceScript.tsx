@@ -21,6 +21,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
   const [copied, setCopied] = useState(false);
   const [extractingQuotes, setExtractingQuotes] = useState(false);
   const [extractingInsights, setExtractingInsights] = useState(false);
+  const [autoExtracting, setAutoExtracting] = useState(false);
 
   const generateScript = async () => {
     if (!episode.theme && !episode.working_title) {
@@ -176,11 +177,25 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
   };
 
   const saveScripts = async () => {
+    // Detect first-time save: episode had no script before, now it does
+    const wasEmpty = !episode.script_base && !episode.script_generated;
+    const nowHasScript =
+      scriptBase.trim().length > 50 || scriptGenerated.trim().length > 50;
+
     await onSave({
       script_base: scriptBase || null,
       script_generated: scriptGenerated || null,
     });
     toast.success("Guiones guardados");
+
+    // Auto-extract quotes + insights only on the very first save with real content
+    if (wasEmpty && nowHasScript) {
+      setAutoExtracting(true);
+      Promise.allSettled([
+        extractFromScript("quotes"),
+        extractFromScript("insights"),
+      ]).finally(() => setAutoExtracting(false));
+    }
   };
 
   const copyScript = () => {
@@ -199,14 +214,20 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         <p className="text-sm text-muted-foreground">
           Escribe o genera el guión directamente desde los datos del episodio.
         </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {autoExtracting && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Extrayendo citas e insights...
+            </span>
+          )}
           {hasScript && (
             <Button variant="outline" size="sm" onClick={copyScript}>
               {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
               {copied ? "Copiado" : "Copiar"}
             </Button>
           )}
-          <Button size="sm" onClick={saveScripts} disabled={isSaving}>
+          <Button size="sm" onClick={saveScripts} disabled={isSaving || autoExtracting}>
             <Save className="h-3.5 w-3.5 mr-1" />
             Guardar
           </Button>
