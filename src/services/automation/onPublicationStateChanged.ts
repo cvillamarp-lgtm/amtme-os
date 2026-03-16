@@ -10,8 +10,9 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { logAutomation } from "./logAutomation";
+import { logAutomation, generateRunId } from "./logAutomation";
 import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
+import { acquireLock, releaseLock } from "./runLock";
 
 const TRIGGERING_STATUSES = new Set(["scheduled", "published"]);
 
@@ -39,13 +40,33 @@ export async function onPublicationStateChanged({
     return { ok: true, snapshotCreated: false };
   }
 
+  const runId = generateRunId();
+  const lockKey = `${newStatus}`; // lock per item+status combo
+
+  if (!acquireLock("publication_state_changed", `${publicationQueueId}-${lockKey}`)) {
+    return { ok: true, snapshotCreated: false };
+  }
+
+  const started = Date.now();
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   if (!session) {
+    releaseLock("publication_state_changed", `${publicationQueueId}-${lockKey}`);
     return { ok: false, snapshotCreated: false, error: "No session" };
   }
+
+  await logAutomation({
+    runId,
+    eventType: "publication_state_changed",
+    entityType: "publication_queue",
+    entityId: publicationQueueId,
+    episodeId: episodeId ?? undefined,
+    status: "started",
+    metadata: { newStatus, platform },
+  });
 
   let snapshotCreated = false;
 
@@ -76,13 +97,17 @@ export async function onPublicationStateChanged({
 
     if (!snapError) snapshotCreated = true;
 
+    const durationMs = Date.now() - started;
+
     await logAutomation({
+      runId,
       eventType: "publication_state_changed",
       entityType: "publication_queue",
       entityId: publicationQueueId,
       episodeId: episodeId ?? undefined,
-      status: "ok",
+      status: "success",
       resultSummary: `Estado → ${newStatus} · snapshot: ${snapshotCreated}`,
+      durationMs,
       metadata: { newStatus, platform, snapshotCreated },
     });
 
@@ -94,17 +119,22 @@ export async function onPublicationStateChanged({
     return { ok: true, snapshotCreated };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
+    const durationMs = Date.now() - started;
 
     await logAutomation({
+      runId,
       eventType: "publication_state_changed",
       entityType: "publication_queue",
       entityId: publicationQueueId,
       episodeId: episodeId ?? undefined,
       status: "error",
       errorMessage: message,
+      durationMs,
       metadata: { newStatus, platform },
     });
 
     return { ok: false, snapshotCreated: false, error: message };
+  } finally {
+    releaseLock("publication_state_changed", `${publicationQueueId}-${lockKey}`);
   }
 }

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { onScriptSaved } from "@/services/automation/onScriptSaved";
 import { evaluateEpisodeCompletion } from "@/services/automation/evaluateEpisodeCompletion";
+import { AutomationStatusBadge } from "@/components/automation/AutomationStatusBadge";
 
 // Supabase URL with hardcoded fallback for streaming SSE calls
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
@@ -221,9 +222,15 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       {/* On-demand extraction (also auto-runs on every save) */}
       {hasScript && (
         <div className="surface p-4 space-y-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Extraer del guión con IA
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Extraer del guión con IA
+            </p>
+            <AutomationStatusBadge
+              episodeId={episode.id as string | undefined}
+              eventType="script_saved"
+            />
+          </div>
           <div className="flex gap-2 flex-wrap items-center">
             <Button
               size="sm"

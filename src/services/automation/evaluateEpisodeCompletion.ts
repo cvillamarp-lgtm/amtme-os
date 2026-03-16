@@ -18,7 +18,7 @@
  * Called fire-and-forget from useEpisode after every update.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { logAutomation } from "./logAutomation";
+import { logAutomation, generateRunId } from "./logAutomation";
 
 export interface EpisodeCompletionResult {
   ok: boolean;
@@ -32,6 +32,8 @@ export interface EpisodeCompletionResult {
 export async function evaluateEpisodeCompletion(
   episodeId: string
 ): Promise<EpisodeCompletionResult> {
+  const runId = generateRunId();
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -46,6 +48,18 @@ export async function evaluateEpisodeCompletion(
       error: "No session",
     };
   }
+
+  const started = Date.now();
+
+  await logAutomation({
+    runId,
+    eventType: "episode_completion",
+    entityType: "episode",
+    entityId: episodeId,
+    episodeId,
+    status: "started",
+    metadata: {},
+  });
 
   try {
     // Fetch episode fields needed for evaluation
@@ -126,13 +140,17 @@ export async function evaluateEpisodeCompletion(
         .eq("id", episodeId);
     }
 
+    const durationMs = Date.now() - started;
+
     await logAutomation({
+      runId,
       eventType: "episode_completion",
       entityType: "episode",
       entityId: episodeId,
       episodeId,
-      status: "ok",
+      status: "success",
       resultSummary: `Score ${completionScore}% · prod: ${newEstadoProduccion} · pub: ${newEstadoPublicacion}`,
+      durationMs,
       metadata: { completionScore, criteria, newEstadoProduccion, newEstadoPublicacion },
     });
 
@@ -147,12 +165,14 @@ export async function evaluateEpisodeCompletion(
     const message = e instanceof Error ? e.message : "Unknown error";
 
     await logAutomation({
+      runId,
       eventType: "episode_completion",
       entityType: "episode",
       entityId: episodeId,
       episodeId,
       status: "error",
       errorMessage: message,
+      durationMs: Date.now() - started,
       metadata: {},
     });
 

@@ -11,8 +11,9 @@
  * Called from useUpdateAssetCandidateStatus when status → "approved".
  */
 import { supabase } from "@/integrations/supabase/client";
-import { logAutomation } from "./logAutomation";
+import { logAutomation, generateRunId } from "./logAutomation";
 import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
+import { acquireLock, releaseLock } from "./runLock";
 
 export interface OnAssetApprovedParams {
   assetCandidateId: string;
@@ -61,13 +62,33 @@ export async function onAssetApproved({
   bodyText,
   title,
 }: OnAssetApprovedParams): Promise<OnAssetApprovedResult> {
+  const runId = generateRunId();
+
+  // Double-fire protection
+  if (!acquireLock("asset_approved", assetCandidateId)) {
+    return { ok: true, publicationId: null, skipped: true };
+  }
+
+  const started = Date.now();
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   if (!session) {
+    releaseLock("asset_approved", assetCandidateId);
     return { ok: false, publicationId: null, skipped: true, error: "No session" };
   }
+
+  await logAutomation({
+    runId,
+    eventType: "asset_approved",
+    entityType: "asset_candidate",
+    entityId: assetCandidateId,
+    episodeId,
+    status: "started",
+    metadata: { platform, hasBodyText: !!bodyText },
+  });
 
   try {
     // Idempotency: check if a publication_queue entry already exists for this asset
@@ -79,14 +100,17 @@ export async function onAssetApproved({
 
     if (existing) {
       await logAutomation({
+        runId,
         eventType: "asset_approved",
         entityType: "asset_candidate",
         entityId: assetCandidateId,
         episodeId,
         status: "skipped",
-        resultSummary: "Draft publication already exists — skipped",
+        skipReason: "Draft publication already exists for this asset",
+        durationMs: Date.now() - started,
         metadata: { existingPublicationId: existing.id },
       });
+      releaseLock("asset_approved", assetCandidateId);
       return { ok: true, publicationId: existing.id, skipped: true };
     }
 
@@ -110,14 +134,22 @@ export async function onAssetApproved({
 
     if (error) throw error;
 
+    const durationMs = Date.now() - started;
+
     await logAutomation({
+      runId,
       eventType: "asset_approved",
       entityType: "asset_candidate",
       entityId: assetCandidateId,
       episodeId,
-      status: "ok",
+      status: "success",
       resultSummary: `Draft creado: ${newPub.id} (${resolvedPlatform}) · caption base incluido`,
-      metadata: { publicationId: newPub.id, platform: resolvedPlatform, hasCaptionBase: !!bodyText },
+      durationMs,
+      metadata: {
+        publicationId: newPub.id,
+        platform: resolvedPlatform,
+        hasCaptionBase: !!bodyText,
+      },
     });
 
     // Re-evaluate completion — hasApprovedAssets and hasPublication criteria may now be true
@@ -128,15 +160,19 @@ export async function onAssetApproved({
     const message = e instanceof Error ? e.message : "Unknown error";
 
     await logAutomation({
+      runId,
       eventType: "asset_approved",
       entityType: "asset_candidate",
       entityId: assetCandidateId,
       episodeId,
       status: "error",
       errorMessage: message,
-      metadata: {},
+      durationMs: Date.now() - started,
+      metadata: { platform, hasBodyText: !!bodyText },
     });
 
     return { ok: false, publicationId: null, skipped: false, error: message };
+  } finally {
+    releaseLock("asset_approved", assetCandidateId);
   }
 }

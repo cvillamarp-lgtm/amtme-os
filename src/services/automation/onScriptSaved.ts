@@ -10,8 +10,9 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { logAutomation } from "./logAutomation";
+import { logAutomation, generateRunId } from "./logAutomation";
 import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
+import { acquireLock, releaseLock } from "./runLock";
 
 export interface OnScriptSavedParams {
   episodeId: string;
@@ -37,13 +38,33 @@ export async function onScriptSaved({
     return { ok: true, quotesExtracted: 0, insightsExtracted: 0 };
   }
 
+  const runId = generateRunId();
+
+  // Double-fire protection
+  if (!acquireLock("script_saved", episodeId)) {
+    return { ok: true, quotesExtracted: 0, insightsExtracted: 0 };
+  }
+
+  const started = Date.now();
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   if (!session) {
+    releaseLock("script_saved", episodeId);
     return { ok: false, quotesExtracted: 0, insightsExtracted: 0, error: "No session" };
   }
+
+  await logAutomation({
+    runId,
+    eventType: "script_saved",
+    entityType: "episode",
+    entityId: episodeId,
+    episodeId,
+    status: "started",
+    metadata: { episodeTitle, episodeNumber, scriptLength: script.trim().length },
+  });
 
   let quotesExtracted = 0;
   let insightsExtracted = 0;
@@ -100,34 +121,49 @@ export async function onScriptSaved({
       if (!error) insightsExtracted = rows.length;
     }
 
+    const durationMs = Date.now() - started;
+
     await logAutomation({
+      runId,
       eventType: "script_saved",
       entityType: "episode",
       entityId: episodeId,
       episodeId,
-      status: "ok",
+      status: "success",
       resultSummary: `${quotesExtracted} quotes · ${insightsExtracted} insights extraídos`,
-      metadata: { quotesExtracted, insightsExtracted },
+      durationMs,
+      metadata: {
+        quotesExtracted,
+        insightsExtracted,
+        // Store params for retry
+        episodeTitle,
+        episodeNumber,
+        scriptLength: script.trim().length,
+      },
     });
 
     // Re-evaluate completion now that quotes may have been added
-    // (fire-and-forget — the caller is responsible for refreshing the UI)
     evaluateEpisodeCompletion(episodeId).catch(() => {});
 
     return { ok: true, quotesExtracted, insightsExtracted };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
+    const durationMs = Date.now() - started;
 
     await logAutomation({
+      runId,
       eventType: "script_saved",
       entityType: "episode",
       entityId: episodeId,
       episodeId,
       status: "error",
       errorMessage: message,
-      metadata: {},
+      durationMs,
+      metadata: { episodeTitle, episodeNumber, scriptLength: script.trim().length },
     });
 
     return { ok: false, quotesExtracted, insightsExtracted, error: message };
+  } finally {
+    releaseLock("script_saved", episodeId);
   }
 }

@@ -639,6 +639,7 @@ export type Database = {
       automation_logs: {
         Row: {
           created_at: string
+          duration_ms: number | null
           entity_id: string | null
           entity_type: string
           episode_id: string | null
@@ -647,11 +648,14 @@ export type Database = {
           id: string
           metadata: Json
           result_summary: string | null
+          run_id: string | null
+          skip_reason: string | null
           status: string
           user_id: string | null
         }
         Insert: {
           created_at?: string
+          duration_ms?: number | null
           entity_id?: string | null
           entity_type: string
           episode_id?: string | null
@@ -660,11 +664,14 @@ export type Database = {
           id?: string
           metadata?: Json
           result_summary?: string | null
+          run_id?: string | null
+          skip_reason?: string | null
           status?: string
           user_id?: string | null
         }
         Update: {
           created_at?: string
+          duration_ms?: number | null
           entity_id?: string | null
           entity_type?: string
           episode_id?: string | null
@@ -673,6 +680,8 @@ export type Database = {
           id?: string
           metadata?: Json
           result_summary?: string | null
+          run_id?: string | null
+          skip_reason?: string | null
           status?: string
           user_id?: string | null
         }
@@ -2290,7 +2299,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      automation_logs_view: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          entity_id: string | null
+          entity_type: string | null
+          episode_id: string | null
+          episode_number: string | null
+          episode_title: string | null
+          error_message: string | null
+          event_type: string | null
+          id: string | null
+          metadata: Json | null
+          result_summary: string | null
+          run_id: string | null
+          skip_reason: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       infer_platform_from_piece: {

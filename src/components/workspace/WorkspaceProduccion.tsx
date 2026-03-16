@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { EpisodeOperationalState } from "@/hooks/useEpisodeOperationalState";
+import { AutomationLogPanel } from "@/components/automation/AutomationLogPanel";
 
 type Episode = Tables<"episodes">;
 
@@ -286,6 +287,9 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
           </Link>
         </Button>
       </div>
+
+      {/* Automation runs log */}
+      <AutomationLogPanel episodeId={episode.id} />
     </div>
   );
 }
