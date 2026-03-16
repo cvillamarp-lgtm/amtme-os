@@ -291,7 +291,7 @@ export default function KnowledgeBase() {
             </p>
           </div>
         ) : (
-          (docs as any[]).map((doc) => (
+          docs.map((doc) => (
             <Card key={doc.id} className="flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">

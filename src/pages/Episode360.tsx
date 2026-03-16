@@ -56,7 +56,7 @@ export default function Episode360() {
     enabled: !!episodeId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audio_takes" as any)
+        .from("audio_takes")
         .select("*")
         .eq("episode_id", episodeId!)
         .order("created_at", { ascending: false });
@@ -69,10 +69,10 @@ export default function Episode360() {
     queryKey: ["episode-360-transcripts", episodeId, takes.length],
     enabled: !!episodeId && takes.length > 0,
     queryFn: async () => {
-      const ids = (takes as any[]).map((t) => t.id);
+      const ids = takes.map((t) => t.id);
       if (!ids.length) return [];
       const { data, error } = await supabase
-        .from("audio_transcripts" as any)
+        .from("audio_transcripts")
         .select("*")
         .in("audio_take_id", ids);
       if (error) throw error;
@@ -85,7 +85,7 @@ export default function Episode360() {
     enabled: !!episodeId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("quote_candidates" as any)
+        .from("quote_candidates")
         .select("*")
         .eq("episode_id", episodeId!)
         .order("emotional_score", { ascending: false });
@@ -99,7 +99,7 @@ export default function Episode360() {
     enabled: !!episodeId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("asset_candidates" as any)
+        .from("asset_candidates")
         .select("*")
         .eq("episode_id", episodeId!)
         .order("score", { ascending: false });
@@ -113,15 +113,15 @@ export default function Episode360() {
   const { data: metrics = [] } = useMetricSnapshots(episodeId);
   const { data: insights = [] } = useLearningInsights(episodeId);
 
-  const topTake = (takes as any[])[0];
+  const topTake = takes[0];
 
   const qaData: EpisodeQAData = useMemo(
     () => ({
       hasTake: takes.length > 0,
-      hasMaster: (takes as any[]).some((t) => !!t.master_file_url),
-      hasTranscript: (transcripts as any[]).some((t) => t.status === "done"),
+      hasMaster: takes.some((t) => !!t.master_file_url),
+      hasTranscript: transcripts.some((t) => t.status === "done"),
       hasQuotes: quotes.length > 0,
-      hasAssets: (assets as any[]).some(
+      hasAssets: assets.some(
         (a) => a.status === "approved" || a.status === "rendered"
       ),
       hasExportPackage: exportPackages.length > 0,
@@ -132,7 +132,7 @@ export default function Episode360() {
     [takes, transcripts, quotes, assets, exportPackages, topTake]
   );
 
-  const episodeTitle = (episode as any)?.title || "Episodio";
+  const episodeTitle = episode?.title || "Episodio";
 
   return (
     <div className="page-container animate-fade-in">
@@ -165,7 +165,7 @@ export default function Episode360() {
             {takes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin tomas grabadas.</p>
             ) : (
-              (takes as any[]).map((take) => (
+              takes.map((take) => (
                 <div
                   key={take.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
@@ -197,7 +197,7 @@ export default function Episode360() {
             {transcripts.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin transcripciones aún.</p>
             ) : (
-              (transcripts as any[]).map((t) => (
+              transcripts.map((t) => (
                 <div
                   key={t.id}
                   className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
@@ -225,7 +225,7 @@ export default function Episode360() {
             {quotes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin quotes registrados.</p>
             ) : (
-              (quotes as any[]).slice(0, 5).map((q) => (
+              quotes.slice(0, 5).map((q) => (
                 <div key={q.id} className="rounded-lg border border-border p-3">
                   <p className="text-sm line-clamp-2">{q.text?.slice(0, 120) || "—"}</p>
                   <div className="flex gap-2 mt-1 flex-wrap">
@@ -258,7 +258,7 @@ export default function Episode360() {
             {assets.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin assets generados.</p>
             ) : (
-              (assets as any[]).slice(0, 5).map((a) => (
+              assets.slice(0, 5).map((a) => (
                 <div
                   key={a.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
@@ -299,7 +299,7 @@ export default function Episode360() {
             {exportPackages.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin paquetes de exportación.</p>
             ) : (
-              (exportPackages as any[]).map((pkg) => (
+              exportPackages.map((pkg) => (
                 <div
                   key={pkg.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
@@ -325,7 +325,7 @@ export default function Episode360() {
             {publicationQueue.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin publicaciones programadas.</p>
             ) : (
-              (publicationQueue as any[]).map((item) => (
+              publicationQueue.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
@@ -366,7 +366,7 @@ export default function Episode360() {
             {metrics.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin métricas registradas.</p>
             ) : (
-              (metrics as any[]).slice(0, 5).map((m) => (
+              metrics.slice(0, 5).map((m) => (
                 <div
                   key={m.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
@@ -397,7 +397,7 @@ export default function Episode360() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {(insights as any[]).map((insight) => (
+              {insights.map((insight) => (
                 <div key={insight.id} className="rounded-lg border border-border p-3">
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <p className="text-sm font-medium">{insight.title}</p>

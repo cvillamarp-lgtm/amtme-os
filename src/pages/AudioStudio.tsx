@@ -162,7 +162,7 @@ export default function AudioStudio() {
     queryKey: ["audio-takes"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audio_takes" as any)
+        .from("audio_takes")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(20);
@@ -210,7 +210,7 @@ export default function AudioStudio() {
     hasMaster: !!masterBlob || masteringStatus === "ready",
     hasTranscript: transcriptData?.transcript?.status === "done",
     hasQuotes: quoteCandidates.length > 0,
-    hasAssets: (assetCandidates as any[]).some(
+    hasAssets: assetCandidates.some(
       (a) => a.status === "approved" || a.status === "rendered"
     ),
     hasExportPackage: exportPackages.length > 0,
@@ -340,7 +340,7 @@ export default function AudioStudio() {
       };
 
       const { data: insertedTake, error: insertError } = await supabase
-        .from("audio_takes" as any)
+        .from("audio_takes")
         .insert(payload)
         .select("*")
         .single();
@@ -860,7 +860,7 @@ export default function AudioStudio() {
 
               {exportPackages.length > 0 && (
                 <div className="space-y-2">
-                  {(exportPackages as any[]).slice(0, 3).map((pkg) => (
+                  {exportPackages.slice(0, 3).map((pkg) => (
                     <div key={pkg.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
                       <div>
                         <p className="text-sm font-medium">{pkg.title}</p>

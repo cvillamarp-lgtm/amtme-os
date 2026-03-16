@@ -303,7 +303,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
             onClick={async () => {
               const fields = getStaleFields(blockStates);
               for (const f of fields) {
-                if (BASE_FIELDS.includes(f as any)) {
+                if ((BASE_FIELDS as readonly string[]).includes(f)) {
                   await regenerateField(f);
                 }
               }

@@ -235,7 +235,7 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
           estado_produccion: "draft",
           nivel_completitud: "D",
           number: nextNumber,
-        } as any)
+        })
         .select("id")
         .single();
       if (error) throw error;

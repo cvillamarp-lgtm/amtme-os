@@ -19,7 +19,7 @@ export function RenderPipelinePanel({ audioTakeId, episodeTitle, assetCandidates
   const [renderingId, setRenderingId] = useState<string | null>(null);
   const [renderedUrls, setRenderedUrls] = useState<Record<string, string>>({});
 
-  const approved = (assetCandidates as any[]).filter((c) => c.status === "approved");
+  const approved = assetCandidates.filter((c) => c.status === "approved");
 
   const handleRender = async (candidate: any) => {
     if (!userId || !audioTakeId) {

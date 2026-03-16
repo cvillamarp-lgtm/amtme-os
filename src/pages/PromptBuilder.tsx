@@ -195,7 +195,7 @@ export default function PromptBuilder() {
 
   const linkToEpisode = async (img: GeneratedImage, episodeId: string) => {
     try {
-      const { error } = await supabase.from("episodes").update({ cover_image_url: img.url } as any).eq("id", episodeId);
+      const { error } = await supabase.from("episodes").update({ cover_image_url: img.url }).eq("id", episodeId);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["episodes"] });
       toast.success("Imagen vinculada al episodio");

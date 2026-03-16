@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { useAuth } from "@/hooks/useAuth";
-import { Tables } from "@/integrations/supabase/types";
+import { Tables, Json } from "@/integrations/supabase/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -344,7 +344,7 @@ function AccountDetailSheet({
         const currentMeta = getMeta(freshAccount ?? account);
         const { error } = await supabase.from("platform_accounts").update({
           is_active: isActive,
-          metadata: { ...currentMeta as any, notes: notes || undefined },
+          metadata: { ...currentMeta, notes: notes || undefined } as Json,
         }).eq("id", display.id);
         if (error) throw error;
       } else {
@@ -360,7 +360,7 @@ function AccountDetailSheet({
             avg_reach: avgReach ? parseInt(avgReach) : undefined,
             avg_engagement: avgEngagement ? parseFloat(avgEngagement) : undefined,
             notes: notes || undefined,
-          } as any,
+          } as Json,
         }).eq("id", display.id);
         if (error) throw error;
       }

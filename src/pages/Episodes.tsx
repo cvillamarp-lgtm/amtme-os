@@ -22,6 +22,7 @@ import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { initBlockStatesFromAI } from "@/lib/block-states";
 import { useEpisodeDraft } from "@/hooks/useEpisodeDraft";
 import type { ConflictOption } from "@/hooks/useEpisodeDraft";
+import type { Json } from "@/integrations/supabase/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ export default function Episodes() {
           estado_produccion: "draft",
           nivel_completitud: "D",
           number: nextNumber,
-        } as any)
+        })
         .select("id")
         .single();
       if (insertError) throw insertError;
@@ -254,9 +255,9 @@ export default function Episodes() {
               quote: fields.quote || null,
               descripcion_spotify: fields.descripcion_spotify || null,
               title: fields.working_title || draft.idea_principal.slice(0, 100),
-              generation_metadata: fnData.metadata,
-              block_states: initBlockStatesFromAI(),
-            } as any)
+              generation_metadata: (fnData.metadata ?? null) as Json | null,
+              block_states: initBlockStatesFromAI() as unknown as Json,
+            })
             .eq("id", episode.id);
           if (updateError) console.warn("AI fields update error:", updateError.message);
 

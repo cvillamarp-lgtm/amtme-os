@@ -100,7 +100,7 @@ export function InstagramAnalytics() {
     queryFn: async () => {
       const since = new Date();
       since.setDate(since.getDate() - 30);
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("instagram_account_stats")
         .select("*")
         .gte("fecha", since.toISOString().split("T")[0])
@@ -115,7 +115,7 @@ export function InstagramAnalytics() {
   const { data: mediaStats = [], isLoading: mediaLoading } = useQuery({
     queryKey: ["instagram-media-stats"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("instagram_media_stats")
         .select("*")
         .order("posted_at", { ascending: false })
@@ -145,7 +145,7 @@ export function InstagramAnalytics() {
     mutationFn: async () => {
       if (!user) throw new Error("No autenticado");
       // Clear old OAuth so the account shows "needs reconnect" state
-      await (supabase as any)
+      await supabase
         .from("platform_accounts")
         .update({ oauth_connected: false, access_token: null, refresh_token: null, token_expiry: null, account_id: null })
         .eq("platform", "instagram")

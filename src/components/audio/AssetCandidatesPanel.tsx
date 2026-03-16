@@ -85,7 +85,7 @@ export function AssetCandidatesPanel({ audioTakeId, episodeId, quoteCandidates, 
         </div>
       ) : (
         <div className="space-y-2">
-          {(candidates as any[]).map((candidate) => (
+          {candidates.map((candidate) => (
             <div key={candidate.id} className="rounded-lg border border-border p-3 space-y-2">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
