@@ -1,13 +1,43 @@
 /**
  * Shared TypeScript interfaces for the automation layer.
  *
- * These types are the contract between:
- *   - Frontend entrypoints (src/services/automation/*.ts)
- *   - Backend Edge Functions (supabase/functions/automation-*/index.ts)
+ * These types describe the input/output shape of the 4 automation
+ * Edge Functions as seen from the frontend entrypoints.
  *
- * The Edge Functions implement the actual logic; these types describe
- * their input/output shape as seen from the frontend.
+ * State machines (Phase 6):
+ *
+ * estado_produccion (6 states):
+ *   draft            — no meaningful data
+ *   script_ready     — title + theme + script
+ *   assets_ready     — script + audio + quotes + approved assets
+ *   ready_to_publish — has export package
+ *   published        — has published publication
+ *   closed           — published + real performance metrics
+ *
+ * estado_publicacion (5 states):
+ *   none      — no approved assets
+ *   draft     — approved assets or draft publication
+ *   scheduled — has scheduled publication
+ *   published — has published publication
+ *   closed    — published + real metrics (auto-close)
  */
+
+// ── State literals ────────────────────────────────────────────────────────────
+
+export type EstadoProduccion =
+  | "draft"
+  | "script_ready"
+  | "assets_ready"
+  | "ready_to_publish"
+  | "published"
+  | "closed";
+
+export type EstadoPublicacion =
+  | "none"
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "closed";
 
 // ── Script extraction ─────────────────────────────────────────────────────────
 
@@ -74,8 +104,9 @@ export interface EpisodeEvaluationInput {
 export interface EpisodeEvaluationOutput {
   ok: boolean;
   completionScore: number;
-  estadoProduccion: string;
-  estadoPublicacion: string;
+  estadoProduccion: EstadoProduccion;
+  estadoPublicacion: EstadoPublicacion;
+  performanceScore: number | null;
   criteriaResults: Record<string, boolean>;
   runId?: string;
   error?: string;

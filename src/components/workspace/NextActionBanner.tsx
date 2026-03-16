@@ -1,5 +1,5 @@
-import { ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, CheckCircle2, AlertCircle, BarChart2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { Tables } from "@/integrations/supabase/types";
 import type { EpisodeOperationalState } from "@/hooks/useEpisodeOperationalState";
@@ -12,6 +12,7 @@ interface NextAction {
   tabKey?: string;
   href?: string;
   done?: boolean;
+  waiting?: boolean; // soft-done: published but awaiting metrics
 }
 
 function deriveNextAction(
@@ -19,6 +20,30 @@ function deriveNextAction(
   state: EpisodeOperationalState
 ): NextAction {
   const { takes, quotes, assetCandidates, exportPackages, publicationQueue } = state;
+
+  // ── Terminal states driven by estado_produccion ─────────────────────────────
+  const prod = episode.estado_produccion;
+  const pub  = episode.estado_publicacion;
+
+  // Ciclo editorial cerrado — published + métricas capturadas
+  if (prod === "closed" || pub === "closed") {
+    return {
+      label: "Ciclo editorial cerrado",
+      description: "El episodio fue publicado y las métricas han sido registradas.",
+      done: true,
+    };
+  }
+
+  // Publicado — esperando métricas
+  if (prod === "published" || pub === "published") {
+    return {
+      label: "Episodio publicado — esperando métricas",
+      description: "Las métricas de rendimiento se capturarán automáticamente.",
+      waiting: true,
+    };
+  }
+
+  // ── Flujo progresivo ────────────────────────────────────────────────────────
 
   // 1. Datos base incompletos
   if (!episode.working_title && !episode.title && !episode.theme) {
@@ -30,7 +55,10 @@ function deriveNextAction(
   }
 
   // 2. Sin guión
-  if (!episode.script_md) {
+  const hasScript =
+    (episode.script_base?.trim() ?? "").length > 50 ||
+    (episode.script_generated?.trim() ?? "").length > 50;
+  if (!hasScript) {
     return {
       label: "Genera o escribe el guión",
       description: "El guión es el punto de partida de la producción.",
@@ -88,7 +116,7 @@ function deriveNextAction(
     };
   }
 
-  // ✓ Todo listo
+  // ✓ Todo listo (publicación programada, aún no publicado)
   return {
     label: "Episodio listo para publicar",
     description: "Todos los pasos del flujo están completados.",
@@ -106,11 +134,25 @@ export function NextActionBanner({ episode, operationalState, onTabChange }: Pro
   const navigate = useNavigate();
   const action = deriveNextAction(episode, operationalState);
 
+  // Estado cerrado — verde oscuro
   if (action.done) {
     return (
       <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 mb-4">
         <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
         <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+          {action.label}
+        </p>
+        <p className="text-xs text-muted-foreground hidden sm:block">· {action.description}</p>
+      </div>
+    );
+  }
+
+  // Estado "esperando métricas" — azul suave
+  if (action.waiting) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 mb-4">
+        <BarChart2 className="h-4 w-4 text-blue-500 shrink-0" />
+        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
           {action.label}
         </p>
         <p className="text-xs text-muted-foreground hidden sm:block">· {action.description}</p>

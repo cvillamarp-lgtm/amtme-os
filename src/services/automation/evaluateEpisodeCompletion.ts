@@ -17,6 +17,7 @@ export interface EpisodeCompletionResult {
   newEstadoProduccion: string;
   newEstadoPublicacion: string;
   completionScore: number;
+  performanceScore: number | null;
   criteriaResults: Record<string, boolean>;
   error?: string;
 }
@@ -33,8 +34,9 @@ export async function evaluateEpisodeCompletion(
     return {
       ok: result.ok ?? true,
       newEstadoProduccion: result.estadoProduccion ?? "draft",
-      newEstadoPublicacion: result.estadoPublicacion ?? "not_started",
+      newEstadoPublicacion: result.estadoPublicacion ?? "none",
       completionScore: result.completionScore ?? 0,
+      performanceScore: result.performanceScore ?? null,
       criteriaResults: result.criteriaResults ?? {},
       error: result.error,
     };
@@ -42,8 +44,9 @@ export async function evaluateEpisodeCompletion(
     return {
       ok: false,
       newEstadoProduccion: "draft",
-      newEstadoPublicacion: "not_started",
+      newEstadoPublicacion: "none",
       completionScore: 0,
+      performanceScore: null,
       criteriaResults: {},
       error: e instanceof Error ? e.message : "Unknown error",
     };

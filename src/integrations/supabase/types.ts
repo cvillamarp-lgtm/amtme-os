@@ -104,6 +104,13 @@ export type Database = {
             foreignKeyName: "asset_candidates_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "asset_candidates_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -470,6 +477,13 @@ export type Database = {
             foreignKeyName: "audio_takes_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "audio_takes_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -690,6 +704,13 @@ export type Database = {
             foreignKeyName: "automation_logs_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "automation_logs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -794,6 +815,13 @@ export type Database = {
             foreignKeyName: "briefs_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "briefs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -893,6 +921,13 @@ export type Database = {
             foreignKeyName: "episode_drafts_converted_to_episode_id_fkey"
             columns: ["converted_to_episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "episode_drafts_converted_to_episode_id_fkey"
+            columns: ["converted_to_episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -966,6 +1001,7 @@ export type Database = {
           nivel_completitud: string | null
           nota_trazabilidad: string | null
           number: string | null
+          performance_score: number | null
           quote: string | null
           recording_status: string | null
           release_date: string | null
@@ -1020,6 +1056,7 @@ export type Database = {
           nivel_completitud?: string | null
           nota_trazabilidad?: string | null
           number?: string | null
+          performance_score?: number | null
           quote?: string | null
           recording_status?: string | null
           release_date?: string | null
@@ -1074,6 +1111,7 @@ export type Database = {
           nivel_completitud?: string | null
           nota_trazabilidad?: string | null
           number?: string | null
+          performance_score?: number | null
           quote?: string | null
           recording_status?: string | null
           release_date?: string | null
@@ -1192,6 +1230,13 @@ export type Database = {
             foreignKeyName: "export_packages_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "export_packages_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -1235,6 +1280,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "generated_assets_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
           {
             foreignKeyName: "generated_assets_episode_id_fkey"
             columns: ["episode_id"]
@@ -1424,6 +1476,13 @@ export type Database = {
             foreignKeyName: "insights_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "insights_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -1522,6 +1581,13 @@ export type Database = {
             foreignKeyName: "instagram_media_stats_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "instagram_media_stats_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -1605,6 +1671,13 @@ export type Database = {
             foreignKeyName: "learning_insights_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "learning_insights_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -1678,6 +1751,13 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "metric_snapshots_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
           {
             foreignKeyName: "metric_snapshots_episode_id_fkey"
             columns: ["episode_id"]
@@ -1964,6 +2044,13 @@ export type Database = {
             foreignKeyName: "publication_queue_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "publication_queue_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
@@ -2038,6 +2125,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "publications_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
           {
             foreignKeyName: "publications_episode_id_fkey"
             columns: ["episode_id"]
@@ -2145,6 +2239,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "audio_takes"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_candidates_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
           },
           {
             foreignKeyName: "quote_candidates_episode_id_fkey"
@@ -2323,13 +2424,53 @@ export type Database = {
             foreignKeyName: "automation_logs_episode_id_fkey"
             columns: ["episode_id"]
             isOneToOne: false
+            referencedRelation: "episode_metrics_summary"
+            referencedColumns: ["episode_id"]
+          },
+          {
+            foreignKeyName: "automation_logs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
             referencedRelation: "episodes"
             referencedColumns: ["id"]
           },
         ]
       }
+      episode_metrics_summary: {
+        Row: {
+          approved_assets: number | null
+          approved_quotes: number | null
+          created_at: string | null
+          draft_publications: number | null
+          episode_id: string | null
+          episode_number: string | null
+          episode_title: string | null
+          estado_produccion: string | null
+          estado_publicacion: string | null
+          export_packages: number | null
+          performance_score: number | null
+          publication_events: number | null
+          published_publications: number | null
+          real_metric_rows: number | null
+          scheduled_publications: number | null
+          total_engagement: number | null
+          total_plays: number | null
+          total_publications: number | null
+          total_quotes: number | null
+          total_reach: number | null
+          total_saves: number | null
+          total_shares: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      call_automation_ef: {
+        Args: { function_name: string; payload: Json }
+        Returns: undefined
+      }
       infer_platform_from_piece: {
         Args: { piece_name: string }
         Returns: string
