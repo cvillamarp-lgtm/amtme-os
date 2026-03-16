@@ -167,7 +167,7 @@ serve(async (req) => {
     const { platform } = await req.json();
     if (!platform) {
       return new Response(JSON.stringify({ error: "Se requiere platform" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
@@ -260,7 +260,7 @@ serve(async (req) => {
     console.error("sync-platform-account error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });
