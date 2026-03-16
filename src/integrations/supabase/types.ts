@@ -636,6 +636,56 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_logs: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          episode_id: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          result_summary: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          episode_id?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          result_summary?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          episode_id?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          result_summary?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_assets: {
         Row: {
           created_at: string
@@ -1849,6 +1899,7 @@ export type Database = {
       }
       publication_queue: {
         Row: {
+          asset_candidate_id: string | null
           checklist: Json | null
           created_at: string
           episode_id: string | null
@@ -1863,6 +1914,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asset_candidate_id?: string | null
           checklist?: Json | null
           created_at?: string
           episode_id?: string | null
@@ -1877,6 +1929,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asset_candidate_id?: string | null
           checklist?: Json | null
           created_at?: string
           episode_id?: string | null
@@ -1891,6 +1944,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "publication_queue_asset_candidate_id_fkey"
+            columns: ["asset_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "asset_candidates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "publication_queue_episode_id_fkey"
             columns: ["episode_id"]
