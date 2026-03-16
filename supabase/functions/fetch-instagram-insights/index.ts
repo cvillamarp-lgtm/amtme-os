@@ -347,7 +347,7 @@ serve(async (req) => {
     const username = profileData.username || account.account_name || "instagram";
     const followsCount = profileData.follows_count || 0;
 
-    const now = new Date().toISOString();
+    const nowIso = new Date().toISOString();
     await serviceClient.from("platform_accounts").update({
       account_name: username,
       metadata: {
@@ -357,7 +357,7 @@ serve(async (req) => {
         avg_reach: avgReach || null,
         avg_engagement: avgEngagement || null,
       },
-      synced_at: now,
+      synced_at: nowIso,
       sync_status: "success",
       sync_error: null,
     }).eq("user_id", user.id).eq("platform", "instagram");
@@ -371,7 +371,7 @@ serve(async (req) => {
         username,
         avg_reach: avgReach,
         avg_engagement: avgEngagement,
-        synced_at: now,
+        synced_at: nowIso,
       }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );

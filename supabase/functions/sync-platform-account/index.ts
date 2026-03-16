@@ -183,20 +183,20 @@ serve(async (req) => {
 
     if (accountError || !account) {
       return new Response(JSON.stringify({ error: "Cuenta no encontrada." }), {
-        status: 404, headers: { ...cors, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
     if (!account.access_token) {
       return new Response(JSON.stringify({
         error: "No hay token de acceso. Conecta la cuenta vía OAuth primero.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
       return new Response(JSON.stringify({
         error: "Token expirado. Ve a Cuentas y reconecta.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Mark as syncing
@@ -227,7 +227,7 @@ serve(async (req) => {
       }).eq("id", account.id);
 
       return new Response(JSON.stringify({ error: msg }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+        status: 200, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 

@@ -318,16 +318,11 @@ function AccountDetailSheet({
         ? { Authorization: `Bearer ${session.access_token}` }
         : undefined;
 
-      // Instagram: use full insights sync (gets avg_reach, avg_engagement too)
-      // Other platforms: use quick profile sync
-      const fnName = display.platform === "instagram"
-        ? "fetch-instagram-insights"
-        : "sync-platform-account";
-      const body = display.platform !== "instagram"
-        ? { platform: display.platform }
-        : undefined;
-
-      const { data, error } = await supabase.functions.invoke(fnName, { body, headers });
+      // sync-platform-account handles Instagram, YouTube, and TikTok
+      const { data, error } = await supabase.functions.invoke("sync-platform-account", {
+        body: { platform: display.platform },
+        headers,
+      });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
       return data;
