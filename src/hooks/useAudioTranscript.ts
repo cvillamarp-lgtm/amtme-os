@@ -8,7 +8,7 @@ export function useAudioTranscript(audioTakeId?: string) {
     refetchInterval: 3000,
     queryFn: async () => {
       const { data: transcript, error: transcriptError } = await supabase
-        .from("audio_transcripts" as any)
+        .from("audio_transcripts")
         .select("*")
         .eq("audio_take_id", audioTakeId)
         .maybeSingle();
@@ -20,7 +20,7 @@ export function useAudioTranscript(audioTakeId?: string) {
       }
 
       const { data: segments, error: segmentsError } = await supabase
-        .from("audio_transcript_segments" as any)
+        .from("audio_transcript_segments")
         .select("*")
         .eq("audio_take_id", audioTakeId)
         .order("segment_index", { ascending: true });
@@ -49,6 +49,7 @@ export function useQueueAudioTranscript() {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error as string);
       return data;
     },
   });

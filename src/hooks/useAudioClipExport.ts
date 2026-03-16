@@ -24,6 +24,7 @@ export function useQueueAudioClipExport() {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error as string);
       return data;
     },
   });

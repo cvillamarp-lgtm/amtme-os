@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export function useKnowledgeDocs(docType?: string) {
   return useQuery({
     queryKey: ["knowledge-docs", docType ?? "all"],
     queryFn: async () => {
-      let q = (supabase as any)
+      let q = supabase
         .from("knowledge_docs")
         .select("*")
         .eq("status", "active")
@@ -21,9 +22,9 @@ export function useKnowledgeDocs(docType?: string) {
 export function useCreateKnowledgeDoc() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: TablesInsert<"knowledge_docs">) => {
       const { data, error } = await supabase
-        .from("knowledge_docs" as any)
+        .from("knowledge_docs")
         .insert(payload)
         .select("*")
         .single();
@@ -37,9 +38,9 @@ export function useCreateKnowledgeDoc() {
 export function useUpdateKnowledgeDoc() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: any) => {
+    mutationFn: async ({ id, ...updates }: TablesUpdate<"knowledge_docs"> & { id: string }) => {
       const { error } = await supabase
-        .from("knowledge_docs" as any)
+        .from("knowledge_docs")
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
@@ -53,7 +54,7 @@ export function useArchiveKnowledgeDoc() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("knowledge_docs" as any)
+        .from("knowledge_docs")
         .update({ status: "archived", updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;

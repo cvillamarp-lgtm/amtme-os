@@ -9,7 +9,7 @@ export function useAudioSegmentSelections(audioTakeId?: string) {
     enabled: Boolean(audioTakeId),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audio_segment_selections" as any)
+        .from("audio_segment_selections")
         .select("*")
         .eq("audio_take_id", audioTakeId)
         .order("created_at", { ascending: true });
@@ -49,7 +49,7 @@ export function useUpsertAudioSegmentSelection(audioTakeId?: string) {
       };
 
       const { data, error } = await supabase
-        .from("audio_segment_selections" as any)
+        .from("audio_segment_selections")
         .upsert(payload, {
           onConflict: "audio_take_id,transcript_segment_id,action_type",
         })
@@ -71,7 +71,7 @@ export function useDeleteAudioSegmentSelection(audioTakeId?: string) {
   return useMutation({
     mutationFn: async (selectionId: string) => {
       const { error } = await supabase
-        .from("audio_segment_selections" as any)
+        .from("audio_segment_selections")
         .delete()
         .eq("id", selectionId);
 

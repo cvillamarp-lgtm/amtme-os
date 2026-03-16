@@ -8,7 +8,7 @@ export function useAudioProcessingJobs(audioTakeId?: string) {
     refetchInterval: 3000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audio_processing_jobs" as any)
+        .from("audio_processing_jobs")
         .select("*")
         .eq("audio_take_id", audioTakeId)
         .order("created_at", { ascending: false });
@@ -36,6 +36,7 @@ export function useQueueAudioMasterJob() {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error as string);
       return data;
     },
   });

@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 
 export function useExportPackages(episodeId?: string) {
   return useQuery({
     queryKey: ["export-packages", episodeId ?? "all"],
     queryFn: async () => {
-      let q = (supabase as any)
+      let q = supabase
         .from("export_packages")
         .select("*, export_package_items(*)")
         .order("created_at", { ascending: false });
@@ -20,9 +21,9 @@ export function useExportPackages(episodeId?: string) {
 export function useCreateExportPackage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: TablesInsert<"export_packages">) => {
       const { data, error } = await supabase
-        .from("export_packages" as any)
+        .from("export_packages")
         .insert(payload)
         .select("*")
         .single();
@@ -38,7 +39,7 @@ export function useUpdateExportPackageStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
-        .from("export_packages" as any)
+        .from("export_packages")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
@@ -51,7 +52,7 @@ export function usePublicationQueue(episodeId?: string) {
   return useQuery({
     queryKey: ["publication-queue", episodeId ?? "all"],
     queryFn: async () => {
-      let q = (supabase as any)
+      let q = supabase
         .from("publication_queue")
         .select("*")
         .order("scheduled_at", { ascending: true });
@@ -66,9 +67,9 @@ export function usePublicationQueue(episodeId?: string) {
 export function useAddToPublicationQueue() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: TablesInsert<"publication_queue">) => {
       const { data, error } = await supabase
-        .from("publication_queue" as any)
+        .from("publication_queue")
         .insert(payload)
         .select("*")
         .single();
@@ -84,7 +85,7 @@ export function useUpdatePublicationQueueStatus() {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
-        .from("publication_queue" as any)
+        .from("publication_queue")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
