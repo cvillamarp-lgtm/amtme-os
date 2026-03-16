@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Copy, Check, Loader2 } from "lucide-react";
+import { Sparkles, Copy, Check, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -106,6 +107,15 @@ export default function ScriptGenerator() {
       <div>
         <h1 className="page-title">Generador de Guiones</h1>
         <p className="page-subtitle">Genera guiones para tus episodios con IA</p>
+      </div>
+
+      {/* Informational banner */}
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-secondary/50 px-4 py-3 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        <span>Para episodios activos, genera el guión directamente desde el Workspace del episodio.</span>
+        <Link to="/episodes" className="ml-auto text-primary text-xs hover:underline shrink-0">
+          Ir a episodios →
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,20 +1,38 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, Database, Sparkles, Layers, Image, Globe, Shield, Plus, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Database,
+  Sparkles,
+  Layers,
+  Image,
+  Globe,
+  Shield,
+  Plus,
+  ExternalLink,
+  Activity,
+} from "lucide-react";
 import { useEpisode } from "@/hooks/useEpisode";
+import { useEpisodeOperationalState } from "@/hooks/useEpisodeOperationalState";
 import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { WorkspaceSummary } from "@/components/workspace/WorkspaceSummary";
 import { WorkspaceDataForm } from "@/components/workspace/WorkspaceDataForm";
 import { WorkspaceScript } from "@/components/workspace/WorkspaceScript";
 import { WorkspaceAudit } from "@/components/workspace/WorkspaceAudit";
 import { WorkspaceAssets } from "@/components/workspace/WorkspaceAssets";
+import { WorkspaceProduccion } from "@/components/workspace/WorkspaceProduccion";
+import { NextActionBanner } from "@/components/workspace/NextActionBanner";
 
 export default function EpisodeWorkspace() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { episode, isLoading, assets, tasks, updateEpisode } = useEpisode(id);
+  const operationalState = useEpisodeOperationalState(id);
+  const [activeTab, setActiveTab] = useState("summary");
 
   if (isLoading) {
     return (
@@ -36,14 +54,14 @@ export default function EpisodeWorkspace() {
   const audit = auditEpisode(episode);
   const level = getCompletenessLevel(audit.healthScore);
 
-  const handleSave = async (updates: Record<string, any>) => {
+  const handleSave = async (updates: Record<string, unknown>) => {
     await updateEpisode.mutateAsync(updates);
   };
 
   return (
     <div className="p-6 lg:p-8 h-full flex flex-col animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/episodes")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -68,8 +86,15 @@ export default function EpisodeWorkspace() {
         </div>
       </div>
 
+      {/* Next action banner */}
+      <NextActionBanner
+        episode={episode}
+        operationalState={operationalState}
+        onTabChange={setActiveTab}
+      />
+
       {/* Tabs */}
-      <Tabs defaultValue="summary" className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="bg-secondary mb-6 flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="summary" className="text-xs gap-1.5">
             <FileText className="h-3.5 w-3.5" />Resumen
@@ -82,6 +107,9 @@ export default function EpisodeWorkspace() {
           </TabsTrigger>
           <TabsTrigger value="assets" className="text-xs gap-1.5">
             <Image className="h-3.5 w-3.5" />Assets
+          </TabsTrigger>
+          <TabsTrigger value="produccion" className="text-xs gap-1.5">
+            <Activity className="h-3.5 w-3.5" />Producción
           </TabsTrigger>
           <TabsTrigger value="publish" className="text-xs gap-1.5">
             <Globe className="h-3.5 w-3.5" />Publicación
@@ -106,6 +134,10 @@ export default function EpisodeWorkspace() {
 
           <TabsContent value="assets" className="mt-0">
             <WorkspaceAssets episode={episode} assets={assets} />
+          </TabsContent>
+
+          <TabsContent value="produccion" className="mt-0">
+            <WorkspaceProduccion episode={episode} operationalState={operationalState} />
           </TabsContent>
 
           <TabsContent value="publish" className="mt-0">
@@ -170,6 +202,13 @@ export default function EpisodeWorkspace() {
 
           <TabsContent value="audit" className="mt-0">
             <WorkspaceAudit episode={episode} />
+            <div className="mt-4 flex justify-end">
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" asChild>
+                <Link to={`/episodes/${episode.id}/360`}>
+                  Ver vista 360° del episodio <ExternalLink className="h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
           </TabsContent>
         </div>
       </Tabs>
