@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import type { ChangeOrigin } from "./useChangelog";
-import { evaluateEpisodeCompletion } from "@/services/automation/evaluateEpisodeCompletion";
 
 /**
  * Hook to fetch a single episode by ID with all its related data.
@@ -112,22 +111,19 @@ export function useEpisode(id: string | undefined) {
         }
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["episode", id] });
       queryClient.invalidateQueries({ queryKey: ["episodes"] });
 
-      // Fire-and-forget episode completion evaluation after every content update.
-      // Skip if the update itself only touched derived state columns to avoid loops.
+      // Episode evaluation is triggered automatically by backend SQL triggers:
+      //   - trg_episode_script_changed  → automation-script-extraction → evaluate
+      //   - trg_episode_fields_changed  → automation-episode-evaluate (title/theme)
+      //   - trg_export_package_created  → automation-episode-evaluate
+      // Delayed cache refresh to pick up state changes written by the triggers.
       if (id) {
-        const updatedKeys = Object.keys(variables.updates as Record<string, unknown>);
-        const isDerivedOnlyUpdate = updatedKeys.every((k) =>
-          ["estado_produccion", "estado_publicacion", "health_score", "nivel_completitud", "script_status"].includes(k)
-        );
-        if (!isDerivedOnlyUpdate) {
-          evaluateEpisodeCompletion(id).then(() => {
-            queryClient.invalidateQueries({ queryKey: ["episode", id] });
-          });
-        }
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["episode", id] });
+        }, 2000);
       }
     },
     onError: (e: Error) => toast.error(e.message),

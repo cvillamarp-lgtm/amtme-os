@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
-import { onAssetApproved } from "@/services/automation/onAssetApproved";
 
 export function useAssetCandidates(audioTakeId?: string) {
   return useQuery({
@@ -50,40 +49,34 @@ export function useCreateAssetCandidates(audioTakeId?: string) {
 
 /**
  * Updates asset candidate status.
- * When status → "approved": fires onAssetApproved automation (creates publication draft).
- * The automation is fire-and-forget; it never blocks the status update.
+ * When status → "approved": the SQL trigger trg_asset_approved fires automatically,
+ * calling automation-asset-publication (creates publication draft) from backend.
+ * Frontend only applies the DB update and refreshes cache.
  */
 export function useUpdateAssetCandidateStatus(audioTakeId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      // Fetch full candidate data before the update (needed for automation params)
       const { data: candidate } = await supabase
         .from("asset_candidates")
-        .select("episode_id, platform, body_text, title")
+        .select("episode_id")
         .eq("id", id)
         .single();
 
-      // Apply status update
       const { error } = await supabase
         .from("asset_candidates")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
 
-      // Fire automation when asset is approved (non-blocking)
+      // Delayed refresh picks up publication draft created by backend trigger (~1-2s).
       if (status === "approved" && candidate?.episode_id) {
-        onAssetApproved({
-          assetCandidateId: id,
-          episodeId: candidate.episode_id,
-          platform: candidate.platform,
-          bodyText: candidate.body_text,
-          title: candidate.title,
-        }).then(() => {
-          // Refresh publication queue in UI after automation runs
+        const episodeId = candidate.episode_id;
+        setTimeout(() => {
           qc.invalidateQueries({ queryKey: ["publication-queue"] });
-          qc.invalidateQueries({ queryKey: ["op-state-quotes", candidate.episode_id] });
-        });
+          qc.invalidateQueries({ queryKey: ["op-state-quotes", episodeId] });
+          qc.invalidateQueries({ queryKey: ["episode", episodeId] });
+        }, 2000);
       }
     },
     onSuccess: () => {

@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { onScriptSaved } from "@/services/automation/onScriptSaved";
-import { evaluateEpisodeCompletion } from "@/services/automation/evaluateEpisodeCompletion";
 import { AutomationStatusBadge } from "@/components/automation/AutomationStatusBadge";
 
 // Supabase URL with hardcoded fallback for streaming SSE calls
@@ -134,12 +133,9 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       script_generated: scriptGenerated || null,
     });
     toast.success("Guiones guardados");
-
-    // Auto-extract on every save with meaningful content
-    const activeScript = scriptGenerated || scriptBase;
-    if (activeScript.trim().length >= 50) {
-      runExtraction(activeScript);
-    }
+    // Extraction is triggered automatically by the backend SQL trigger
+    // trg_episode_script_changed → automation-script-extraction.
+    // Use the "Extraer del guión" button below for on-demand extraction with feedback.
   };
 
   const copyScript = () => {
