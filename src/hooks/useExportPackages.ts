@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
-import { onPublicationStateChanged } from "@/services/automation/onPublicationStateChanged";
 
 export function useExportPackages(episodeId?: string) {
   return useQuery({
@@ -83,39 +82,33 @@ export function useAddToPublicationQueue() {
 
 /**
  * Updates publication queue item status.
- * When status → "scheduled" | "published": fires onPublicationStateChanged
- * automation to capture a metric snapshot. Fire-and-forget; never blocks the update.
+ * Automation (metric snapshot + episode evaluation) is triggered automatically
+ * by the backend SQL trigger trg_publication_status_changed.
+ * Delayed cache invalidation picks up state changes written by the trigger.
  */
 export function useUpdatePublicationQueueStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      // Fetch item data needed for automation before updating
       const { data: item } = await supabase
         .from("publication_queue")
-        .select("episode_id, platform")
+        .select("episode_id")
         .eq("id", id)
         .single();
 
-      // Apply status update
       const { error } = await supabase
         .from("publication_queue")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
 
-      // Fire automation for triggering statuses (non-blocking)
-      if (status === "scheduled" || status === "published") {
-        onPublicationStateChanged({
-          publicationQueueId: id,
-          newStatus: status,
-          episodeId: item?.episode_id,
-          platform: item?.platform,
-        }).then(() => {
-          if (item?.episode_id) {
-            qc.invalidateQueries({ queryKey: ["metric-snapshots", item.episode_id] });
-          }
-        });
+      // Delayed cache refresh to pick up trigger-written state changes
+      if (item?.episode_id) {
+        const episodeId = item.episode_id;
+        setTimeout(() => {
+          qc.invalidateQueries({ queryKey: ["episode", episodeId] });
+          qc.invalidateQueries({ queryKey: ["metric-snapshots", episodeId] });
+        }, 2000);
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["publication-queue"] }),

@@ -170,7 +170,7 @@ export default function EpisodeWorkspace() {
                   </div>
                   <div className="bg-secondary/50 rounded-lg p-4">
                     <p className="text-xs text-muted-foreground">Publicación</p>
-                    <p className="text-sm font-medium text-foreground mt-1 capitalize">{episode.estado_publicacion || "not_started"}</p>
+                    <p className="text-sm font-medium text-foreground mt-1 capitalize">{episode.estado_publicacion || "none"}</p>
                   </div>
                 </div>
                 {!audit.canPublish && (

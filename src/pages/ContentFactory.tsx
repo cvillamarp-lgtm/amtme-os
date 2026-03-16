@@ -1,20 +1,24 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Sparkles, Loader2, Layers, Download, MessageSquare, FolderOpen, Zap,
+  ExternalLink, Info, SwitchCamera,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  VISUAL_PIECES, buildPiecePrompt, type EpisodeInput,
+  VISUAL_PIECES, type EpisodeInput,
 } from "@/lib/visual-templates";
 import { PieceCard } from "@/components/factory/PieceCard";
 import { CaptionEditor } from "@/components/factory/CaptionEditor";
@@ -22,17 +26,143 @@ import { AssetGallery } from "@/components/factory/AssetGallery";
 import { ProgressTracker } from "@/components/factory/ProgressTracker";
 import { PieceSelector } from "@/components/factory/PieceSelector";
 import { useContentProduction } from "@/hooks/useContentProduction";
+import { useEpisodes } from "@/hooks/useEpisode";
 import type { Tables } from "@/integrations/supabase/types";
+
+// ─── Episode context helpers ──────────────────────────────────────────────────
+
+function buildScriptFromEpisode(ep: Tables<"episodes">): string {
+  const scriptText = ep.script_base || ep.script_generated || "";
+  const parts = [
+    scriptText || (ep.summary ? `Resumen: ${ep.summary}` : ""),
+    ep.hook ? `Hook: ${ep.hook}` : "",
+    ep.quote ? `Quote: ${ep.quote}` : "",
+    ep.cta ? `CTA: ${ep.cta}` : "",
+  ].filter(Boolean);
+  return parts.join("\n\n");
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function EpisodeContextPanel({
+  episode,
+  onChangeEpisode,
+}: {
+  episode: Tables<"episodes">;
+  onChangeEpisode: () => void;
+}) {
+  const displayTitle = episode.final_title || episode.working_title || episode.title || "Sin título";
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 border border-border text-sm">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {episode.number && (
+            <Badge variant="outline" className="text-xs font-mono shrink-0">#{episode.number}</Badge>
+          )}
+          <span className="font-medium truncate">{displayTitle}</span>
+        </div>
+        {episode.theme && (
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{episode.theme}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+          <Link to={`/episodes/${episode.id}`}>
+            <ExternalLink className="h-3 w-3" />
+            Workspace
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onChangeEpisode}>
+          <SwitchCamera className="h-3 w-3" />
+          Cambiar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function EpisodeSelectorPanel({
+  onSelect,
+}: {
+  onSelect: (episodeId: string) => void;
+}) {
+  const { data: episodes, isLoading } = useEpisodes();
+
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 border border-border text-sm">
+      <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+      <div className="flex-1 min-w-0">
+        <p className="text-muted-foreground mb-2">
+          Selecciona un episodio para cargar sus datos automáticamente, o escribe el guión manualmente.
+        </p>
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Select onValueChange={onSelect}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Seleccionar episodio..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(episodes || []).map((ep) => (
+                <SelectItem key={ep.id} value={ep.id} className="text-xs">
+                  {ep.number ? `#${ep.number} · ` : ""}{ep.final_title || ep.working_title || ep.title || ep.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ContentFactory() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  // Input state
-  const [epNumber, setEpNumber] = useState("");
-  const [title, setTitle] = useState("");
-  const [theme, setTheme] = useState("");
+  const episodeId = searchParams.get("episode_id") ?? undefined;
+
+  // Load episode from DB (single source of truth)
+  const { data: episode, isLoading: episodeLoading } = useQuery({
+    queryKey: ["episode", episodeId],
+    queryFn: async () => {
+      if (!episodeId) return null;
+      const { data, error } = await supabase
+        .from("episodes")
+        .select("*")
+        .eq("id", episodeId)
+        .single();
+      if (error) throw error;
+      return data as Tables<"episodes">;
+    },
+    enabled: !!episodeId,
+  });
+
+  // Derive read-only context from the loaded episode
+  const epNumber = episode?.number ?? "";
+  const title = episode?.final_title ?? episode?.working_title ?? episode?.title ?? "";
+  const theme = episode?.theme ?? "";
+
+  // Script: auto-populated from episode, but remains editable as working context
   const [script, setScript] = useState("");
-  const [episodeId, setEpisodeId] = useState<string | null>(null);
+  const [scriptInitialized, setScriptInitialized] = useState(false);
+
+  useEffect(() => {
+    if (episode && !scriptInitialized) {
+      const built = buildScriptFromEpisode(episode);
+      if (built) {
+        setScript(built);
+        setScriptInitialized(true);
+      }
+    }
+    // Reset when episode changes
+    if (!episodeId) {
+      setScript("");
+      setScriptInitialized(false);
+    }
+  }, [episode, episodeId, scriptInitialized]);
 
   // Piece selector
   const [selectedPieces, setSelectedPieces] = useState<Set<number>>(
@@ -77,39 +207,6 @@ export default function ContentFactory() {
     produceAll,
   } = useContentProduction();
 
-  // Auto-load from episode
-  useEffect(() => {
-    const epId = searchParams.get("episode_id");
-    if (!epId) return;
-
-    setEpisodeId(epId);
-
-    const loadEpisode = async () => {
-      const { data, error } = await supabase
-        .from("episodes")
-        .select("*")
-        .eq("id", epId)
-        .single();
-      if (error || !data) return;
-
-      const ep = data as Tables<"episodes">;
-      setEpNumber(ep.number || "");
-      setTitle(ep.final_title || ep.working_title || ep.title || "");
-      setTheme(ep.theme || "");
-
-      const scriptText = ep.script_base || ep.script_generated || "";
-      const parts = [
-        scriptText ? scriptText : ep.summary ? `Resumen: ${ep.summary}` : "",
-        ep.hook ? `Hook: ${ep.hook}` : "",
-        ep.quote ? `Quote: ${ep.quote}` : "",
-        ep.cta ? `CTA: ${ep.cta}` : "",
-      ].filter(Boolean);
-      if (parts.length) setScript(parts.join("\n\n"));
-    };
-
-    loadEpisode();
-  }, [searchParams]);
-
   // UI state
   const [tab, setTab] = useState("input");
 
@@ -122,19 +219,31 @@ export default function ContentFactory() {
     [epNumber, extraction]
   );
 
-  const handleExtract = () => extractContent(script, title, theme, epNumber).then((r) => {
-    if (r) setTab("pieces");
-  });
+  const handleExtract = () =>
+    extractContent(script, title, theme, epNumber).then((r) => {
+      if (r) setTab("pieces");
+    });
 
   const handleGenerateCaptions = () => {
     generateCaptions(title, epNumber).then(() => setTab("captions"));
   };
 
   const handleProduceAll = async () => {
-    await produceAll(script, title, theme, epNumber, episodeId, selectedPieces);
-    await saveToDatabase(episodeId);
+    await produceAll(script, title, theme, epNumber, episodeId ?? null, selectedPieces);
+    await saveToDatabase(episodeId ?? null);
     setTab("library");
     toast.success("Producción completa");
+  };
+
+  const handleSelectEpisode = (id: string) => {
+    setScriptInitialized(false);
+    navigate(`/factory?episode_id=${id}`, { replace: true });
+  };
+
+  const handleChangeEpisode = () => {
+    navigate("/factory", { replace: true });
+    setScript("");
+    setScriptInitialized(false);
   };
 
   const generatedCount = Object.values(assets).filter((a) => a.imageUrl).length;
@@ -156,7 +265,7 @@ export default function ContentFactory() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => saveToDatabase(episodeId)}
+                onClick={() => saveToDatabase(episodeId ?? null)}
                 disabled={producing}
               >
                 <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -174,6 +283,18 @@ export default function ContentFactory() {
           )}
         </div>
       </div>
+
+      {/* Episode context / selector */}
+      {episodeLoading ? (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Cargando episodio...
+        </div>
+      ) : episode ? (
+        <EpisodeContextPanel episode={episode} onChangeEpisode={handleChangeEpisode} />
+      ) : (
+        <EpisodeSelectorPanel onSelect={handleSelectEpisode} />
+      )}
 
       {/* Piece selector */}
       {extraction && (
@@ -217,40 +338,42 @@ export default function ContentFactory() {
         {/* === INPUT TAB === */}
         <TabsContent value="input">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Episode data: read-only display */}
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="text-sm">Datos del Episodio</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label>N° Episodio</Label>
-                  <Input
-                    value={epNumber}
-                    onChange={(e) => setEpNumber(e.target.value)}
-                    placeholder="Ej: 29"
-                    maxLength={4}
-                  />
-                </div>
-                <div>
-                  <Label>Título</Label>
-                  <Input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Ej: El ansioso se apaga"
-                  />
-                </div>
-                <div>
-                  <Label>Tema / Tesis</Label>
-                  <Textarea
-                    value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
-                    placeholder="La verdad núcleo del episodio..."
-                    rows={3}
-                  />
-                </div>
+                {episode ? (
+                  <>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">N° Episodio</Label>
+                      <p className="text-sm font-medium mt-1">{epNumber || <span className="text-muted-foreground italic">—</span>}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Título</Label>
+                      <p className="text-sm font-medium mt-1">{title || <span className="text-muted-foreground italic">—</span>}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Tema / Tesis</Label>
+                      <p className="text-sm mt-1 text-muted-foreground">{theme || <span className="italic">—</span>}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground border-t pt-3">
+                      Para editar estos datos, usa la pestaña{" "}
+                      <Link to={`/episodes/${episode.id}`} className="text-primary hover:underline">
+                        Datos base del Workspace
+                      </Link>.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Selecciona un episodio para ver sus datos, o escribe el guión manualmente.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
+            {/* Script: editable working context */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-sm">Guión del Episodio</CardTitle>
