@@ -5,7 +5,12 @@ import { Label } from "@/components/ui/label";
 import { Sparkles, Loader2, Save, Copy, Check, Quote, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/supabase-functions";
 import { useQueryClient } from "@tanstack/react-query";
+
+// Supabase URL with hardcoded fallback for streaming SSE calls
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+  ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
 
 interface Props {
   episode: Record<string, any>;
@@ -36,7 +41,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       if (!session?.access_token) throw new Error("Sesión expirada");
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
+        `${SUPABASE_URL}/functions/v1/generate-script`,
         {
           method: "POST",
           headers: {
@@ -100,29 +105,15 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No autenticado");
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-from-script`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            script,
-            mode,
-            episode_title: episode.title || episode.working_title,
-            episode_number: episode.number,
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${res.status}`);
-      }
-
-      const result = await res.json();
+      const result = await invokeFunction<{
+        quotes?: Array<{ text: string; quote_type: string; timestamp_hint: string }>;
+        insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
+      }>("extract-from-script", {
+        script,
+        mode,
+        episode_title: episode.title || episode.working_title,
+        episode_number: episode.number,
+      });
 
       if (mode === "quotes") {
         const quotes = (result.quotes || []) as Array<{

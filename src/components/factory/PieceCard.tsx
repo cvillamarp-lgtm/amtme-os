@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Image, Loader2, RefreshCw, CheckCircle2, Copy, Check, Download } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/supabase-functions";
 import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
 
@@ -35,33 +35,12 @@ export function PieceCard({
   const generateImage = async () => {
     setGenerating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error("Debes iniciar sesión");
-        return;
-      }
-
       const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
-
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ prompt, hostReference: piece.hostReference }),
-        }
+      const data = await invokeFunction<{ imageUrl?: string }>(
+        "generate-image",
+        { prompt, hostReference: piece.hostReference }
       );
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${resp.status}`);
-      }
-
-      const data = await resp.json();
-      if (data.imageUrl) {
+      if (data?.imageUrl) {
         onImageGenerated(piece.id, data.imageUrl, prompt);
         toast.success(`Imagen generada: ${piece.shortName}`);
       } else {

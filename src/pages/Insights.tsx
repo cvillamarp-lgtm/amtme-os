@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FlaskConical, Plus, Search, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/supabase-functions";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -449,29 +450,14 @@ export default function Insights() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("No autenticado"); return; }
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-from-script`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            script,
-            mode: "insights",
-            episode_title: ep.title || ep.working_title,
-            episode_number: ep.number,
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${res.status}`);
-      }
-
-      const result = await res.json();
+      const result = await invokeFunction<{
+        insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
+      }>("extract-from-script", {
+        script,
+        mode: "insights",
+        episode_title: ep.title || ep.working_title,
+        episode_number: ep.number,
+      });
       const insightItems = (result.insights || []) as Array<{
         hypothesis: string;
         category: string;

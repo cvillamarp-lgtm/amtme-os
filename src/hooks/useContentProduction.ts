@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFunction } from "@/lib/supabase-functions";
 import { VISUAL_PIECES, buildPiecePrompt, type EpisodeInput, type VisualPiece } from "@/lib/visual-templates";
 import { toast } from "sonner";
 
@@ -78,31 +79,8 @@ export function useContentProduction() {
     }
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error("Debes iniciar sesión");
-        return null;
-      }
-
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-content`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ script, title, theme }),
-        }
-      );
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${resp.status}`);
-      }
-
-      const rawData = await resp.json();
-      const parsed = parseExtraction(rawData);
+      const rawData = await invokeFunction("extract-content", { script, title, theme });
+      const parsed = parseExtraction(rawData as Record<string, unknown>);
       if (parsed) {
         setExtraction(parsed);
         const merged: PieceCopyMap = {};
@@ -189,42 +167,17 @@ export function useContentProduction() {
     }
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error("Debes iniciar sesión");
-        return;
-      }
-
       const pieces = VISUAL_PIECES.map((p) => ({
         id: p.id,
         name: p.shortName,
         copy: (pieceCopy[String(p.id)] || p.copyTemplate).join(" "),
       }));
 
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-captions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            pieces,
-            episodeTitle: title,
-            episodeNumber: epNumber,
-            thesis: extraction.thesis,
-          }),
-        }
+      const data = await invokeFunction<{ captions?: Array<{ pieceId: number; caption: string; hashtags: string }> }>(
+        "generate-captions",
+        { pieces, episodeTitle: title, episodeNumber: epNumber, thesis: extraction.thesis }
       );
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${resp.status}`);
-      }
-
-      const data = await resp.json();
-      if (data.captions && Array.isArray(data.captions)) {
+      if (data?.captions && Array.isArray(data.captions)) {
         setAssets((prev) => {
           const next = { ...prev };
           for (const c of data.captions) {
@@ -315,32 +268,12 @@ export function useContentProduction() {
     setProdCurrent(0);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Sesión expirada");
-
       // Step 1: Extract content
       setProdStep("Extrayendo contenido...");
       setProdCurrent(1);
 
-      const extractResp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-content`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ script, title, theme }),
-        }
-      );
-
-      if (!extractResp.ok) {
-        const err = await extractResp.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${extractResp.status}`);
-      }
-
-      const rawData = await extractResp.json();
-      const parsed = parseExtraction(rawData);
+      const rawData = await invokeFunction("extract-content", { script, title, theme });
+      const parsed = parseExtraction(rawData as Record<string, unknown>);
       if (!parsed) throw new Error("Respuesta incompleta de IA");
 
       setExtraction(parsed);
@@ -357,7 +290,7 @@ export function useContentProduction() {
         keyPhrases: parsed.keyPhrases,
       };
 
-      // Step 2: Generate captions
+      // Step 2: Generate captions (best-effort — don't fail the whole run)
       setProdStep("Generando captions...");
       setProdCurrent(2);
 
@@ -368,39 +301,28 @@ export function useContentProduction() {
           copy: (mergedCopy[String(p.id)] || p.copyTemplate).join(" "),
         }));
 
-        const captionResp = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-captions`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({
-              pieces,
-              episodeTitle: title,
-              episodeNumber: epNumber,
-              thesis: parsed.thesis,
-            }),
-          }
-        );
+        const captionData = await invokeFunction<{
+          captions?: Array<{ pieceId: number; caption: string; hashtags: string }>;
+        }>("generate-captions", {
+          pieces,
+          episodeTitle: title,
+          episodeNumber: epNumber,
+          thesis: parsed.thesis,
+        });
 
-        if (captionResp.ok) {
-          const captionData = await captionResp.json();
-          if (captionData.captions && Array.isArray(captionData.captions)) {
-            setAssets((prev) => {
-              const next = { ...prev };
-              for (const c of captionData.captions) {
-                next[c.pieceId] = {
-                  ...next[c.pieceId],
-                  caption: c.caption || "",
-                  hashtags: c.hashtags || "",
-                  status: next[c.pieceId]?.status || "pending",
-                };
-              }
-              return next;
-            });
-          }
+        if (captionData?.captions && Array.isArray(captionData.captions)) {
+          setAssets((prev) => {
+            const next = { ...prev };
+            for (const c of captionData.captions!) {
+              next[c.pieceId] = {
+                ...next[c.pieceId],
+                caption: c.caption || "",
+                hashtags: c.hashtags || "",
+                status: next[c.pieceId]?.status || "pending",
+              };
+            }
+            return next;
+          });
         }
       } catch (e) {
         console.error("Caption generation error:", e);
@@ -418,25 +340,12 @@ export function useContentProduction() {
         const prompt = buildPiecePrompt(piece, localEpisodeInput, copy);
 
         try {
-          const resp = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({ prompt, hostReference: piece.hostReference }),
-            }
+          const imgData = await invokeFunction<{ imageUrl?: string }>(
+            "generate-image",
+            { prompt, hostReference: piece.hostReference }
           );
-
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data.imageUrl) {
-              handleImageGenerated(piece.id, data.imageUrl, prompt);
-            } else {
-              failedPieces.push(piece);
-            }
+          if (imgData?.imageUrl) {
+            handleImageGenerated(piece.id, imgData.imageUrl, prompt);
           } else {
             failedPieces.push(piece);
           }
@@ -460,23 +369,13 @@ export function useContentProduction() {
             const prompt = buildPiecePrompt(piece, localEpisodeInput, copy);
             try {
               await new Promise((r) => setTimeout(r, 3000));
-              const resp = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-image`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${session.access_token}`,
-                  },
-                  body: JSON.stringify({ prompt, hostReference: piece.hostReference }),
-                }
+              const imgData = await invokeFunction<{ imageUrl?: string }>(
+                "generate-image",
+                { prompt, hostReference: piece.hostReference }
               );
-              if (resp.ok) {
-                const data = await resp.json();
-                if (data.imageUrl) {
-                  handleImageGenerated(piece.id, data.imageUrl, prompt);
-                  continue;
-                }
+              if (imgData?.imageUrl) {
+                handleImageGenerated(piece.id, imgData.imageUrl, prompt);
+                continue;
               }
               stillFailing.push(piece);
             } catch {

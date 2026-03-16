@@ -9,6 +9,9 @@ import { Sparkles, Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+  ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
+
 export default function ScriptGenerator() {
   const [theme, setTheme] = useState("");
   const [title, setTitle] = useState("");
@@ -33,7 +36,7 @@ export default function ScriptGenerator() {
       }
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`,
+        `${SUPABASE_URL}/functions/v1/generate-script`,
         {
           method: "POST",
           headers: {

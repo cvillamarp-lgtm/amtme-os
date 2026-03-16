@@ -20,14 +20,6 @@ function getCorsHeaders(req: Request) {
 }
 
 function resolveAI(): { url: string; key: string; model: string } {
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return {
-      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      key: lovableKey,
-      model: "openai/gpt-4o-mini",
-    };
-  }
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (openaiKey) {
     return {
@@ -36,8 +28,16 @@ function resolveAI(): { url: string; key: string; model: string } {
       model: "gpt-4o-mini",
     };
   }
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) {
+    return {
+      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+      key: lovableKey,
+      model: "openai/gpt-4o-mini",
+    };
+  }
   throw new Error(
-    "No AI API key configured. Set LOVABLE_API_KEY or OPENAI_API_KEY in Supabase Edge Function secrets."
+    "No AI API key configured. Set OPENAI_API_KEY or LOVABLE_API_KEY in Supabase Edge Function secrets."
   );
 }
 

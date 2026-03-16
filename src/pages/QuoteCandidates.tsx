@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
+import { invokeFunction } from "@/lib/supabase-functions";
 import { Plus, Quote, Star, CheckCircle2, Archive, Sparkles, Clock, Mic, Loader2, Wand2 } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -391,29 +392,14 @@ export default function QuoteCandidates() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("No autenticado"); return; }
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-from-script`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            script,
-            mode: "quotes",
-            episode_title: ep.title || ep.working_title,
-            episode_number: ep.number,
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${res.status}`);
-      }
-
-      const result = await res.json();
+      const result = await invokeFunction<{
+        quotes?: Array<{ text: string; quote_type: string; timestamp_hint: string }>;
+      }>("extract-from-script", {
+        script,
+        mode: "quotes",
+        episode_title: ep.title || ep.working_title,
+        episode_number: ep.number,
+      });
       const quotes = (result.quotes || []) as Array<{
         text: string;
         quote_type: string;

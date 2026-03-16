@@ -14,9 +14,10 @@ export interface VisualPiece {
   backgroundVersion?: "cobalt" | "negro" | "both";
 }
 
-/** Build host reference URL dynamically from env */
+/** Build host reference URL — hardcoded fallback so it's never undefined */
 export function getHostReferenceUrl(key: "imagen01" | "imagen02"): string {
-  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL
+    ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
   return `${baseUrl}/storage/v1/object/public/generated-images/host-${key}.png`;
 }
 

@@ -1,5 +1,8 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+  ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
 import hostReferencePng from "@/assets/host-reference.png";
 import { useContentExtraction } from "@/hooks/useContentExtraction";
 import {
@@ -53,13 +56,14 @@ function ScriptGeneratorMini({ onScriptGenerated }: { onScriptGenerated: (s: str
       // F: Single invocation — use fetch directly for SSE streaming
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-script`;
+      const url = `${SUPABASE_URL}/functions/v1/generate-script`;
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+            ?? "sb_publishable_jL_FhH11B2KrVj7mXcJZEw_5ICdxTQG",
         },
         body: JSON.stringify({ theme, format }),
       });
