@@ -73,8 +73,8 @@ const PLATFORM_CONFIG: Record<string, {
   facebook:   { label: "Facebook",    emoji: "👥", bg: "bg-blue-500/10",    text: "text-blue-600",    border: "border-blue-200",  supportsOAuth: false },
 };
 
-function getMeta(account: PlatformAccount): AccountMeta {
-  if (!account.metadata || typeof account.metadata !== "object" || Array.isArray(account.metadata)) return {};
+function getMeta(account: PlatformAccount | null | undefined): AccountMeta {
+  if (!account || !account.metadata || typeof account.metadata !== "object" || Array.isArray(account.metadata)) return {};
   return account.metadata as AccountMeta;
 }
 
