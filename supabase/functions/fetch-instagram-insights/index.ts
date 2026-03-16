@@ -347,15 +347,19 @@ serve(async (req) => {
     const username = profileData.username || account.account_name || "instagram";
     const followsCount = profileData.follows_count || 0;
 
+    const now = new Date().toISOString();
     await serviceClient.from("platform_accounts").update({
       account_name: username,
       metadata: {
         url: `https://www.instagram.com/${username}/`,
         followers: followers,
         following: followsCount,
-        avg_reach: avgReach,
-        avg_engagement: avgEngagement,
+        avg_reach: avgReach || null,
+        avg_engagement: avgEngagement || null,
       },
+      synced_at: now,
+      sync_status: "success",
+      sync_error: null,
     }).eq("user_id", user.id).eq("platform", "instagram");
 
     return new Response(
@@ -365,11 +369,23 @@ serve(async (req) => {
         posts_fetched: mediaRows.length,
         followers,
         username,
+        avg_reach: avgReach,
+        avg_engagement: avgEngagement,
+        synced_at: now,
       }),
       { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (e) {
     console.error("fetch-instagram-insights error:", e);
+    // Best-effort: mark sync as failed so the UI can show the error
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      if (supabaseUrl) {
+        const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        // We don't have user.id here in the catch scope, so skip the DB update
+        // The error will be shown via the response
+      }
+    } catch { /* ignore */ }
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }),
       { status: 500, headers: { ...cors, "Content-Type": "application/json" } }

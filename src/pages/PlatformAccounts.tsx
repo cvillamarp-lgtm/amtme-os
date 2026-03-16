@@ -32,11 +32,19 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, ExternalLink, Users, TrendingUp, Heart, Trash2, Link2, Unlink, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Plus, ExternalLink, Users, TrendingUp, Heart, Trash2, Link2, Unlink,
+  CheckCircle2, AlertCircle, Loader2, RefreshCw, Clock, Lock, Pencil,
+} from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
-type PlatformAccount = Tables<"platform_accounts">;
+// Tables<"platform_accounts"> extended with new sync columns (added via migration)
+type PlatformAccount = Tables<"platform_accounts"> & {
+  synced_at?: string | null;
+  sync_status?: string | null;
+  sync_error?: string | null;
+};
 
 type AccountMeta = {
   url?: string;
@@ -214,6 +222,52 @@ function AccountCard({ account, onClick, onConnect, connecting }: {
   );
 }
 
+// ── Read-only field used for OAuth-synced data ────────────────────────────────
+
+function SyncedField({
+  label,
+  value,
+  link = false,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  link?: boolean;
+}) {
+  const isNull = value == null;
+  const display = isNull ? "No disponible" : String(value);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <Lock className="h-2.5 w-2.5 text-muted-foreground/40" />
+      </div>
+      <div
+        className={`min-h-9 px-3 py-2 flex items-center rounded-md border text-sm ${
+          isNull
+            ? "bg-muted/30 text-muted-foreground/40 italic border-dashed"
+            : "bg-muted/40 text-foreground border-border"
+        }`}
+      >
+        {link && !isNull ? (
+          <a
+            href={display}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-2 truncate"
+          >
+            {display}
+          </a>
+        ) : (
+          display
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── AccountDetailSheet ────────────────────────────────────────────────────────
+
 function AccountDetailSheet({
   account,
   onClose,
@@ -222,52 +276,124 @@ function AccountDetailSheet({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const meta = account ? getMeta(account) : {};
 
+  // Live data refetch so sync results appear without closing the sheet
+  const { data: freshAccount, refetch: refetchAccount } = useQuery({
+    queryKey: ["platform-account-detail", account?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platform_accounts")
+        .select("*")
+        .eq("id", account!.id)
+        .single();
+      if (error) throw error;
+      return data as PlatformAccount;
+    },
+    enabled: !!account?.id,
+  });
+
+  const display = freshAccount ?? account;
+  const meta = display ? getMeta(display) : {};
+  const isOAuth = !!(display?.oauth_connected && PLATFORM_CONFIG[display?.platform ?? ""]?.supportsOAuth);
+
+  // Editable state
+  const [isActive, setIsActive] = useState(account?.is_active ?? true);
+  const [notes, setNotes] = useState(getMeta(account).notes ?? "");
+  // Manual fields (only used when NOT oauth)
   const [platform, setPlatform] = useState(account?.platform ?? "instagram");
   const [accountName, setAccountName] = useState(account?.account_name ?? "");
   const [accountId, setAccountId] = useState(account?.account_id ?? "");
-  const [isActive, setIsActive] = useState(account?.is_active ?? true);
-  const [url, setUrl] = useState(meta.url ?? "");
-  const [followers, setFollowers] = useState(meta.followers?.toString() ?? "");
-  const [following, setFollowing] = useState(meta.following?.toString() ?? "");
-  const [avgReach, setAvgReach] = useState(meta.avg_reach?.toString() ?? "");
-  const [avgEngagement, setAvgEngagement] = useState(meta.avg_engagement?.toString() ?? "");
-  const [notes, setNotes] = useState(meta.notes ?? "");
+  const [url, setUrl] = useState(getMeta(account).url ?? "");
+  const [followers, setFollowers] = useState(getMeta(account).followers?.toString() ?? "");
+  const [following, setFollowing] = useState(getMeta(account).following?.toString() ?? "");
+  const [avgReach, setAvgReach] = useState(getMeta(account).avg_reach?.toString() ?? "");
+  const [avgEngagement, setAvgEngagement] = useState(getMeta(account).avg_engagement?.toString() ?? "");
 
-  const buildMeta = (): AccountMeta => ({
-    url: url || undefined,
-    followers: followers ? parseInt(followers) : undefined,
-    following: following ? parseInt(following) : undefined,
-    avg_reach: avgReach ? parseInt(avgReach) : undefined,
-    avg_engagement: avgEngagement ? parseFloat(avgEngagement) : undefined,
-    notes: notes || undefined,
+  // ── Sync mutation ────────────────────────────────────────────────────────────
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      if (!display) throw new Error("No hay cuenta seleccionada");
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : undefined;
+
+      // Instagram: use full insights sync (gets avg_reach, avg_engagement too)
+      // Other platforms: use quick profile sync
+      const fnName = display.platform === "instagram"
+        ? "fetch-instagram-insights"
+        : "sync-platform-account";
+      const body = display.platform !== "instagram"
+        ? { platform: display.platform }
+        : undefined;
+
+      const { data, error } = await supabase.functions.invoke(fnName, { body, headers });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      refetchAccount();
+      qc.invalidateQueries({ queryKey: ["platform-accounts"] });
+      qc.invalidateQueries({ queryKey: ["platform-account-instagram"] });
+      qc.invalidateQueries({ queryKey: ["instagram-account-stats"] });
+      qc.invalidateQueries({ queryKey: ["instagram-media-stats"] });
+      toast.success("Cuenta sincronizada correctamente");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Error al sincronizar"),
   });
 
+  // Auto-sync on open: if connected, has account_id, and was never synced
+  useEffect(() => {
+    if (display?.oauth_connected && display?.account_id && !display?.synced_at) {
+      syncMutation.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.id]);
+
+  // ── Save mutation (notes + is_active + manual fields if not oauth) ───────────
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!account?.id) return;
-      const { error } = await supabase.from("platform_accounts").update({
-        platform,
-        account_name: accountName,
-        account_id: accountId || null,
-        is_active: isActive,
-        metadata: buildMeta() as any,
-      }).eq("id", account.id);
-      if (error) throw error;
+      if (!display?.id) return;
+      if (isOAuth) {
+        // Only persist notes and is_active; API fields are read-only
+        const currentMeta = getMeta(freshAccount ?? account);
+        const { error } = await supabase.from("platform_accounts").update({
+          is_active: isActive,
+          metadata: { ...currentMeta as any, notes: notes || undefined },
+        }).eq("id", display.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("platform_accounts").update({
+          platform,
+          account_name: accountName,
+          account_id: accountId || null,
+          is_active: isActive,
+          metadata: {
+            url: url || undefined,
+            followers: followers ? parseInt(followers) : undefined,
+            following: following ? parseInt(following) : undefined,
+            avg_reach: avgReach ? parseInt(avgReach) : undefined,
+            avg_engagement: avgEngagement ? parseFloat(avgEngagement) : undefined,
+            notes: notes || undefined,
+          } as any,
+        }).eq("id", display.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform-accounts"] });
-      toast.success("Cuenta actualizada");
+      toast.success("Cambios guardados");
       onClose();
     },
     onError: () => toast.error("Error al guardar"),
   });
 
+  // ── Delete ────────────────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!account?.id) return;
-      const { error } = await supabase.from("platform_accounts").delete().eq("id", account.id);
+      if (!display?.id) return;
+      const { error } = await supabase.from("platform_accounts").delete().eq("id", display.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -278,20 +404,25 @@ function AccountDetailSheet({
     onError: () => toast.error("Error al eliminar"),
   });
 
+  // ── Disconnect OAuth ──────────────────────────────────────────────────────────
   const disconnectMutation = useMutation({
     mutationFn: async () => {
-      if (!account?.id) return;
+      if (!display?.id) return;
       const { error } = await supabase.from("platform_accounts").update({
         oauth_connected: false,
         access_token: null,
         refresh_token: null,
         token_expiry: null,
         connected_at: null,
-      }).eq("id", account.id);
+        synced_at: null,
+        sync_status: "idle",
+        sync_error: null,
+      }).eq("id", display.id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform-accounts"] });
+      refetchAccount();
       toast.success("OAuth desconectado");
     },
     onError: () => toast.error("Error al desconectar"),
@@ -299,54 +430,116 @@ function AccountDetailSheet({
 
   if (!account) return null;
 
+  const syncedAt = display?.synced_at;
+  const syncStatus = display?.sync_status;
+  const syncError = display?.sync_error;
+  const isSyncing = syncMutation.isPending || syncStatus === "syncing";
+
   return (
     <Sheet open={!!account} onOpenChange={() => onClose()}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-6">
-          <SheetTitle className="font-display">Editar cuenta</SheetTitle>
+          <SheetTitle className="font-display">
+            {isOAuth ? `@${display?.account_name ?? ""}` : "Editar cuenta"}
+          </SheetTitle>
         </SheetHeader>
 
         <div className="space-y-5">
-          {/* OAuth status banner */}
-          {PLATFORM_CONFIG[account.platform]?.supportsOAuth && (
-            <div className={`rounded-lg p-3 border text-sm flex items-center justify-between gap-3 ${
-              account.oauth_connected
-                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
-                : "bg-muted border-border text-muted-foreground"
+
+          {/* ── OAuth status + Sync button ──────────────────────────────────── */}
+          {PLATFORM_CONFIG[display?.platform ?? ""]?.supportsOAuth && (
+            <div className={`rounded-xl border p-4 space-y-2 ${
+              display?.oauth_connected
+                ? syncError ? "bg-amber-500/5 border-amber-400/30" : "bg-emerald-500/5 border-emerald-400/20"
+                : "bg-muted border-border"
             }`}>
-              <div className="flex items-center gap-2">
-                {account.oauth_connected ? (
-                  <><CheckCircle2 className="h-4 w-4 shrink-0" />
-                    <span>
-                      Conectado vía OAuth
-                      {account.connected_at && (
-                        <span className="text-[11px] ml-1 opacity-70">
-                          · {new Date(account.connected_at).toLocaleDateString("es-MX")}
-                        </span>
-                      )}
-                    </span>
-                  </>
-                ) : (
-                  <><Unlink className="h-4 w-4 shrink-0" />Sin conexión OAuth — las publicaciones deben marcarse manualmente</>
+              {/* Top row: status + sync button */}
+              <div className="flex items-center justify-between gap-3">
+                <div className={`flex items-center gap-2 text-sm font-medium ${
+                  display?.oauth_connected
+                    ? syncError ? "text-amber-600" : "text-emerald-600"
+                    : "text-muted-foreground"
+                }`}>
+                  {display?.oauth_connected ? (
+                    isSyncing ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Sincronizando...</>
+                    ) : syncStatus === "success" ? (
+                      <><CheckCircle2 className="h-4 w-4" />Conectado vía OAuth</>
+                    ) : syncError ? (
+                      <><AlertCircle className="h-4 w-4" />Error en sincronización</>
+                    ) : (
+                      <><CheckCircle2 className="h-4 w-4" />Conectado vía OAuth</>
+                    )
+                  ) : (
+                    <><Unlink className="h-4 w-4" />Sin conexión OAuth</>
+                  )}
+                </div>
+
+                {display?.oauth_connected && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => syncMutation.mutate()}
+                    disabled={isSyncing}
+                    className="h-7 text-[11px] shrink-0"
+                  >
+                    <RefreshCw className={`h-3 w-3 mr-1.5 ${isSyncing ? "animate-spin" : ""}`} />
+                    {isSyncing ? "Sincronizando..." : "Sincronizar cuenta"}
+                  </Button>
                 )}
               </div>
-              {account.oauth_connected && (
+
+              {/* Meta row: last synced / connected date */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                {display?.connected_at && (
+                  <span className="flex items-center gap-1">
+                    <Link2 className="h-2.5 w-2.5" />
+                    Conectado: {new Date(display.connected_at).toLocaleDateString("es-MX")}
+                  </span>
+                )}
+                {syncedAt && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-2.5 w-2.5" />
+                    Última sync: {new Date(syncedAt).toLocaleString("es-MX", {
+                      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                )}
+                {display?.token_expiry && (
+                  <span className="flex items-center gap-1 text-amber-500/80">
+                    <Clock className="h-2.5 w-2.5" />
+                    Token expira: {new Date(display.token_expiry).toLocaleDateString("es-MX")}
+                  </span>
+                )}
+              </div>
+
+              {/* Sync error message */}
+              {syncError && (
+                <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2 leading-relaxed">
+                  ⚠️ {syncError}
+                </p>
+              )}
+
+              {/* Disconnect link */}
+              {display?.oauth_connected && (
                 <button
-                  onClick={() => disconnectMutation.mutate()}
+                  onClick={() => {
+                    if (confirm("¿Desconectar OAuth? El token será eliminado.")) disconnectMutation.mutate();
+                  }}
                   disabled={disconnectMutation.isPending}
-                  className="text-[11px] underline underline-offset-2 hover:opacity-70 shrink-0"
+                  className="text-[11px] text-muted-foreground underline underline-offset-2 hover:opacity-70 block"
                 >
-                  Desconectar
+                  Desconectar OAuth
                 </button>
               )}
             </div>
           )}
 
-          {/* Platform + Active */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1.5 flex-1 mr-4">
+          {/* ── Platform + Active ─────────────────────────────────────────────── */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1.5 flex-1">
               <Label>Plataforma</Label>
-              <Select value={platform} onValueChange={setPlatform}>
+              <Select value={platform} onValueChange={setPlatform} disabled={isOAuth}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -357,7 +550,7 @@ function AccountDetailSheet({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5 text-center">
+            <div className="space-y-1.5 text-center shrink-0">
               <Label>Activa</Label>
               <div className="pt-1">
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
@@ -365,69 +558,160 @@ function AccountDetailSheet({
             </div>
           </div>
 
-          {/* Identity */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Usuario / Handle *</Label>
-              <Input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="@usuario" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>ID de cuenta</Label>
-              <Input value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="ID numérico" />
-            </div>
-          </div>
+          {/* ── API-synced fields (read-only) ─────────────────────────────────── */}
+          {isOAuth ? (
+            <div className="surface rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-semibold text-foreground">Datos de la cuenta</h3>
+                <Badge variant="outline" className="text-[9px] gap-0.5">
+                  <Lock className="h-2 w-2" /> Desde API
+                </Badge>
+              </div>
 
-          {/* URL */}
+              <div className="grid grid-cols-2 gap-3">
+                <SyncedField
+                  label="Usuario / Handle"
+                  value={display?.account_name ? `@${display.account_name}` : null}
+                />
+                <SyncedField label="ID de cuenta" value={display?.account_id} />
+              </div>
+
+              <SyncedField label="URL del perfil" value={meta.url} link />
+
+              <div className="grid grid-cols-2 gap-3">
+                <SyncedField
+                  label="Seguidores"
+                  value={meta.followers != null ? meta.followers.toLocaleString() : null}
+                />
+                <SyncedField
+                  label="Siguiendo"
+                  value={meta.following != null ? meta.following.toLocaleString() : null}
+                />
+                <SyncedField
+                  label="Alcance promedio"
+                  value={meta.avg_reach != null ? meta.avg_reach.toLocaleString() : null}
+                />
+                <SyncedField
+                  label="Engagement %"
+                  value={meta.avg_engagement != null ? `${meta.avg_engagement.toFixed(1)}%` : null}
+                />
+              </div>
+
+              {!syncedAt && !isSyncing && (
+                <p className="text-[11px] text-muted-foreground/60 italic">
+                  Haz clic en "Sincronizar cuenta" para cargar los datos desde la API.
+                </p>
+              )}
+            </div>
+          ) : (
+            /* ── Manual fields (editable when not OAuth) ──────────────────────── */
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Pencil className="h-3 w-3" />
+                Estos campos se gestionan manualmente (sin OAuth activo).
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Usuario / Handle *</Label>
+                  <Input
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    placeholder="@usuario"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>ID de cuenta</Label>
+                  <Input
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    placeholder="ID numérico"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>URL del perfil</Label>
+                <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+              </div>
+
+              <div className="surface rounded-xl p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Métricas de la cuenta</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Seguidores</Label>
+                    <Input
+                      type="number"
+                      value={followers}
+                      onChange={(e) => setFollowers(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Siguiendo</Label>
+                    <Input
+                      type="number"
+                      value={following}
+                      onChange={(e) => setFollowing(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Alcance promedio</Label>
+                    <Input
+                      type="number"
+                      value={avgReach}
+                      onChange={(e) => setAvgReach(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Engagement % promedio</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={avgEngagement}
+                      onChange={(e) => setAvgEngagement(e.target.value)}
+                      placeholder="0.0"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Notes (always editable) ────────────────────────────────────────── */}
           <div className="space-y-1.5">
-            <Label>URL del perfil</Label>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+            <Label>Notas internas</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Observaciones, estrategia, recordatorios..."
+            />
           </div>
 
-          {/* Stats */}
-          <div className="surface rounded-xl p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Métricas de la cuenta</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Seguidores</Label>
-                <Input type="number" value={followers} onChange={(e) => setFollowers(e.target.value)} placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Siguiendo</Label>
-                <Input type="number" value={following} onChange={(e) => setFollowing(e.target.value)} placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Alcance promedio</Label>
-                <Input type="number" value={avgReach} onChange={(e) => setAvgReach(e.target.value)} placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Engagement % promedio</Label>
-                <Input type="number" step="0.1" value={avgEngagement} onChange={(e) => setAvgEngagement(e.target.value)} placeholder="0.0" />
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-1.5">
-            <Label>Notas</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Observaciones sobre esta cuenta..." />
-          </div>
-
-          {/* Actions */}
+          {/* ── Actions ────────────────────────────────────────────────────────── */}
           <div className="flex justify-between items-center pt-2 border-t border-border">
             <Button
               variant="outline"
               size="sm"
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={() => {
-                if (confirm("¿Eliminar esta cuenta?")) deleteMutation.mutate();
+                if (confirm("¿Eliminar esta cuenta permanentemente?")) deleteMutation.mutate();
               }}
+              disabled={deleteMutation.isPending}
             >
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />Eliminar
             </Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!accountName.trim() || saveMutation.isPending}>
-              {saveMutation.isPending ? "Guardando..." : "Guardar cambios"}
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={(!isOAuth && !accountName.trim()) || saveMutation.isPending}
+            >
+              {saveMutation.isPending ? "Guardando..." : isOAuth ? "Guardar notas" : "Guardar cambios"}
             </Button>
           </div>
+
         </div>
       </SheetContent>
     </Sheet>
