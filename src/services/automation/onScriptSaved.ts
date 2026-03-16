@@ -1,18 +1,18 @@
 /**
- * Automation: script saved (or regenerated).
+ * Automation entrypoint (frontend): script saved or regenerated.
  *
- * Triggers:
- *   - Extract quotes → insert into quote_candidates
- *   - Extract insights → insert into insights
+ * Delegates to the automation-script-extraction Edge Function which:
+ *   - Extracts quotes → inserts into quote_candidates
+ *   - Extracts insights → inserts into insights
+ *   - Logs to automation_logs
+ *   - Triggers automation-episode-evaluate
  *
- * Called from WorkspaceScript every time the user saves or regenerates
- * the script with meaningful content (≥ 50 characters).
+ * The Edge Function is also called by a SQL trigger on episodes.script_*
+ * changes, so backend coverage is guaranteed even outside the frontend.
  */
-import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { logAutomation, generateRunId } from "./logAutomation";
-import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
 import { acquireLock, releaseLock } from "./runLock";
+import type { ScriptExtractionOutput } from "./core/types";
 
 export interface OnScriptSavedParams {
   episodeId: string;
@@ -38,131 +38,37 @@ export async function onScriptSaved({
     return { ok: true, quotesExtracted: 0, insightsExtracted: 0 };
   }
 
-  const runId = generateRunId();
-
-  // Double-fire protection
+  // Client-side lock prevents double-fire from rapid UI interactions.
+  // Server-side idempotency window in the EF handles frontend + DB trigger overlap.
   if (!acquireLock("script_saved", episodeId)) {
     return { ok: true, quotesExtracted: 0, insightsExtracted: 0 };
   }
 
-  const started = Date.now();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    releaseLock("script_saved", episodeId);
-    return { ok: false, quotesExtracted: 0, insightsExtracted: 0, error: "No session" };
-  }
-
-  await logAutomation({
-    runId,
-    eventType: "script_saved",
-    entityType: "episode",
-    entityId: episodeId,
-    episodeId,
-    status: "started",
-    metadata: { episodeTitle, episodeNumber, scriptLength: script.trim().length },
-  });
-
-  let quotesExtracted = 0;
-  let insightsExtracted = 0;
-
   try {
-    const result = await invokeEdgeFunction<{
-      quotes?: Array<{ text: string; quote_type: string; timestamp_hint: string }>;
-      insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
-    }>("extract-from-script", {
-      script,
-      mode: "both",
-      episode_title: episodeTitle,
-      episode_number: episodeNumber,
-    });
-
-    // Insert extracted quotes
-    if (result.quotes?.length) {
-      const rows = result.quotes.map((q) => ({
-        user_id: session.user.id,
+    const result = await invokeEdgeFunction<ScriptExtractionOutput>(
+      "automation-script-extraction",
+      {
         episode_id: episodeId,
-        text: q.text,
-        quote_type: q.quote_type || null,
-        timestamp_ref: q.timestamp_hint || null,
-        status: "captured" as const,
-        clarity: 3,
-        emotional_intensity: 3,
-        memorability: 3,
-        shareability: 3,
-        visual_fit: 3,
-        score_total: 3,
-        source_type: "ai_extracted",
-        source_module: "automation.onScriptSaved",
-      }));
+        script,
+        episode_title: episodeTitle,
+        episode_number: episodeNumber,
+        source: "frontend",
+      }
+    );
 
-      const { error } = await supabase.from("quote_candidates").insert(rows);
-      if (!error) quotesExtracted = rows.length;
-    }
-
-    // Insert extracted insights
-    if (result.insights?.length) {
-      const rows = result.insights.map((item) => ({
-        user_id: session.user.id,
-        episode_id: episodeId,
-        finding: item.hypothesis,
-        hypothesis: item.hypothesis,
-        recommendation: item.potential_action || null,
-        confidence_level: "medium",
-        status: "active" as const,
-        source: "ai_extracted",
-        category: item.category || null,
-      }));
-
-      const { error } = await supabase.from("insights").insert(rows);
-      if (!error) insightsExtracted = rows.length;
-    }
-
-    const durationMs = Date.now() - started;
-
-    await logAutomation({
-      runId,
-      eventType: "script_saved",
-      entityType: "episode",
-      entityId: episodeId,
-      episodeId,
-      status: "success",
-      resultSummary: `${quotesExtracted} quotes · ${insightsExtracted} insights extraídos`,
-      durationMs,
-      metadata: {
-        quotesExtracted,
-        insightsExtracted,
-        // Store params for retry
-        episodeTitle,
-        episodeNumber,
-        scriptLength: script.trim().length,
-      },
-    });
-
-    // Re-evaluate completion now that quotes may have been added
-    evaluateEpisodeCompletion(episodeId).catch(() => {});
-
-    return { ok: true, quotesExtracted, insightsExtracted };
+    return {
+      ok: result.ok ?? true,
+      quotesExtracted: result.quotesExtracted ?? 0,
+      insightsExtracted: result.insightsExtracted ?? 0,
+      error: result.error,
+    };
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    const durationMs = Date.now() - started;
-
-    await logAutomation({
-      runId,
-      eventType: "script_saved",
-      entityType: "episode",
-      entityId: episodeId,
-      episodeId,
-      status: "error",
-      errorMessage: message,
-      durationMs,
-      metadata: { episodeTitle, episodeNumber, scriptLength: script.trim().length },
-    });
-
-    return { ok: false, quotesExtracted, insightsExtracted, error: message };
+    return {
+      ok: false,
+      quotesExtracted: 0,
+      insightsExtracted: 0,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
   } finally {
     releaseLock("script_saved", episodeId);
   }

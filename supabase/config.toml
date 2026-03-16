@@ -1,5 +1,17 @@
 project_id = "vudvgfdoeciurejtbzbw"
 
+[functions.automation-script-extraction]
+verify_jwt = false
+
+[functions.automation-asset-publication]
+verify_jwt = false
+
+[functions.automation-publication-event]
+verify_jwt = false
+
+[functions.automation-episode-evaluate]
+verify_jwt = false
+
 [functions.generate-script]
 verify_jwt = false
 

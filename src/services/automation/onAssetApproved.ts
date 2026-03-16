@@ -1,19 +1,18 @@
 /**
- * Automation: asset candidate approved.
+ * Automation entrypoint (frontend): asset candidate approved.
  *
- * Triggers:
- *   1. Create a draft publication in publication_queue if one doesn't exist yet.
- *      - Links asset_candidate_id, episode_id, platform (inferred), copy base and notes.
- *      - Idempotent: skips if a publication already exists for this asset.
- *   2. Populate the publication notes with the asset body_text as caption base.
- *   3. Re-evaluate episode completion (hasApprovedAssets criterion updates).
+ * Delegates to the automation-asset-publication Edge Function which:
+ *   - Creates a draft publication_queue entry (idempotent)
+ *   - Builds a caption base from body_text + title
+ *   - Logs to automation_logs
+ *   - Triggers automation-episode-evaluate
  *
- * Called from useUpdateAssetCandidateStatus when status → "approved".
+ * The Edge Function is also called by a SQL trigger on asset_candidates
+ * when status transitions to 'approved'.
  */
-import { supabase } from "@/integrations/supabase/client";
-import { logAutomation, generateRunId } from "./logAutomation";
-import { evaluateEpisodeCompletion } from "./evaluateEpisodeCompletion";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { acquireLock, releaseLock } from "./runLock";
+import type { AssetPublicationOutput } from "./core/types";
 
 export interface OnAssetApprovedParams {
   assetCandidateId: string;
@@ -30,31 +29,6 @@ export interface OnAssetApprovedResult {
   error?: string;
 }
 
-function inferPlatformFromAsset(platform?: string | null): string {
-  if (!platform) return "instagram_feed";
-  const lc = platform.toLowerCase();
-  if (lc.includes("reel")) return "instagram_reel";
-  if (lc.includes("story")) return "instagram_story";
-  if (lc.includes("tiktok")) return "tiktok";
-  if (lc.includes("youtube") || lc.includes("yt")) return "youtube";
-  if (lc.includes("twitter")) return "twitter";
-  if (lc.includes("linkedin")) return "linkedin";
-  return platform;
-}
-
-/**
- * Build a lightweight caption base from the asset body text.
- * Formatted as a ready-to-edit social media draft (not AI-generated,
- * just a structured starting point for the creator).
- */
-function buildCaptionBase(title: string | null | undefined, bodyText: string | null | undefined): string {
-  const parts: string[] = [];
-  if (title) parts.push(title);
-  if (bodyText && bodyText !== title) parts.push(bodyText);
-  if (parts.length === 0) return "Auto-draft generado al aprobar asset";
-  return parts.join("\n\n") + "\n\n#podcast [editar hashtags]";
-}
-
 export async function onAssetApproved({
   assetCandidateId,
   episodeId,
@@ -62,116 +36,36 @@ export async function onAssetApproved({
   bodyText,
   title,
 }: OnAssetApprovedParams): Promise<OnAssetApprovedResult> {
-  const runId = generateRunId();
-
-  // Double-fire protection
   if (!acquireLock("asset_approved", assetCandidateId)) {
     return { ok: true, publicationId: null, skipped: true };
   }
 
-  const started = Date.now();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    releaseLock("asset_approved", assetCandidateId);
-    return { ok: false, publicationId: null, skipped: true, error: "No session" };
-  }
-
-  await logAutomation({
-    runId,
-    eventType: "asset_approved",
-    entityType: "asset_candidate",
-    entityId: assetCandidateId,
-    episodeId,
-    status: "started",
-    metadata: { platform, hasBodyText: !!bodyText },
-  });
-
   try {
-    // Idempotency: check if a publication_queue entry already exists for this asset
-    const { data: existing } = await supabase
-      .from("publication_queue")
-      .select("id")
-      .eq("asset_candidate_id", assetCandidateId)
-      .maybeSingle();
-
-    if (existing) {
-      await logAutomation({
-        runId,
-        eventType: "asset_approved",
-        entityType: "asset_candidate",
-        entityId: assetCandidateId,
-        episodeId,
-        status: "skipped",
-        skipReason: "Draft publication already exists for this asset",
-        durationMs: Date.now() - started,
-        metadata: { existingPublicationId: existing.id },
-      });
-      releaseLock("asset_approved", assetCandidateId);
-      return { ok: true, publicationId: existing.id, skipped: true };
-    }
-
-    const resolvedPlatform = inferPlatformFromAsset(platform);
-    const captionBase = buildCaptionBase(title, bodyText);
-
-    const { data: newPub, error } = await supabase
-      .from("publication_queue")
-      .insert({
-        user_id: session.user.id,
-        episode_id: episodeId,
+    const result = await invokeEdgeFunction<AssetPublicationOutput>(
+      "automation-asset-publication",
+      {
         asset_candidate_id: assetCandidateId,
-        platform: resolvedPlatform,
-        status: "draft",
-        // caption base stored in notes — ready for the creator to refine
-        notes: captionBase,
-        checklist: [],
-      })
-      .select("id")
-      .single();
+        episode_id: episodeId,
+        platform: platform ?? undefined,
+        body_text: bodyText ?? undefined,
+        title: title ?? undefined,
+        source: "frontend",
+      }
+    );
 
-    if (error) throw error;
-
-    const durationMs = Date.now() - started;
-
-    await logAutomation({
-      runId,
-      eventType: "asset_approved",
-      entityType: "asset_candidate",
-      entityId: assetCandidateId,
-      episodeId,
-      status: "success",
-      resultSummary: `Draft creado: ${newPub.id} (${resolvedPlatform}) · caption base incluido`,
-      durationMs,
-      metadata: {
-        publicationId: newPub.id,
-        platform: resolvedPlatform,
-        hasCaptionBase: !!bodyText,
-      },
-    });
-
-    // Re-evaluate completion — hasApprovedAssets and hasPublication criteria may now be true
-    evaluateEpisodeCompletion(episodeId).catch(() => {});
-
-    return { ok: true, publicationId: newPub.id, skipped: false };
+    return {
+      ok: result.ok ?? true,
+      publicationId: result.publicationId ?? null,
+      skipped: result.skipped ?? false,
+      error: result.error,
+    };
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-
-    await logAutomation({
-      runId,
-      eventType: "asset_approved",
-      entityType: "asset_candidate",
-      entityId: assetCandidateId,
-      episodeId,
-      status: "error",
-      errorMessage: message,
-      durationMs: Date.now() - started,
-      metadata: { platform, hasBodyText: !!bodyText },
-    });
-
-    return { ok: false, publicationId: null, skipped: false, error: message };
+    return {
+      ok: false,
+      publicationId: null,
+      skipped: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
   } finally {
     releaseLock("asset_approved", assetCandidateId);
   }

@@ -2,11 +2,13 @@
  * Retry dispatcher for automation runs.
  *
  * Reads event_type and metadata from an automation_logs row
- * and re-invokes the corresponding service function.
+ * and re-invokes the corresponding frontend entrypoint (which in turn
+ * calls the backend Edge Function).
  *
- * The metadata stored in each success/error log entry always contains
- * all the parameters needed to replay the run.
+ * For script_saved: fetches the current script from the episode row
+ * since scripts are not stored in log metadata (size concerns).
  */
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { onScriptSaved } from "./onScriptSaved";
 import { onAssetApproved } from "./onAssetApproved";
@@ -20,10 +22,6 @@ export interface RetryResult {
   error?: string;
 }
 
-/**
- * Retry an automation run from a log entry.
- * Returns ok:true if the retry was dispatched (even if the run itself later fails).
- */
 export async function retryAutomation(log: AutomationLog): Promise<RetryResult> {
   const meta = (log.metadata as Record<string, unknown>) ?? {};
 
@@ -31,13 +29,24 @@ export async function retryAutomation(log: AutomationLog): Promise<RetryResult> 
     switch (log.event_type) {
       case "script_saved": {
         if (!log.episode_id) return { ok: false, error: "Missing episode_id" };
-        const script = (meta.script as string) ?? "";
-        if (!script) return { ok: false, error: "No script in metadata — cannot retry" };
+
+        // Fetch the current script from the episode — scripts are not stored in metadata
+        const { data: episode } = await supabase
+          .from("episodes")
+          .select("script_base, script_generated, working_title, number")
+          .eq("id", log.episode_id)
+          .single();
+
+        const script = episode?.script_generated || episode?.script_base;
+        if (!script || script.trim().length < 50) {
+          return { ok: false, error: "No meaningful script found on episode for retry" };
+        }
+
         await onScriptSaved({
           episodeId: log.episode_id,
           script,
-          episodeTitle: meta.episodeTitle as string | undefined,
-          episodeNumber: meta.episodeNumber as string | number | null | undefined,
+          episodeTitle: episode?.working_title ?? undefined,
+          episodeNumber: episode?.number ?? undefined,
         });
         return { ok: true };
       }
@@ -58,7 +67,7 @@ export async function retryAutomation(log: AutomationLog): Promise<RetryResult> 
         if (!log.entity_id) return { ok: false, error: "Missing entity_id" };
         await onPublicationStateChanged({
           publicationQueueId: log.entity_id,
-          newStatus: (meta.newStatus as string) ?? "published",
+          newStatus: (meta.new_status as string) ?? "published",
           episodeId: log.episode_id ?? null,
           platform: meta.platform as string | null,
         });
