@@ -102,10 +102,12 @@ function compareValues(a: unknown, b: unknown, direction: SortDirection): number
   const aStr = getStr(a);
   const bStr = getStr(b);
 
-  // Numeric comparison when both look like numbers
+  // Numeric comparison when both parse as non-NaN and non-empty numbers
   const aNum = Number(a);
   const bNum = Number(b);
-  const bothNumeric = !isNaN(aNum) && !isNaN(bNum) && a !== "" && b !== "";
+  const aIsNumeric = !isNaN(aNum) && aStr !== "" && typeof a !== "boolean";
+  const bIsNumeric = !isNaN(bNum) && bStr !== "" && typeof b !== "boolean";
+  const bothNumeric = aIsNumeric && bIsNumeric;
 
   let result: number;
   if (bothNumeric) {
@@ -157,14 +159,17 @@ function applyFilter<T>(item: T, filter: FilterRule, col: ColumnDef<T> | undefin
 function persist(key: string, state: Record<string, unknown>) {
   try {
     localStorage.setItem(key, JSON.stringify(state));
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.warn("[useSmartTable] Failed to persist state to localStorage:", err);
+  }
 }
 
 function restore<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
+  } catch (err) {
+    console.warn("[useSmartTable] Failed to restore state from localStorage:", err);
     return null;
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,11 +100,14 @@ export default function Episodes() {
   const navigate = useNavigate();
   const { data: episodesRaw = [], isLoading } = useEpisodes();
 
-  // Pre-compute health for sort/filter
-  const episodes = (episodesRaw as any[]).map((ep) => {
-    const audit = auditEpisode(ep);
-    return { ...ep, _health: audit.healthScore, _level: getCompletenessLevel(audit.healthScore) };
-  });
+  // Pre-compute health for sort/filter — memoized to avoid re-running auditEpisode on each render
+  const episodes = useMemo(
+    () => (episodesRaw as any[]).map((ep) => {
+      const audit = auditEpisode(ep);
+      return { ...ep, _health: audit.healthScore, _level: getCompletenessLevel(audit.healthScore) };
+    }),
+    [episodesRaw]
+  );
 
   const table = useSmartTable({
     data: episodes,
