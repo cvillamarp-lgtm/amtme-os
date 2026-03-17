@@ -12,6 +12,7 @@ import { FlaskConical, Plus, Search, Mic, TrendingUp, CheckCircle2, XCircle, Bea
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -489,8 +490,8 @@ export default function Insights() {
       toast.success(`${rows.length} insights extraídos del guión`);
       setOpenExtract(false);
       setExtractEpisodeId("");
-    } catch (e: any) {
-      toast.error(e.message || "Error al extraer insights");
+    } catch (e: unknown) {
+      toast.error(getEdgeFunctionErrorMessage(e));
     } finally {
       setIsExtracting(false);
     }
