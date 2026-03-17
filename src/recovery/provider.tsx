@@ -3,12 +3,21 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { installChunkReloadGuard } from "./chunkGuard";
 import { installRuntimeCapture, reportRecoveryIncident } from "./runtimeCapture";
-import type { RecoveryAutomationLog, RecoveryEntityContext } from "./types";
+import type { RecoveryAutomationLog, RecoveryActionType, RecoveryEntityContext } from "./types";
 import type { RecoveryContextResolvers } from "./context";
 import { RecoveryButton } from "./RecoveryButton";
 import { RecoveryPanel } from "./RecoveryPanel";
 import { escalateIncidentToSupabase } from "./supabaseEscalation";
 import { recoveryStore } from "./store";
+import { runRecoveryAction } from "./actions";
+
+// Actions that are safe to run automatically (no page reload / navigation)
+const AUTO_REPAIR_SAFE: RecoveryActionType[] = [
+  "invalidate-query",
+  "refetch-query",
+  "retry-automation",
+  "resync-entity",
+];
 
 interface RecoveryAgentProviderProps {
   children: React.ReactNode;
@@ -86,6 +95,31 @@ export function RecoveryAgentProvider({
       }
     });
   }, [supabase]);
+
+  // Auto-repair: when a new incident is detected, automatically run the first safe action.
+  useEffect(() => {
+    const attempted = new Set<string>();
+
+    return recoveryStore.subscribe(() => {
+      const { incidents } = recoveryStore.getState();
+      for (const incident of incidents) {
+        if (incident.status !== "detected") continue;
+        if (attempted.has(incident.id)) continue;
+
+        const action = incident.suggestedActions.find((a) => AUTO_REPAIR_SAFE.includes(a));
+        if (!action) continue;
+
+        attempted.add(incident.id);
+        void runRecoveryAction(incident, action, {
+          queryClient,
+          retryAutomation,
+          getAutomationLogId: (item) => item.context.recentAutomationLogs?.[0]?.id,
+          getEntityQueryKeys: (item) => getEntityQueryKeys?.(item.context.entity) ?? [],
+          resyncEntity: async (item) => { await resyncEntity?.(item.context.entity); },
+        }).catch(() => {});
+      }
+    });
+  }, [queryClient, retryAutomation, getEntityQueryKeys, resyncEntity]);
 
   const value = useMemo<RecoveryAgentContextValue>(
     () => ({

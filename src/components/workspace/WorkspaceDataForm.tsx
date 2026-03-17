@@ -35,7 +35,27 @@ const PROPAGATING_FIELDS = ["idea_principal", "theme", "core_thesis", "summary",
 const BLOCK_FIELDS = [...BASE_FIELDS] as string[];
 
 export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
-  const [form, setForm] = useState<Record<string, any>>({});
+  const [form, setForm] = useState<Record<string, any>>({
+    number: "",
+    working_title: "",
+    final_title: "",
+    titulo_original: "",
+    theme: "",
+    core_thesis: "",
+    summary: "",
+    descripcion_spotify: "",
+    link_spotify: "",
+    hook: "",
+    cta: "",
+    quote: "",
+    release_date: "",
+    duration: "",
+    nota_trazabilidad: "",
+    conflicto_detectado: false,
+    conflicto_nota: "",
+    fecha_es_estimada: false,
+    nivel_completitud: "D",
+  });
   const [blockStates, setBlockStates] = useState<BlockStatesMap>({});
   const [versionHistory, setVersionHistory] = useState<VersionHistoryMap>({});
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");

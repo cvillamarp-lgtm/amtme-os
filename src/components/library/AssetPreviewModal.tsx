@@ -1,4 +1,5 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, Copy, Check, X } from "lucide-react";
@@ -40,6 +41,7 @@ export function AssetPreviewModal({ open, onOpenChange, asset }: AssetPreviewMod
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden">
+        <VisuallyHidden><DialogTitle>{asset.piece_name}</DialogTitle></VisuallyHidden>
         <div className="relative">
           {asset.image_url && (
             <img
