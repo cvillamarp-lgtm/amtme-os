@@ -6,16 +6,14 @@ class RecoveryStore {
   private incidents: RecoveryIncident[] = [];
   private listeners = new Set<Listener>();
   private isOpen = false;
+  private _snapshot = { incidents: this.incidents, isOpen: this.isOpen };
 
   subscribe = (listener: Listener) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
 
-  getState = () => ({
-    incidents: this.incidents,
-    isOpen: this.isOpen,
-  });
+  getState = () => this._snapshot;
 
   setOpen = (value: boolean) => {
     this.isOpen = value;
@@ -23,14 +21,20 @@ class RecoveryStore {
   };
 
   addIncident = (incident: RecoveryIncident) => {
-    const existing = this.incidents.find((x) => x.fingerprint === incident.fingerprint);
-    if (existing) {
-      existing.updatedAt = new Date().toISOString();
-      if (existing.status === "fixed" || existing.status === "ignored") {
-        existing.status = "detected";
-      }
+    const existingIdx = this.incidents.findIndex((x) => x.fingerprint === incident.fingerprint);
+    if (existingIdx !== -1) {
+      const existing = this.incidents[existingIdx];
+      const updated = {
+        ...existing,
+        updatedAt: new Date().toISOString(),
+        status: (existing.status === "fixed" || existing.status === "ignored")
+          ? ("detected" as const)
+          : existing.status,
+      };
+      this.incidents = [...this.incidents];
+      this.incidents[existingIdx] = updated;
       this.emit();
-      return existing;
+      return updated;
     }
 
     this.incidents = [incident, ...this.incidents].slice(0, 50);
@@ -68,6 +72,7 @@ class RecoveryStore {
   };
 
   private emit() {
+    this._snapshot = { incidents: this.incidents, isOpen: this.isOpen };
     this.listeners.forEach((listener) => listener());
   }
 }
