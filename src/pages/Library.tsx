@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Image, Download, CheckCircle2, Trash2, Search, Filter, Copy, Check, FileArchive } from "lucide-react";
+import { Image, Download, CheckCircle2, Trash2, Search, Filter, Copy, Check, FileArchive, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AssetPreviewModal } from "@/components/library/AssetPreviewModal";
@@ -31,6 +31,8 @@ export default function Library() {
   const [filter, setFilter] = useState("all");
   const [episodeFilter, setEpisodeFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"created_at" | "piece_name" | "status">("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [previewAsset, setPreviewAsset] = useState<ContentAsset | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -132,12 +134,42 @@ export default function Library() {
     toast.success("ZIP descargado");
   };
 
-  const filtered = assets.filter((a) => {
-    if (filter !== "all" && a.status !== filter) return false;
-    if (episodeFilter !== "all" && a.episode_id !== episodeFilter) return false;
-    if (search && !a.piece_name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = assets
+    .filter((a) => {
+      if (filter !== "all" && a.status !== filter) return false;
+      if (episodeFilter !== "all" && a.episode_id !== episodeFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!a.piece_name.toLowerCase().includes(q) &&
+            !a.caption?.toLowerCase().includes(q) &&
+            !a.hashtags?.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const aVal = (a as any)[sortBy] ?? "";
+      const bVal = (b as any)[sortBy] ?? "";
+      const cmp = String(aVal) < String(bVal) ? -1 : String(aVal) > String(bVal) ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+  const toggleSort = (col: "created_at" | "piece_name" | "status") => {
+    if (sortBy === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("asc"); }
+  };
+
+  const sortIcon = (col: string) => {
+    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />;
+  };
+
+  const stats = {
+    total: assets.length,
+    pending: assets.filter((a) => a.status === "pending").length,
+    generated: assets.filter((a) => a.status === "generated").length,
+    approved: assets.filter((a) => a.status === "approved").length,
+    published: assets.filter((a) => a.status === "published").length,
+  };
 
   const statusLabel: Record<string, string> = {
     pending: "Pendiente",
@@ -157,10 +189,28 @@ export default function Library() {
           <Badge variant="secondary">{assets.length} assets</Badge>
           <Button variant="outline" size="sm" onClick={exportFilteredZip} disabled={exporting || filtered.length === 0}>
             <FileArchive className="h-3.5 w-3.5 mr-1.5" />
-            Exportar ZIP
+            Exportar ZIP {filtered.length < assets.length ? `(${filtered.length})` : ""}
           </Button>
         </div>
       </div>
+
+      {/* Stats bar */}
+      {assets.length > 0 && (
+        <div className="flex gap-3 flex-wrap">
+          {[
+            { label: "Total",      value: stats.total,     color: "text-foreground" },
+            { label: "Pendientes", value: stats.pending,   color: "text-muted-foreground" },
+            { label: "Generados",  value: stats.generated, color: "text-yellow-400" },
+            { label: "Aprobados",  value: stats.approved,  color: "text-emerald-400" },
+            { label: "Publicados", value: stats.published, color: "text-primary" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 bg-secondary/30 text-xs">
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className={`font-semibold ${s.color}`}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -169,7 +219,7 @@ export default function Library() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar pieza..."
+            placeholder="Buscar por nombre, caption, hashtags..."
             className="pl-9"
           />
         </div>
@@ -199,6 +249,31 @@ export default function Library() {
             ))}
           </SelectContent>
         </Select>
+        {/* Sort */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-md px-2">
+          <span className="text-[11px]">Ordenar:</span>
+          {([
+            { col: "created_at" as const,  label: "Fecha" },
+            { col: "piece_name" as const,  label: "Nombre" },
+            { col: "status" as const,      label: "Estado" },
+          ]).map(({ col, label }) => (
+            <button
+              key={col}
+              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded transition-colors hover:text-foreground ${sortBy === col ? "text-foreground font-medium" : ""}`}
+              onClick={() => toggleSort(col)}
+            >
+              {label} {sortIcon(col)}
+            </button>
+          ))}
+        </div>
+        {(search || filter !== "all" || episodeFilter !== "all") && (
+          <Button variant="ghost" size="sm" className="h-10 text-muted-foreground" onClick={() => { setSearch(""); setFilter("all"); setEpisodeFilter("all"); }}>
+            <X className="h-3.5 w-3.5 mr-1" />Limpiar
+          </Button>
+        )}
+        {filtered.length !== assets.length && (
+          <span className="self-center text-xs text-muted-foreground">{filtered.length} de {assets.length}</span>
+        )}
       </div>
 
       {/* Grid */}

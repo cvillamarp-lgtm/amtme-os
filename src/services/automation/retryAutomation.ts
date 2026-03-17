@@ -1,31 +1,46 @@
-// Import paths updated
-import { onScriptSaved } from '../core/scriptExtraction';
-import { onAssetApproved } from '../core/assetPublication';
-import { onPublicationStateChanged } from '../core/publicationEvent';
-import { evaluateEpisodeCompletion } from '../core/episodeEvaluation';
+/**
+ * Retry automation for a failed or errored automation log entry.
+ *
+ * Looks at the event_type of the log and re-dispatches to the appropriate
+ * automation core handler.
+ *
+ * Core layer — no React or toast dependencies.
+ */
+import { onScriptSaved } from './core/scriptExtraction';
+import { onAssetApproved } from './core/assetPublication';
+import { onPublicationStateChanged } from './core/publicationEvent';
+import { evaluateEpisodeCompletion } from './core/episodeEvaluation';
 
-// Comprehensive error logging
-function someFunction() {
-    try {
-        // Your logic here
-    } catch (error) {
-        console.error('Error encountered:', error);
-        // Improved error handling
-        throw new Error(`Something went wrong: ${error.message}`);
-    }
+export interface AutomationLogRow {
+  id: string;
+  event_type: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  episode_id?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
-// Exhaustive type checking in switch statement
-function evaluateState(state: string) {
-    switch (state) {
-        case 'approved':
-            // Handle approved
-            break;
-        case 'rejected':
-            // Handle rejected
-            break;
-        default:
-            const exhaustiveCheck: never = state; // Ensures all cases are handled
-            throw new Error(`Unhandled state: ${exhaustiveCheck}`);
-    }
+/**
+ * Re-run the automation that corresponds to an automation log entry.
+ * Used by the UI retry button in AutomationLogPanel.
+ */
+export async function retryAutomation(log: AutomationLogRow): Promise<void> {
+  const episodeId = log.episode_id ?? log.entity_id ?? "";
+
+  switch (log.event_type) {
+    case "script_saved":
+      await onScriptSaved({ episodeId });
+      break;
+    case "asset_approved":
+      await onAssetApproved({ assetCandidateId: log.entity_id ?? "", episodeId });
+      break;
+    case "publication_state_changed":
+      await onPublicationStateChanged({ publicationId: log.entity_id ?? "", episodeId });
+      break;
+    case "episode_completion":
+      await evaluateEpisodeCompletion({ episodeId });
+      break;
+    default:
+      console.warn(`retryAutomation: unknown event_type "${log.event_type}", skipping`);
+  }
 }

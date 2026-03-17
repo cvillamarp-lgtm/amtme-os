@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Plus, Search, CheckSquare, Square, ExternalLink, Calendar, Mic } from "lucide-react";
+import { Send, Plus, Search, CheckSquare, Square, ExternalLink, Calendar, Mic, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -630,6 +630,8 @@ export default function Publications() {
   const [tab, setTab] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [createPlatform, setCreatePlatform] = useState<string>("");
+  const [sortBy, setSortBy] = useState<"created_at" | "scheduled_for" | "platform" | "status">("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const qc = useQueryClient();
 
   // ── Fetch publications ─────────────────────────────────────────────────
@@ -733,21 +735,49 @@ export default function Publications() {
     ])
   );
 
-  const filtered = publications.filter((p) => {
-    if (tab !== "all" && p.status !== tab) return false;
-    if (platformFilter !== "all" && p.platform !== platformFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        p.copy_final?.toLowerCase().includes(q) ||
-        p.episodes?.title?.toLowerCase().includes(q) ||
-        p.episodes?.working_title?.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const filtered = publications
+    .filter((p) => {
+      if (tab !== "all" && p.status !== tab) return false;
+      if (platformFilter !== "all" && p.platform !== platformFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          p.copy_final?.toLowerCase().includes(q) ||
+          p.episodes?.title?.toLowerCase().includes(q) ||
+          p.episodes?.working_title?.toLowerCase().includes(q) ||
+          p.episodes?.number?.toLowerCase().includes(q) ||
+          p.platform?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const aVal = (a as any)[sortBy] ?? "";
+      const bVal = (b as any)[sortBy] ?? "";
+      const cmp = String(aVal) < String(bVal) ? -1 : String(aVal) > String(bVal) ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+  const toggleSort = (col: "created_at" | "scheduled_for" | "platform" | "status") => {
+    if (sortBy === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("asc"); }
+  };
+
+  const sortIcon = (col: string) => {
+    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />;
+  };
 
   const selected = publications.find((p) => p.id === selectedId) ?? null;
+
+  // Stats
+  const stats = {
+    total: publications.length,
+    draft: publications.filter((p) => p.status === "draft").length,
+    approved: publications.filter((p) => p.status === "approved").length,
+    scheduled: publications.filter((p) => p.status === "scheduled").length,
+    published: publications.filter((p) => p.status === "published").length,
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -829,12 +859,30 @@ export default function Publications() {
         </Dialog>
       </div>
 
+      {/* Stats bar */}
+      {publications.length > 0 && (
+        <div className="flex gap-3 flex-wrap">
+          {[
+            { label: "Total",       value: stats.total,     color: "text-foreground" },
+            { label: "Borradores",  value: stats.draft,     color: "text-muted-foreground" },
+            { label: "Aprobados",   value: stats.approved,  color: "text-emerald-400" },
+            { label: "Programados", value: stats.scheduled, color: "text-blue-400" },
+            { label: "Publicados",  value: stats.published, color: "text-primary" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 bg-secondary/30 text-xs">
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className={`font-semibold ${s.color}`}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Search + platform filter */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar publicaciones..."
+            placeholder="Buscar por episodio, plataforma, copy..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -851,6 +899,29 @@ export default function Publications() {
             ))}
           </SelectContent>
         </Select>
+        {/* Sort controls */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-md px-2">
+          <span className="text-[11px]">Ordenar:</span>
+          {([
+            { col: "created_at",   label: "Fecha" },
+            { col: "scheduled_for",label: "Prog." },
+            { col: "platform",     label: "Plataforma" },
+            { col: "status",       label: "Estado" },
+          ] as const).map(({ col, label }) => (
+            <button
+              key={col}
+              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded transition-colors hover:text-foreground ${sortBy === col ? "text-foreground font-medium" : ""}`}
+              onClick={() => toggleSort(col)}
+            >
+              {label} {sortIcon(col)}
+            </button>
+          ))}
+        </div>
+        {(search || platformFilter !== "all") && (
+          <Button variant="ghost" size="sm" className="h-10 text-muted-foreground" onClick={() => { setSearch(""); setPlatformFilter("all"); }}>
+            <X className="h-3.5 w-3.5 mr-1" />Limpiar
+          </Button>
+        )}
       </div>
 
       {/* Status tabs */}
@@ -877,7 +948,7 @@ export default function Publications() {
           <Send className="h-12 w-12 text-muted-foreground/30 mb-3" />
           <p className="text-muted-foreground">
             {search || platformFilter !== "all"
-              ? "Sin resultados para ese filtro"
+              ? "Sin resultados para esos filtros"
               : tab === "all"
               ? "Aún no hay publicaciones. Crea la primera para un episodio."
               : "No hay publicaciones en esta categoría"}

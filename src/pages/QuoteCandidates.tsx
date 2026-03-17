@@ -33,7 +33,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { Plus, Quote, Star, CheckCircle2, Archive, Sparkles, Clock, Mic, Loader2, Wand2 } from "lucide-react";
+import { Plus, Quote, Star, CheckCircle2, Archive, Sparkles, Clock, Mic, Loader2, Wand2, ArrowUpDown, ArrowUp, ArrowDown, X, Search } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
@@ -357,6 +357,9 @@ export default function QuoteCandidates() {
   const qc = useQueryClient();
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState<"score" | "created_at">("score");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [selected, setSelected] = useState<QuoteWithEpisode | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [extractOpen, setExtractOpen] = useState(false);
@@ -502,8 +505,11 @@ export default function QuoteCandidates() {
       tab === "captured" ? q.status === "captured" :
       tab === "approved" ? q.status === "approved" :
       tab === "used" ? q.status === "used" : true;
-    const matchSearch = !search || q.text.toLowerCase().includes(search.toLowerCase());
-    return matchTab && matchSearch;
+    const matchType = typeFilter === "all" || q.quote_type === typeFilter;
+    const matchSearch = !search || q.text.toLowerCase().includes(search.toLowerCase()) ||
+      q.episodes?.title?.toLowerCase().includes(search.toLowerCase()) ||
+      q.episodes?.working_title?.toLowerCase().includes(search.toLowerCase());
+    return matchTab && matchSearch && matchType;
   });
 
   const counts = {
@@ -513,8 +519,27 @@ export default function QuoteCandidates() {
     used:     quotes.filter((q) => q.status === "used").length,
   };
 
-  // Sort by score descending
-  const sorted = [...filtered].sort((a, b) => (b.score_total ?? 0) - (a.score_total ?? 0));
+  const quoteTypes = [...new Set(quotes.map((q) => q.quote_type).filter(Boolean))];
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortCol === "score") {
+      const diff = (b.score_total ?? 0) - (a.score_total ?? 0);
+      return sortDir === "desc" ? diff : -diff;
+    }
+    const aVal = (a as any)[sortCol] ?? "";
+    const bVal = (b as any)[sortCol] ?? "";
+    const cmp = String(aVal) < String(bVal) ? -1 : String(aVal) > String(bVal) ? 1 : 0;
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const toggleSort = (col: "score" | "created_at") => {
+    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("desc"); }
+  };
+
+  const avgScore = quotes.length
+    ? Math.round(quotes.reduce((acc, q) => acc + (q.score_total ?? 0), 0) / quotes.length * 10) / 10
+    : 0;
 
   return (
     <div className="page-container animate-fade-in">
@@ -657,7 +682,25 @@ export default function QuoteCandidates() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Stats bar */}
+      {quotes.length > 0 && (
+        <div className="flex gap-3 flex-wrap">
+          {[
+            { label: "Total",      value: counts.all,      color: "text-foreground" },
+            { label: "Capturadas", value: counts.captured, color: "text-muted-foreground" },
+            { label: "Aprobadas",  value: counts.approved, color: "text-emerald-400" },
+            { label: "Usadas",     value: counts.used,     color: "text-primary" },
+            { label: "Score prom.",value: avgScore,        color: avgScore >= 3.5 ? "text-emerald-400" : "text-yellow-400" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 bg-secondary/30 text-xs">
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className={`font-semibold ${s.color}`}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <Tabs value={tab} onValueChange={setTab} className="flex-1">
           <TabsList>
             <TabsTrigger value="all">Todas <span className="ml-1.5 text-[10px] opacity-60">{counts.all}</span></TabsTrigger>
@@ -666,12 +709,40 @@ export default function QuoteCandidates() {
             <TabsTrigger value="used">Usadas <span className="ml-1.5 text-[10px] opacity-60">{counts.used}</span></TabsTrigger>
           </TabsList>
         </Tabs>
-        <Input
-          placeholder="Buscar en citas..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="sm:w-64"
-        />
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar citas, episodio..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 sm:w-52"
+            />
+          </div>
+          {quoteTypes.length > 0 && (
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[130px] h-10 text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                {quoteTypes.map((t) => <SelectItem key={t!} value={t!}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {/* Sort */}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-md px-2 h-10">
+            <button className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:text-foreground ${sortCol === "score" ? "text-foreground font-medium" : ""}`} onClick={() => toggleSort("score")}>
+              Score {sortCol === "score" ? (sortDir === "desc" ? <ArrowDown className="h-3 w-3 text-primary" /> : <ArrowUp className="h-3 w-3 text-primary" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+            </button>
+            <button className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:text-foreground ${sortCol === "created_at" ? "text-foreground font-medium" : ""}`} onClick={() => toggleSort("created_at")}>
+              Fecha {sortCol === "created_at" ? (sortDir === "desc" ? <ArrowDown className="h-3 w-3 text-primary" /> : <ArrowUp className="h-3 w-3 text-primary" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+            </button>
+          </div>
+          {(search || typeFilter !== "all") && (
+            <Button variant="ghost" size="sm" className="h-10 text-muted-foreground" onClick={() => { setSearch(""); setTypeFilter("all"); }}>
+              <X className="h-3.5 w-3.5 mr-1" />Limpiar
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Grid */}
@@ -680,7 +751,7 @@ export default function QuoteCandidates() {
       ) : sorted.length === 0 ? (
         <EmptyState
           icon={Quote}
-          message="No hay citas — captura frases memorables de tus episodios"
+          message={search || typeFilter !== "all" ? "Sin resultados para esos filtros" : "No hay citas — captura frases memorables de tus episodios"}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

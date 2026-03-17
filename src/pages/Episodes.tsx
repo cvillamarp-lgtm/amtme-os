@@ -12,12 +12,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   Mic, Plus, Search, Download, Factory, ChevronDown, Loader2,
   Sparkles, Trash2, ArrowLeft, RefreshCw, Check, Pencil, History,
+  ArrowUp, ArrowDown, ArrowUpDown, Filter, X, AlertCircle,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { toast } from "sonner";
 import { useEpisodes } from "@/hooks/useEpisode";
+import { useSmartTable } from "@/hooks/useSmartTable";
 import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { initBlockStatesFromAI } from "@/lib/block-states";
 import { useEpisodeDraft } from "@/hooks/useEpisodeDraft";
@@ -90,10 +92,56 @@ export default function Episodes() {
   const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
 
   // ── List state ─────────────────────────────────────────────────────────────
-  const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [nivelFilter, setNivelFilter] = useState("all");
+  const [prodFilter, setProdFilter] = useState("all");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { data: episodes = [], isLoading } = useEpisodes();
+  const { data: episodesRaw = [], isLoading } = useEpisodes();
+
+  // Pre-compute health for sort/filter
+  const episodes = (episodesRaw as any[]).map((ep) => {
+    const audit = auditEpisode(ep);
+    return { ...ep, _health: audit.healthScore, _level: getCompletenessLevel(audit.healthScore) };
+  });
+
+  const table = useSmartTable({
+    data: episodes,
+    columns: [
+      { id: "title",             label: "Título",          sortable: true, getValue: (ep) => ep.final_title || ep.working_title || ep.title },
+      { id: "number",            label: "#",               sortable: true, getValue: (ep) => ep.number },
+      { id: "theme",             label: "Tema",            sortable: true, getValue: (ep) => ep.theme },
+      { id: "status",            label: "Estado",          sortable: true, getValue: (ep) => ep.status },
+      { id: "nivel_completitud", label: "Nivel",           sortable: true, getValue: (ep) => ep.nivel_completitud },
+      { id: "estado_produccion", label: "Producción",      sortable: true, getValue: (ep) => ep.estado_produccion },
+      { id: "_health",           label: "Salud",           sortable: true, getValue: (ep) => ep._health },
+      { id: "created_at",        label: "Creado",          sortable: true, getValue: (ep) => ep.created_at },
+      { id: "updated_at",        label: "Actualizado",     sortable: true, getValue: (ep) => ep.updated_at },
+    ],
+    searchFields: [
+      (ep) => ep.final_title,
+      (ep) => ep.working_title,
+      (ep) => ep.title,
+      (ep) => ep.number,
+      (ep) => ep.theme,
+      (ep) => ep.core_thesis,
+      (ep) => ep.idea_principal,
+    ],
+    defaultSort: [{ column: "created_at", direction: "desc" }],
+    persistKey: "episodes-table",
+    pageSize: 100,
+  });
+
+  // Apply dropdown filters on top of smart table
+  const filtered = table.filtered.filter((ep: any) => {
+    if (statusFilter !== "all" && ep.status !== statusFilter) return false;
+    if (nivelFilter !== "all" && ep.nivel_completitud !== nivelFilter) return false;
+    if (prodFilter !== "all" && ep.estado_produccion !== prodFilter) return false;
+    return true;
+  });
+
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (nivelFilter !== "all" ? 1 : 0) + (prodFilter !== "all" ? 1 : 0);
 
   // ── On dialog open: load active draft from DB ──────────────────────────────
   useEffect(() => {
@@ -318,9 +366,9 @@ export default function Episodes() {
   });
 
   const exportCSV = () => {
-    if (!episodes.length) return;
-    const headers = ["number", "title", "theme", "status", "nivel_completitud", "release_date", "health_score"];
-    const rows = episodes.map((ep: any) =>
+    if (!filtered.length) return;
+    const headers = ["number", "title", "theme", "status", "nivel_completitud", "estado_produccion", "release_date", "_health"];
+    const rows = filtered.map((ep: any) =>
       headers.map((h) => {
         const val = ep[h];
         return val === null || val === undefined ? "" : String(val).replace(/"/g, '""');
@@ -333,27 +381,62 @@ export default function Episodes() {
     a.download = "episodios.csv";
     a.click();
     URL.revokeObjectURL(a.href);
-    toast.success("CSV exportado");
+    toast.success(`CSV exportado (${filtered.length} episodios)`);
   };
 
   const statusLabel = (s: string | null) => {
     switch (s) {
       case "published": return "Publicado";
       case "recording": return "Grabando";
-      case "editing": return "En edición";
-      default: return "Borrador";
+      case "editing":   return "En edición";
+      default:          return "Borrador";
     }
   };
 
-  const filtered = episodes.filter((ep: any) =>
-    !search ||
-    ep.title?.toLowerCase().includes(search.toLowerCase()) ||
-    ep.number?.includes(search) ||
-    ep.theme?.toLowerCase().includes(search.toLowerCase())
-  );
+  const statusColor = (s: string | null) => {
+    switch (s) {
+      case "published": return "text-emerald-400 bg-emerald-400/10";
+      case "recording": return "text-blue-400 bg-blue-400/10";
+      case "editing":   return "text-yellow-400 bg-yellow-400/10";
+      default:          return "text-muted-foreground bg-secondary";
+    }
+  };
+
+  const prodLabel = (s: string | null) => {
+    switch (s) {
+      case "ready":      return "Listo";
+      case "recording":  return "Grabando";
+      case "editing":    return "Editando";
+      case "mixed":      return "Mezclado";
+      case "mastered":   return "Masterizado";
+      case "published":  return "Publicado";
+      default:           return s || "Draft";
+    }
+  };
+
+  // Sort indicator helper
+  const sortIndicator = (col: string) => {
+    const rule = table.sort.find((s) => s.column === col);
+    if (!rule) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-30 group-hover/th:opacity-60" />;
+    return rule.direction === "asc"
+      ? <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+      : <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
+  };
 
   const isPending = createEpisode.isPending || isGenerating;
   const canCreate = draft.step === 2 && (manualMode ? true : (!!draft.selected_conflicto && !!draft.selected_intencion));
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const stats = {
+    total: episodes.length,
+    draft: episodes.filter((e: any) => !e.status || e.status === "draft").length,
+    recording: episodes.filter((e: any) => e.status === "recording").length,
+    editing: episodes.filter((e: any) => e.status === "editing").length,
+    published: episodes.filter((e: any) => e.status === "published").length,
+    avgHealth: episodes.length
+      ? Math.round(episodes.reduce((acc: number, e: any) => acc + (e._health || 0), 0) / episodes.length)
+      : 0,
+  };
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -364,7 +447,7 @@ export default function Episodes() {
           <p className="page-subtitle">Fuente de verdad. Haz click en un episodio para abrir su Workspace.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCSV} disabled={!episodes.length}>
+          <Button variant="outline" onClick={exportCSV} disabled={!filtered.length}>
             <Download className="h-4 w-4 mr-2" />CSV
           </Button>
 
@@ -682,18 +765,150 @@ export default function Episodes() {
         </div>
       </div>
 
-      {/* ── Search ── */}
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
+      {/* ── Stats bar ── */}
+      {episodes.length > 0 && (
+        <div className="flex gap-3 flex-wrap mb-2">
+          {[
+            { label: "Total",      value: stats.total,     color: "text-foreground"    },
+            { label: "Borradores", value: stats.draft,     color: "text-muted-foreground" },
+            { label: "Grabando",   value: stats.recording, color: "text-blue-400"      },
+            { label: "Editando",   value: stats.editing,   color: "text-yellow-400"    },
+            { label: "Publicados", value: stats.published, color: "text-emerald-400"   },
+            { label: "Salud prom.",value: `${stats.avgHealth}%`, color: stats.avgHealth >= 70 ? "text-emerald-400" : stats.avgHealth >= 40 ? "text-yellow-400" : "text-red-400" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 bg-secondary/30 text-xs">
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className={`font-semibold ${s.color}`}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Search & Filters ── */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por título, número o tema..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por título, número, tema, tesis..."
+            value={table.searchQuery}
+            onChange={(e) => table.setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
+
+        <Button
+          variant={showFilters || activeFilterCount > 0 ? "default" : "outline"}
+          size="sm"
+          className="h-10 gap-1.5"
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <Filter className="h-3.5 w-3.5" />
+          Filtros
+          {activeFilterCount > 0 && (
+            <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">{activeFilterCount}</Badge>
+          )}
+        </Button>
+
+        {(activeFilterCount > 0 || table.searchQuery) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-10 text-muted-foreground"
+            onClick={() => {
+              setStatusFilter("all");
+              setNivelFilter("all");
+              setProdFilter("all");
+              table.clearFilters();
+            }}
+          >
+            <X className="h-3.5 w-3.5 mr-1" />Limpiar
+          </Button>
+        )}
+
+        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+          {filtered.length !== episodes.length && (
+            <span>{filtered.length} de {episodes.length}</span>
+          )}
+          {filtered.length === episodes.length && episodes.length > 0 && (
+            <span>{episodes.length} episodios</span>
+          )}
+        </div>
       </div>
+
+      {/* Filter panel */}
+      {showFilters && (
+        <div className="flex gap-3 flex-wrap mb-4 p-3 rounded-lg border border-border bg-secondary/20">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Estado:</span>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="draft">Borrador</SelectItem>
+                <SelectItem value="recording">Grabando</SelectItem>
+                <SelectItem value="editing">Editando</SelectItem>
+                <SelectItem value="published">Publicado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Nivel:</span>
+            <Select value={nivelFilter} onValueChange={setNivelFilter}>
+              <SelectTrigger className="h-8 w-[100px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="A">A</SelectItem>
+                <SelectItem value="B">B</SelectItem>
+                <SelectItem value="C">C</SelectItem>
+                <SelectItem value="D">D</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Producción:</span>
+            <Select value={prodFilter} onValueChange={setProdFilter}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="recording">Grabando</SelectItem>
+                <SelectItem value="editing">Editando</SelectItem>
+                <SelectItem value="mixed">Mezclado</SelectItem>
+                <SelectItem value="mastered">Masterizado</SelectItem>
+                <SelectItem value="ready">Listo</SelectItem>
+                <SelectItem value="published">Publicado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* Active filter chips */}
+      {activeFilterCount > 0 && (
+        <div className="flex gap-2 flex-wrap mb-3">
+          {statusFilter !== "all" && (
+            <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setStatusFilter("all")}>
+              Estado: {statusLabel(statusFilter)} <X className="h-2.5 w-2.5" />
+            </Badge>
+          )}
+          {nivelFilter !== "all" && (
+            <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setNivelFilter("all")}>
+              Nivel: {nivelFilter} <X className="h-2.5 w-2.5" />
+            </Badge>
+          )}
+          {prodFilter !== "all" && (
+            <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setProdFilter("all")}>
+              Prod: {prodLabel(prodFilter)} <X className="h-2.5 w-2.5" />
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* ── Episode list ── */}
       {isLoading ? (
@@ -703,7 +918,19 @@ export default function Episodes() {
       ) : filtered.length === 0 ? (
         <div className="empty-state flex-1">
           <Mic className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">{search ? "Sin resultados" : "No hay episodios aún"}</p>
+          <p className="text-muted-foreground">
+            {table.searchQuery || activeFilterCount > 0 ? "Sin resultados para los filtros actuales" : "No hay episodios aún"}
+          </p>
+          {(table.searchQuery || activeFilterCount > 0) && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => { setStatusFilter("all"); setNivelFilter("all"); setProdFilter("all"); table.clearFilters(); }}
+            >
+              <X className="h-3.5 w-3.5 mr-1.5" />Limpiar filtros
+            </Button>
+          )}
         </div>
       ) : (
         <div className="surface flex-1 overflow-hidden flex flex-col">
@@ -711,18 +938,30 @@ export default function Episodes() {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-secondary/50 text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Episodio</th>
-                  <th className="px-4 py-3 font-medium">Tema</th>
-                  <th className="px-4 py-3 font-medium">Salud</th>
-                  <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">Nivel</th>
+                  {[
+                    { col: "title",             label: "Episodio"    },
+                    { col: "theme",             label: "Tema"        },
+                    { col: "_health",            label: "Salud"      },
+                    { col: "status",            label: "Estado"      },
+                    { col: "estado_produccion", label: "Producción"  },
+                    { col: "nivel_completitud", label: "Nivel"       },
+                  ].map(({ col, label }) => (
+                    <th
+                      key={col}
+                      className="px-4 py-3 font-medium cursor-pointer select-none group/th hover:text-foreground transition-colors"
+                      onClick={() => table.setSortColumn(col)}
+                    >
+                      <span className="inline-flex items-center">
+                        {label}{sortIndicator(col)}
+                      </span>
+                    </th>
+                  ))}
                   <th className="px-4 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filtered.map((ep: any) => {
-                  const audit = auditEpisode(ep);
-                  const level = getCompletenessLevel(audit.healthScore);
+                  const needsAttention = ep._health < 40;
                   return (
                     <tr
                       key={ep.id}
@@ -731,27 +970,35 @@ export default function Episodes() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
-                          <span className="font-medium text-foreground hover:text-primary transition-colors">
+                          <span className="font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1.5">
                             {ep.final_title || ep.working_title || ep.title}
+                            {needsAttention && (
+                              <AlertCircle className="h-3 w-3 text-yellow-400 shrink-0" title="Requiere atención" />
+                            )}
                           </span>
                           {ep.number && (
                             <span className="text-xs text-muted-foreground mt-0.5">#{ep.number}</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-foreground">{ep.theme || "—"}</td>
+                      <td className="px-4 py-3 text-foreground max-w-[200px] truncate">{ep.theme || "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <Progress value={audit.healthScore} className="h-1.5 w-16" />
-                          <span className={`text-[10px] font-medium ${level.color}`}>{audit.healthScore}%</span>
+                          <Progress value={ep._health} className="h-1.5 w-16" />
+                          <span className={`text-[10px] font-medium ${ep._level.color}`}>{ep._health}%</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">{statusLabel(ep.status)}</span>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColor(ep.status)}`}>
+                          {statusLabel(ep.status)}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={`text-[10px] font-bold ${level.color}`}>
-                          {level.nivel}
+                        <span className="text-xs text-muted-foreground">{prodLabel(ep.estado_produccion)}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={`text-[10px] font-bold ${ep._level.color}`}>
+                          {ep._level.nivel}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">

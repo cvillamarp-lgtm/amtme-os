@@ -1,30 +1,97 @@
-// Updated useEpisode hook
-// Adaptive timing for cache refresh with 1.5s and 3s delays instead of fixed 2s
-// Improved error logging in change_history inserts
-// Better error handling in onError callback
-// Added staleTime configuration
-// Return type safety improvements
-// Export of isError and error properties
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
-import { useQuery } from 'react-query';
+// ── useEpisodes: fetch all episodes list ─────────────────────────────────────
+export function useEpisodes() {
+  return useQuery({
+    queryKey: ["episodes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("episodes")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
+}
 
-export const useEpisode = (id) => {
-    const { data, error, isError } = useQuery(['episode', id], fetchEpisode, {
-        staleTime: 3000, // 3s
-        cacheTime: 1500 // 1.5s
-    });
+// ── useEpisode: fetch a single episode with assets & tasks ───────────────────
+export function useEpisode(id: string | undefined) {
+  const queryClient = useQueryClient();
 
-    const onError = (error) => {
-        console.error('Error fetching episode:', error);
-    };
+  const { data: episode, isLoading } = useQuery({
+    queryKey: ["episode", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("episodes")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
 
-    const change_history = async () => {
-        try {
-            // ... insert logic here
-        } catch (err) {
-            console.error('Error in change_history:', err);
-        }
-    };
+  const { data: assets = [] } = useQuery({
+    queryKey: ["episode-assets", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase
+        .from("content_assets")
+        .select("*")
+        .eq("episode_id", id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("Error fetching episode assets:", error);
+        return [];
+      }
+      return data ?? [];
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
 
-    return { data, isError, error, change_history };
-};
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["episode-tasks", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("episode_id", id)
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("Error fetching episode tasks:", error);
+        return [];
+      }
+      return data ?? [];
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+
+  const updateEpisode = useMutation({
+    mutationFn: async (updates: Record<string, unknown>) => {
+      if (!id) throw new Error("No episode id");
+      const { error } = await supabase
+        .from("episodes")
+        .update(updates as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["episode", id] });
+      queryClient.invalidateQueries({ queryKey: ["episodes"] });
+    },
+    onError: (error) => {
+      console.error("Error updating episode:", error);
+    },
+  });
+
+  return { episode, isLoading, assets, tasks, updateEpisode };
+}

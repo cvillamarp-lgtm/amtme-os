@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FlaskConical, Plus, Search, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles } from "lucide-react";
+import { FlaskConical, Plus, Search, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
@@ -427,6 +427,9 @@ export default function Insights() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<string>("all");
+  const [confidenceFilter, setConfidenceFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"created_at" | "confidence">("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const qc = useQueryClient();
 
   const extractFromScript = async () => {
@@ -568,19 +571,39 @@ export default function Insights() {
     ])
   );
 
-  const filtered = insights.filter((i) => {
-    if (tab !== "all" && i.status !== tab) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        i.finding?.toLowerCase().includes(q) ||
-        i.hypothesis?.toLowerCase().includes(q) ||
-        i.recommendation?.toLowerCase().includes(q) ||
-        i.episodes?.title?.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const CONFIDENCE_ORDER: Record<string, number> = { confirmed: 0, high: 1, medium: 2, low: 3 };
+
+  const filtered = insights
+    .filter((i) => {
+      if (tab !== "all" && i.status !== tab) return false;
+      if (confidenceFilter !== "all" && i.confidence !== confidenceFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          i.finding?.toLowerCase().includes(q) ||
+          i.hypothesis?.toLowerCase().includes(q) ||
+          i.recommendation?.toLowerCase().includes(q) ||
+          i.episodes?.title?.toLowerCase().includes(q) ||
+          i.episodes?.working_title?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "confidence") {
+        const diff = (CONFIDENCE_ORDER[a.confidence ?? "low"] ?? 99) - (CONFIDENCE_ORDER[b.confidence ?? "low"] ?? 99);
+        return sortDir === "asc" ? diff : -diff;
+      }
+      const aVal = (a as any)[sortBy] ?? "";
+      const bVal = (b as any)[sortBy] ?? "";
+      const cmp = String(aVal) < String(bVal) ? -1 : String(aVal) > String(bVal) ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+  const toggleSort = (col: "created_at" | "confidence") => {
+    if (sortBy === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("asc"); }
+  };
 
   const selected = insights.find((i) => i.id === selectedId) ?? null;
 
@@ -736,15 +759,46 @@ export default function Insights() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar insights..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search + filters */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar insights, hallazgos, episodio..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={confidenceFilter} onValueChange={setConfidenceFilter}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Confianza" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toda confianza</SelectItem>
+            <SelectItem value="low">Baja</SelectItem>
+            <SelectItem value="medium">Media</SelectItem>
+            <SelectItem value="high">Alta</SelectItem>
+            <SelectItem value="confirmed">Confirmada</SelectItem>
+          </SelectContent>
+        </Select>
+        {/* Sort */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-md px-2 h-10">
+          {([
+            { col: "created_at" as const,  label: "Fecha" },
+            { col: "confidence" as const,  label: "Confianza" },
+          ]).map(({ col, label }) => (
+            <button key={col} className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:text-foreground ${sortBy === col ? "text-foreground font-medium" : ""}`} onClick={() => toggleSort(col)}>
+              {label} {sortBy !== col ? <ArrowUpDown className="h-3 w-3 opacity-40" /> : sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />}
+            </button>
+          ))}
+        </div>
+        {(search || confidenceFilter !== "all") && (
+          <Button variant="ghost" size="sm" className="h-10 text-muted-foreground" onClick={() => { setSearch(""); setConfidenceFilter("all"); }}>
+            <X className="h-3.5 w-3.5 mr-1" />Limpiar
+          </Button>
+        )}
+        {filtered.length !== insights.length && (
+          <span className="self-center text-xs text-muted-foreground">{filtered.length} de {insights.length}</span>
+        )}
       </div>
 
       {/* Tabs */}
@@ -770,13 +824,13 @@ export default function Insights() {
         <div className="empty-state">
           <FlaskConical className="h-12 w-12 text-muted-foreground/30 mb-3" />
           <p className="text-muted-foreground">
-            {search
-              ? "Sin resultados"
+            {search || confidenceFilter !== "all"
+              ? "Sin resultados para esos filtros"
               : tab === "all"
               ? "Aún no hay insights. Captura tu primera observación sobre un episodio."
               : "No hay insights en esta categoría"}
           </p>
-          {!search && tab === "all" && (
+          {(!search && confidenceFilter === "all") && tab === "all" && (
             <Button variant="outline" size="sm" className="mt-3" onClick={() => setOpenCreate(true)}>
               <Plus className="h-4 w-4 mr-2" />Capturar primer insight
             </Button>
