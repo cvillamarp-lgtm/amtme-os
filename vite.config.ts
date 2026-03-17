@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     rollupOptions: {
+      preserveEntrySignatures: "strict",
       output: {
         /**
          * manualChunks: Extract heavy vendor libraries into stable, named chunks.
