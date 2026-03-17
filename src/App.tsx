@@ -7,7 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
 
 // Eager load auth (small, critical path)
 import Auth from "./pages/Auth";
@@ -67,6 +67,24 @@ function PageLoader() {
   );
 }
 
+/**
+ * Wraps each lazy-loaded page in its own Suspense + ErrorBoundary.
+ *
+ * Why: A single top-level Suspense means any one route failing to load
+ * (e.g. stale chunk hash after deploy) takes down the entire app shell.
+ * Per-route isolation means only the failing page shows the error/reload UI
+ * while the rest of the app stays functional.
+ */
+function R({ C }: { C: ComponentType }) {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <ErrorBoundary>
+        <C />
+      </ErrorBoundary>
+    </Suspense>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -80,47 +98,45 @@ const App = () => (
               <Route path="*" element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <Suspense fallback={<PageLoader />}>
-                      <Routes>
-                        {/* Main routes */}
-                        <Route path="/" element={<Index />} />
-                        <Route path="/episodes" element={<Episodes />} />
-                        <Route path="/episodes/:id" element={<EpisodeWorkspace />} />
-                        <Route path="/factory" element={<ContentFactory />} />
-                        <Route path="/library" element={<Library />} />
-                        <Route path="/templates" element={<Templates />} />
-                        <Route path="/metrics" element={<MetricsPage />} />
-                        <Route path="/tasks" element={<Tasks />} />
-                        <Route path="/system" element={<SystemPage />} />
-                        <Route path="/resources" element={<Resources />} />
-                        <Route path="/import" element={<ImportPage />} />
-                        <Route path="/ideas" element={<Ideas />} />
-                        <Route path="/briefs" element={<Briefs />} />
-                        <Route path="/publications" element={<Publications />} />
-                        <Route path="/insights" element={<Insights />} />
-                        <Route path="/quotes" element={<QuoteCandidates />} />
-                        <Route path="/accounts" element={<PlatformAccounts />} />
+                    <Routes>
+                      {/* Main routes */}
+                      <Route path="/" element={<R C={Index} />} />
+                      <Route path="/episodes" element={<R C={Episodes} />} />
+                      <Route path="/episodes/:id" element={<R C={EpisodeWorkspace} />} />
+                      <Route path="/factory" element={<R C={ContentFactory} />} />
+                      <Route path="/library" element={<R C={Library} />} />
+                      <Route path="/templates" element={<R C={Templates} />} />
+                      <Route path="/metrics" element={<R C={MetricsPage} />} />
+                      <Route path="/tasks" element={<R C={Tasks} />} />
+                      <Route path="/system" element={<R C={SystemPage} />} />
+                      <Route path="/resources" element={<R C={Resources} />} />
+                      <Route path="/import" element={<R C={ImportPage} />} />
+                      <Route path="/ideas" element={<R C={Ideas} />} />
+                      <Route path="/briefs" element={<R C={Briefs} />} />
+                      <Route path="/publications" element={<R C={Publications} />} />
+                      <Route path="/insights" element={<R C={Insights} />} />
+                      <Route path="/quotes" element={<R C={QuoteCandidates} />} />
+                      <Route path="/accounts" element={<R C={PlatformAccounts} />} />
 
-                        {/* Archived routes (accessible but not in nav) */}
-                        <Route path="/audience" element={<Audience />} />
-                        <Route path="/guests" element={<Guests />} />
-                        <Route path="/mentions" element={<Mentions />} />
-                        <Route path="/scorecard" element={<Scorecard />} />
-                        <Route path="/calendar" element={<EditorialCalendar />} />
-                        <Route path="/brand" element={<BrandStudio />} />
-                        <Route path="/pipeline" element={<ContentPipeline />} />
-                        <Route path="/design" element={<DesignStudio />} />
-                        <Route path="/episodes/:id/detail" element={<EpisodeDetail />} />
-                        <Route path="/script-generator" element={<ScriptGenerator />} />
-                        <Route path="/prompt-builder" element={<PromptBuilder />} />
-                        <Route path="/visual-prompts" element={<VisualPromptGenerator />} />
-                        <Route path="/audio" element={<AudioStudio />} />
-                        <Route path="/episodes/:episodeId/360" element={<Episode360 />} />
-                        <Route path="/knowledge" element={<KnowledgeBase />} />
+                      {/* Archived routes (accessible but not in nav) */}
+                      <Route path="/audience" element={<R C={Audience} />} />
+                      <Route path="/guests" element={<R C={Guests} />} />
+                      <Route path="/mentions" element={<R C={Mentions} />} />
+                      <Route path="/scorecard" element={<R C={Scorecard} />} />
+                      <Route path="/calendar" element={<R C={EditorialCalendar} />} />
+                      <Route path="/brand" element={<R C={BrandStudio} />} />
+                      <Route path="/pipeline" element={<R C={ContentPipeline} />} />
+                      <Route path="/design" element={<R C={DesignStudio} />} />
+                      <Route path="/episodes/:id/detail" element={<R C={EpisodeDetail} />} />
+                      <Route path="/script-generator" element={<R C={ScriptGenerator} />} />
+                      <Route path="/prompt-builder" element={<R C={PromptBuilder} />} />
+                      <Route path="/visual-prompts" element={<R C={VisualPromptGenerator} />} />
+                      <Route path="/audio" element={<R C={AudioStudio} />} />
+                      <Route path="/episodes/:episodeId/360" element={<R C={Episode360} />} />
+                      <Route path="/knowledge" element={<R C={KnowledgeBase} />} />
 
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </Suspense>
+                      <Route path="*" element={<R C={NotFound} />} />
+                    </Routes>
                   </AppLayout>
                 </ProtectedRoute>
               } />
