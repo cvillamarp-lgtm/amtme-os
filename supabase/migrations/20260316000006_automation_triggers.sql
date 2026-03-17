@@ -39,7 +39,7 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM extensions.pg_net.http_post(
+  PERFORM net.http_post(
     url     := _url || '/functions/v1/' || function_name,
     headers := jsonb_build_object(
       'Content-Type',  'application/json',
