@@ -11,6 +11,7 @@ export function useRecoveryAgent() {
   const runAction = async (incident: RecoveryIncident, action: RecoveryActionType) => {
     return runRecoveryAction(incident, action, {
       queryClient: ctx.queryClient,
+      supabase: ctx.supabase,
       retryAutomation: ctx.retryAutomation,
       getAutomationLogId: (item) => item.context.recentAutomationLogs?.[0]?.id,
       getEntityQueryKeys: (item) => {

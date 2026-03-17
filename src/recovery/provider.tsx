@@ -13,6 +13,7 @@ import { runRecoveryAction } from "./actions";
 
 // Actions that are safe to run automatically (no page reload / navigation)
 const AUTO_REPAIR_SAFE: RecoveryActionType[] = [
+  "refresh-session",
   "invalidate-query",
   "refetch-query",
   "retry-automation",
@@ -33,6 +34,7 @@ interface RecoveryAgentProviderProps {
 
 interface RecoveryAgentContextValue {
   queryClient: QueryClient;
+  supabase?: SupabaseClient;
   retryAutomation?: (logId: string) => Promise<void>;
   reportManualIssue: (title: string, message: string, error?: unknown) => Promise<void>;
   getEntityQueryKeys?: (entity: RecoveryEntityContext | null | undefined) => Array<readonly unknown[]>;
@@ -82,6 +84,23 @@ export function RecoveryAgentProvider({
     installRuntimeCapture(resolvers);
   }, [resolvers]);
 
+  // Detect TOKEN_REFRESH_FAILED from Supabase and create an auth incident automatically.
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "TOKEN_REFRESHED") return;
+      if (event === "SIGNED_OUT") {
+        void reportRecoveryIncident({
+          kind: "runtime",
+          title: "Sesión expirada",
+          message: "jwt expired — la sesión ha caducado",
+          resolvers,
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase, resolvers]);
+
   useEffect(() => {
     if (!supabase) return;
 
@@ -112,6 +131,7 @@ export function RecoveryAgentProvider({
         attempted.add(incident.id);
         void runRecoveryAction(incident, action, {
           queryClient,
+          supabase,
           retryAutomation,
           getAutomationLogId: (item) => item.context.recentAutomationLogs?.[0]?.id,
           getEntityQueryKeys: (item) => getEntityQueryKeys?.(item.context.entity) ?? [],
@@ -119,11 +139,12 @@ export function RecoveryAgentProvider({
         }).catch(() => {});
       }
     });
-  }, [queryClient, retryAutomation, getEntityQueryKeys, resyncEntity]);
+  }, [queryClient, supabase, retryAutomation, getEntityQueryKeys, resyncEntity]);
 
   const value = useMemo<RecoveryAgentContextValue>(
     () => ({
       queryClient,
+      supabase,
       retryAutomation,
       getEntityQueryKeys,
       resyncEntity,
@@ -138,7 +159,7 @@ export function RecoveryAgentProvider({
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getEntityQueryKeys, queryClient, resolvers, resyncEntity, retryAutomation]
+    [getEntityQueryKeys, queryClient, resolvers, resyncEntity, retryAutomation, supabase]
   );
 
   return (

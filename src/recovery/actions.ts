@@ -1,10 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { recoveryStore } from "./store";
 import type { RecoveryActionResult, RecoveryActionType, RecoveryIncident } from "./types";
 import { clearChunkReloadGuardFlag } from "./chunkGuard";
 
 export interface RecoveryActionDeps {
   queryClient: QueryClient;
+  supabase?: SupabaseClient;
   retryAutomation?: (logId: string) => Promise<void>;
   getEntityQueryKeys?: (incident: RecoveryIncident) => Array<readonly unknown[]>;
   getAutomationLogId?: (incident: RecoveryIncident) => string | undefined;
@@ -74,6 +76,21 @@ export async function executeRecoveryAction(
         }
         await deps.resyncEntity(incident);
         return result(action, true, "Entidad resincronizada");
+      }
+
+      case "refresh-session": {
+        if (!deps.supabase) {
+          return result(action, false, "Supabase no disponible");
+        }
+        const { data, error } = await deps.supabase.auth.refreshSession();
+        if (error || !data.session) {
+          // Token truly expired — redirect to login
+          window.location.assign("/auth");
+          return result(action, false, "Sesión expirada, redirigiendo a login");
+        }
+        // Re-fetch all queries with the new token
+        await deps.queryClient.invalidateQueries();
+        return result(action, true, "Sesión renovada y queries refrescadas");
       }
 
       case "dismiss": {

@@ -18,7 +18,13 @@ function guessSeverity(kind: RecoveryKind, message: string): RecoverySeverity {
   return "medium";
 }
 
-function guessSuggestedActions(kind: RecoveryKind): RecoveryActionType[] {
+const AUTH_ERROR_RE = /jwt.*expired|invalid.*token|token.*invalid|unauthorized|refresh.*token|session.*expired|auth.*error|401/i;
+
+function guessSuggestedActions(kind: RecoveryKind, message: string): RecoveryActionType[] {
+  // Auth errors always get refresh-session first, regardless of kind
+  if (AUTH_ERROR_RE.test(message)) {
+    return ["refresh-session", "reload-route", "mark-unresolved"];
+  }
   switch (kind) {
     case "chunk-load":
       return ["hard-reload-once", "reload-route", "mark-unresolved"];
@@ -63,7 +69,7 @@ export async function reportRecoveryIncident(params: {
     stack: error?.stack,
     route: context.route,
     context,
-    suggestedActions: guessSuggestedActions(params.kind),
+    suggestedActions: guessSuggestedActions(params.kind, params.message),
     executedActions: [],
     fingerprint: buildFingerprint(params.kind, params.message, context.route.pathname),
     createdAt: new Date().toISOString(),

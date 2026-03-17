@@ -26,6 +26,7 @@ export type RecoveryActionType =
   | "hard-reload-once"
   | "reload-module"
   | "resync-entity"
+  | "refresh-session"
   | "mark-unresolved"
   | "dismiss";
 
