@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
@@ -96,7 +97,7 @@ function ScriptGeneratorMini({ onScriptGenerated }: { onScriptGenerated: (s: str
       onScriptGenerated(fullText);
       toast.success("Guión generado");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al generar guión");
+      toast.error(getEdgeFunctionErrorMessage(e));
     } finally {
       setIsGenerating(false);
     }
@@ -220,7 +221,7 @@ export default function ContentPipeline() {
       setImageResults((prev) =>
         prev.map((r) =>
           r.piezaId === piezaId
-            ? { ...r, status: "error", error: e instanceof Error ? e.message : "Error" }
+            ? { ...r, status: "error", error: getEdgeFunctionErrorMessage(e) }
             : r
         )
       );
