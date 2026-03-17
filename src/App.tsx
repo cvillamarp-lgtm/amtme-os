@@ -7,48 +7,53 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
-import { lazy, Suspense, type ComponentType } from "react";
+import { Suspense, type ComponentType } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { retryAutomation as retryAutomationFn } from "@/services/automation/retryAutomation";
+import { RecoveryAgentProvider, RouteErrorBoundary, lazyWithRecovery } from "@/recovery";
+import type { RecoveryEntityContext } from "@/recovery";
 
 // Eager load auth (small, critical path)
 import Auth from "./pages/Auth";
 
-// Lazy load all pages
-const Index = lazy(() => import("./pages/Index"));
-const Episodes = lazy(() => import("./pages/Episodes"));
-const EpisodeWorkspace = lazy(() => import("./pages/EpisodeWorkspace"));
-const ContentFactory = lazy(() => import("./pages/ContentFactory"));
-const Library = lazy(() => import("./pages/Library"));
-const Templates = lazy(() => import("./pages/Templates"));
-const MetricsPage = lazy(() => import("./pages/Metrics"));
-const Tasks = lazy(() => import("./pages/Tasks"));
-const SystemPage = lazy(() => import("./pages/System"));
-const Resources = lazy(() => import("./pages/Resources"));
-const ImportPage = lazy(() => import("./pages/Import"));
-const Ideas = lazy(() => import("./pages/Ideas"));
-const Briefs = lazy(() => import("./pages/Briefs"));
-const Publications = lazy(() => import("./pages/Publications"));
-const Insights = lazy(() => import("./pages/Insights"));
-const QuoteCandidates = lazy(() => import("./pages/QuoteCandidates"));
-const PlatformAccounts = lazy(() => import("./pages/PlatformAccounts"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// ── Lazy pages (with chunk-error recovery) ────────────────────────────────────
+const Index            = lazyWithRecovery(() => import("./pages/Index"));
+const Episodes         = lazyWithRecovery(() => import("./pages/Episodes"));
+const EpisodeWorkspace = lazyWithRecovery(() => import("./pages/EpisodeWorkspace"));
+const ContentFactory   = lazyWithRecovery(() => import("./pages/ContentFactory"));
+const Library          = lazyWithRecovery(() => import("./pages/Library"));
+const Templates        = lazyWithRecovery(() => import("./pages/Templates"));
+const MetricsPage      = lazyWithRecovery(() => import("./pages/Metrics"));
+const Tasks            = lazyWithRecovery(() => import("./pages/Tasks"));
+const SystemPage       = lazyWithRecovery(() => import("./pages/System"));
+const Resources        = lazyWithRecovery(() => import("./pages/Resources"));
+const ImportPage       = lazyWithRecovery(() => import("./pages/Import"));
+const Ideas            = lazyWithRecovery(() => import("./pages/Ideas"));
+const Briefs           = lazyWithRecovery(() => import("./pages/Briefs"));
+const Publications     = lazyWithRecovery(() => import("./pages/Publications"));
+const Insights         = lazyWithRecovery(() => import("./pages/Insights"));
+const QuoteCandidates  = lazyWithRecovery(() => import("./pages/QuoteCandidates"));
+const PlatformAccounts = lazyWithRecovery(() => import("./pages/PlatformAccounts"));
+const NotFound         = lazyWithRecovery(() => import("./pages/NotFound"));
 
 // Archived routes (still accessible but not in main nav)
-const Audience = lazy(() => import("./pages/Audience"));
-const Guests = lazy(() => import("./pages/Guests"));
-const Mentions = lazy(() => import("./pages/Mentions"));
-const Scorecard = lazy(() => import("./pages/Scorecard"));
-const EditorialCalendar = lazy(() => import("./pages/EditorialCalendar"));
-const BrandStudio = lazy(() => import("./pages/BrandStudio"));
-const ContentPipeline = lazy(() => import("./pages/ContentPipeline"));
-const DesignStudio = lazy(() => import("./pages/DesignStudio"));
-const EpisodeDetail = lazy(() => import("./pages/EpisodeDetail"));
-const ScriptGenerator = lazy(() => import("./pages/ScriptGenerator"));
-const PromptBuilder = lazy(() => import("./pages/PromptBuilder"));
-const VisualPromptGenerator = lazy(() => import("./pages/VisualPromptGenerator"));
-const AudioStudio = lazy(() => import("./pages/AudioStudio"));
-const Episode360 = lazy(() => import("./pages/Episode360"));
-const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
+const Audience              = lazyWithRecovery(() => import("./pages/Audience"));
+const Guests                = lazyWithRecovery(() => import("./pages/Guests"));
+const Mentions              = lazyWithRecovery(() => import("./pages/Mentions"));
+const Scorecard             = lazyWithRecovery(() => import("./pages/Scorecard"));
+const EditorialCalendar     = lazyWithRecovery(() => import("./pages/EditorialCalendar"));
+const BrandStudio           = lazyWithRecovery(() => import("./pages/BrandStudio"));
+const ContentPipeline       = lazyWithRecovery(() => import("./pages/ContentPipeline"));
+const DesignStudio          = lazyWithRecovery(() => import("./pages/DesignStudio"));
+const EpisodeDetail         = lazyWithRecovery(() => import("./pages/EpisodeDetail"));
+const ScriptGenerator       = lazyWithRecovery(() => import("./pages/ScriptGenerator"));
+const PromptBuilder         = lazyWithRecovery(() => import("./pages/PromptBuilder"));
+const VisualPromptGenerator = lazyWithRecovery(() => import("./pages/VisualPromptGenerator"));
+const AudioStudio           = lazyWithRecovery(() => import("./pages/AudioStudio"));
+const Episode360            = lazyWithRecovery(() => import("./pages/Episode360"));
+const KnowledgeBase         = lazyWithRecovery(() => import("./pages/KnowledgeBase"));
 
+// ── QueryClient ───────────────────────────────────────────────────────────────
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -59,6 +64,84 @@ const queryClient = new QueryClient({
   },
 });
 
+// ── Recovery helpers ──────────────────────────────────────────────────────────
+
+// Track current userId synchronously (updated on auth state changes).
+let _currentUserId: string | null = null;
+supabase.auth.onAuthStateChange((_event, session) => {
+  _currentUserId = session?.user?.id ?? null;
+});
+
+// Expose build ID for incident context.
+(window as Window & { __APP_BUILD_ID__?: string }).__APP_BUILD_ID__ =
+  (import.meta as { env: Record<string, string> }).env.VITE_APP_BUILD_ID ??
+  (import.meta as { env: Record<string, string> }).env.MODE;
+
+function getActiveEntity(): RecoveryEntityContext | null {
+  const match = window.location.pathname.match(/episodes\/([a-f0-9-]{36})/i);
+  if (!match) return null;
+  return { type: "episode", id: match[1] };
+}
+
+async function getRecentAutomationLogs() {
+  const entity = getActiveEntity();
+  if (!entity?.id) return [];
+  const { data } = await supabase
+    .from("automation_logs_view")
+    .select("id, event_type, status, error_message, run_id, created_at, metadata")
+    .eq("episode_id", entity.id)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    event_type: r.event_type ?? undefined,
+    status: r.status ?? undefined,
+    message: r.error_message,
+    run_id: r.run_id,
+    created_at: r.created_at ?? undefined,
+    metadata: r.metadata as Record<string, unknown> | null,
+  }));
+}
+
+function getEntityQueryKeys(entity: RecoveryEntityContext | null | undefined) {
+  if (!entity?.id || entity.type !== "episode") return [];
+  return [
+    ["episode", entity.id] as const,
+    ["automation-logs", entity.id] as const,
+    ["episode-metrics-summary", entity.id] as const,
+  ];
+}
+
+async function resyncEntity(entity: RecoveryEntityContext | null | undefined) {
+  if (!entity?.id || entity.type !== "episode") return;
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["episode", entity.id] }),
+    queryClient.invalidateQueries({ queryKey: ["automation-logs", entity.id] }),
+    queryClient.invalidateQueries({ queryKey: ["episode-metrics-summary", entity.id] }),
+  ]);
+}
+
+/** Adapter: fetch full log row then call retryAutomation. */
+async function retryAutomationById(logId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("automation_logs_view")
+    .select("*")
+    .eq("id", logId)
+    .single();
+  if (error || !data) throw new Error("Log no encontrado");
+  await retryAutomationFn(data as Parameters<typeof retryAutomationFn>[0]);
+}
+
+// ── Route error boundary resolvers ────────────────────────────────────────────
+const routeResolvers = {
+  getRoute: () => ({
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+  }),
+};
+
+// ── Page loader ───────────────────────────────────────────────────────────────
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-20">
@@ -68,83 +151,91 @@ function PageLoader() {
 }
 
 /**
- * Wraps each lazy-loaded page in its own Suspense + ErrorBoundary.
- *
- * Why: A single top-level Suspense means any one route failing to load
- * (e.g. stale chunk hash after deploy) takes down the entire app shell.
- * Per-route isolation means only the failing page shows the error/reload UI
- * while the rest of the app stays functional.
+ * Per-route wrapper: Suspense + RouteErrorBoundary.
+ * RouteErrorBoundary automatically reports render failures to RecoveryAgent.
  */
 function R({ C }: { C: ComponentType }) {
   return (
     <Suspense fallback={<PageLoader />}>
-      <ErrorBoundary>
+      <RouteErrorBoundary resolvers={routeResolvers}>
         <C />
-      </ErrorBoundary>
+      </RouteErrorBoundary>
     </Suspense>
   );
 }
 
+// ── App ───────────────────────────────────────────────────────────────────────
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <ErrorBoundary>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="*" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Routes>
-                      {/* Main routes */}
-                      <Route path="/" element={<R C={Index} />} />
-                      <Route path="/episodes" element={<R C={Episodes} />} />
-                      <Route path="/episodes/:id" element={<R C={EpisodeWorkspace} />} />
-                      <Route path="/factory" element={<R C={ContentFactory} />} />
-                      <Route path="/library" element={<R C={Library} />} />
-                      <Route path="/templates" element={<R C={Templates} />} />
-                      <Route path="/metrics" element={<R C={MetricsPage} />} />
-                      <Route path="/tasks" element={<R C={Tasks} />} />
-                      <Route path="/system" element={<R C={SystemPage} />} />
-                      <Route path="/resources" element={<R C={Resources} />} />
-                      <Route path="/import" element={<R C={ImportPage} />} />
-                      <Route path="/ideas" element={<R C={Ideas} />} />
-                      <Route path="/briefs" element={<R C={Briefs} />} />
-                      <Route path="/publications" element={<R C={Publications} />} />
-                      <Route path="/insights" element={<R C={Insights} />} />
-                      <Route path="/quotes" element={<R C={QuoteCandidates} />} />
-                      <Route path="/accounts" element={<R C={PlatformAccounts} />} />
+    <RecoveryAgentProvider
+      queryClient={queryClient}
+      supabase={supabase}
+      retryAutomation={retryAutomationById}
+      getEntity={getActiveEntity}
+      getUserId={() => _currentUserId}
+      getRecentAutomationLogs={getRecentAutomationLogs}
+      getEntityQueryKeys={getEntityQueryKeys}
+      resyncEntity={resyncEntity}
+    >
+      <AuthProvider>
+        <TooltipProvider>
+          <ErrorBoundary>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="*" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Routes>
+                        {/* Main routes */}
+                        <Route path="/" element={<R C={Index} />} />
+                        <Route path="/episodes" element={<R C={Episodes} />} />
+                        <Route path="/episodes/:id" element={<R C={EpisodeWorkspace} />} />
+                        <Route path="/factory" element={<R C={ContentFactory} />} />
+                        <Route path="/library" element={<R C={Library} />} />
+                        <Route path="/templates" element={<R C={Templates} />} />
+                        <Route path="/metrics" element={<R C={MetricsPage} />} />
+                        <Route path="/tasks" element={<R C={Tasks} />} />
+                        <Route path="/system" element={<R C={SystemPage} />} />
+                        <Route path="/resources" element={<R C={Resources} />} />
+                        <Route path="/import" element={<R C={ImportPage} />} />
+                        <Route path="/ideas" element={<R C={Ideas} />} />
+                        <Route path="/briefs" element={<R C={Briefs} />} />
+                        <Route path="/publications" element={<R C={Publications} />} />
+                        <Route path="/insights" element={<R C={Insights} />} />
+                        <Route path="/quotes" element={<R C={QuoteCandidates} />} />
+                        <Route path="/accounts" element={<R C={PlatformAccounts} />} />
 
-                      {/* Archived routes (accessible but not in nav) */}
-                      <Route path="/audience" element={<R C={Audience} />} />
-                      <Route path="/guests" element={<R C={Guests} />} />
-                      <Route path="/mentions" element={<R C={Mentions} />} />
-                      <Route path="/scorecard" element={<R C={Scorecard} />} />
-                      <Route path="/calendar" element={<R C={EditorialCalendar} />} />
-                      <Route path="/brand" element={<R C={BrandStudio} />} />
-                      <Route path="/pipeline" element={<R C={ContentPipeline} />} />
-                      <Route path="/design" element={<R C={DesignStudio} />} />
-                      <Route path="/episodes/:id/detail" element={<R C={EpisodeDetail} />} />
-                      <Route path="/script-generator" element={<R C={ScriptGenerator} />} />
-                      <Route path="/prompt-builder" element={<R C={PromptBuilder} />} />
-                      <Route path="/visual-prompts" element={<R C={VisualPromptGenerator} />} />
-                      <Route path="/audio" element={<R C={AudioStudio} />} />
-                      <Route path="/episodes/:episodeId/360" element={<R C={Episode360} />} />
-                      <Route path="/knowledge" element={<R C={KnowledgeBase} />} />
+                        {/* Archived routes (accessible but not in nav) */}
+                        <Route path="/audience" element={<R C={Audience} />} />
+                        <Route path="/guests" element={<R C={Guests} />} />
+                        <Route path="/mentions" element={<R C={Mentions} />} />
+                        <Route path="/scorecard" element={<R C={Scorecard} />} />
+                        <Route path="/calendar" element={<R C={EditorialCalendar} />} />
+                        <Route path="/brand" element={<R C={BrandStudio} />} />
+                        <Route path="/pipeline" element={<R C={ContentPipeline} />} />
+                        <Route path="/design" element={<R C={DesignStudio} />} />
+                        <Route path="/episodes/:id/detail" element={<R C={EpisodeDetail} />} />
+                        <Route path="/script-generator" element={<R C={ScriptGenerator} />} />
+                        <Route path="/prompt-builder" element={<R C={PromptBuilder} />} />
+                        <Route path="/visual-prompts" element={<R C={VisualPromptGenerator} />} />
+                        <Route path="/audio" element={<R C={AudioStudio} />} />
+                        <Route path="/episodes/:episodeId/360" element={<R C={Episode360} />} />
+                        <Route path="/knowledge" element={<R C={KnowledgeBase} />} />
 
-                      <Route path="*" element={<R C={NotFound} />} />
-                    </Routes>
-                  </AppLayout>
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </BrowserRouter>
-        </ErrorBoundary>
-      </TooltipProvider>
-    </AuthProvider>
+                        <Route path="*" element={<R C={NotFound} />} />
+                      </Routes>
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
+              </Routes>
+            </BrowserRouter>
+          </ErrorBoundary>
+        </TooltipProvider>
+      </AuthProvider>
+    </RecoveryAgentProvider>
   </QueryClientProvider>
 );
 

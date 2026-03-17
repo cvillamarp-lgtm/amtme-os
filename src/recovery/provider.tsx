@@ -1,0 +1,125 @@
+import React, { createContext, useContext, useEffect, useMemo } from "react";
+import type { QueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { installChunkReloadGuard } from "./chunkGuard";
+import { installRuntimeCapture, reportRecoveryIncident } from "./runtimeCapture";
+import type { RecoveryAutomationLog, RecoveryEntityContext } from "./types";
+import type { RecoveryContextResolvers } from "./context";
+import { RecoveryButton } from "./RecoveryButton";
+import { RecoveryPanel } from "./RecoveryPanel";
+import { escalateIncidentToSupabase } from "./supabaseEscalation";
+import { recoveryStore } from "./store";
+
+interface RecoveryAgentProviderProps {
+  children: React.ReactNode;
+  queryClient: QueryClient;
+  supabase?: SupabaseClient;
+  retryAutomation?: (logId: string) => Promise<void>;
+  getEntity?: () => RecoveryEntityContext | null | undefined;
+  getUserId?: () => string | null | undefined;
+  getRecentAutomationLogs?: () => Promise<RecoveryAutomationLog[]>;
+  getEntityQueryKeys?: (entity: RecoveryEntityContext | null | undefined) => Array<readonly unknown[]>;
+  resyncEntity?: (entity: RecoveryEntityContext | null | undefined) => Promise<void>;
+}
+
+interface RecoveryAgentContextValue {
+  queryClient: QueryClient;
+  retryAutomation?: (logId: string) => Promise<void>;
+  reportManualIssue: (title: string, message: string, error?: unknown) => Promise<void>;
+  getEntityQueryKeys?: (entity: RecoveryEntityContext | null | undefined) => Array<readonly unknown[]>;
+  resyncEntity?: (entity: RecoveryEntityContext | null | undefined) => Promise<void>;
+}
+
+const RecoveryAgentContext = createContext<RecoveryAgentContextValue | null>(null);
+
+export function RecoveryAgentProvider({
+  children,
+  queryClient,
+  supabase,
+  retryAutomation,
+  getEntity,
+  getUserId,
+  getRecentAutomationLogs,
+  getEntityQueryKeys,
+  resyncEntity,
+}: RecoveryAgentProviderProps) {
+  const resolvers: RecoveryContextResolvers = useMemo(
+    () => ({
+      getRoute: () => ({
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+      }),
+      getBuildId: () => (window as Window & { __APP_BUILD_ID__?: string }).__APP_BUILD_ID__,
+      getUserId,
+      getEntity,
+      getQueryKeys: () =>
+        queryClient
+          .getQueryCache()
+          .getAll()
+          .map((q) => JSON.stringify(q.queryKey)),
+      getRecentAutomationLogs,
+      getExtra: () => ({
+        online: navigator.onLine,
+        userAgent: navigator.userAgent,
+      }),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getEntity, getRecentAutomationLogs, getUserId, queryClient]
+  );
+
+  useEffect(() => {
+    installChunkReloadGuard();
+    installRuntimeCapture(resolvers);
+  }, [resolvers]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    return recoveryStore.subscribe(() => {
+      const state = recoveryStore.getState();
+      const latest = state.incidents[0];
+      if (!latest) return;
+
+      if (latest.status === "unresolved" || latest.severity === "critical") {
+        void escalateIncidentToSupabase(supabase, latest).catch(() => {});
+      }
+    });
+  }, [supabase]);
+
+  const value = useMemo<RecoveryAgentContextValue>(
+    () => ({
+      queryClient,
+      retryAutomation,
+      getEntityQueryKeys,
+      resyncEntity,
+      reportManualIssue: async (title, message, error) => {
+        await reportRecoveryIncident({
+          kind: "manual",
+          title,
+          message,
+          error,
+          resolvers,
+        });
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getEntityQueryKeys, queryClient, resolvers, resyncEntity, retryAutomation]
+  );
+
+  return (
+    <RecoveryAgentContext.Provider value={value}>
+      {children}
+      <RecoveryButton />
+      <RecoveryPanel />
+    </RecoveryAgentContext.Provider>
+  );
+}
+
+export function useRecoveryAgentContext() {
+  const ctx = useContext(RecoveryAgentContext);
+  if (!ctx) {
+    throw new Error("useRecoveryAgentContext debe usarse dentro de RecoveryAgentProvider");
+  }
+  return ctx;
+}
