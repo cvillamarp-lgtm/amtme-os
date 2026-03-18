@@ -83,11 +83,11 @@ function NoteItem({
         ].join(" ")}>
           {note.title || "Sin título"}
         </p>
-        <span className="text-[10px] text-muted-foreground/60 shrink-0 ml-1">
+        <span className="text-xs text-muted-foreground shrink-0 ml-1">
           {timeAgo(note.updated_at)}
         </span>
       </div>
-      <p className="text-[12px] text-muted-foreground/70 truncate mt-0.5 pl-0.5">
+      <p className="text-xs text-muted-foreground truncate mt-0.5 pl-0.5">
         {snippet(note.body)}
       </p>
     </button>
@@ -398,8 +398,8 @@ export default function Notes() {
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
             <FileText className="h-12 w-12 text-muted-foreground/20" />
             <div>
-              <p className="text-sm font-medium text-muted-foreground/60">Selecciona una nota</p>
-              <p className="text-xs text-muted-foreground/40 mt-1">o crea una nueva</p>
+              <p className="text-sm font-medium text-muted-foreground">Selecciona una nota</p>
+              <p className="text-xs text-muted-foreground mt-1">o crea una nueva</p>
             </div>
             <Button size="sm" variant="outline" onClick={handleCreate}>
               <Plus className="h-3.5 w-3.5 mr-1.5" />

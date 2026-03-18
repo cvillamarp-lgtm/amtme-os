@@ -152,7 +152,7 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
         {insight.episodes && (
           <div className="flex items-center gap-1 mt-0.5 ml-6">
             <Mic className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-            <span className="text-[10px] text-muted-foreground/60 line-clamp-1">
+            <span className="text-xs text-muted-foreground line-clamp-1">
               {episodeLabel(insight.episodes)}
             </span>
           </div>
@@ -168,7 +168,7 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
 
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground/50">Confianza</span>
+            <span className="text-xs text-muted-foreground">Confianza</span>
             <span className={`text-[10px] font-medium ${cc.cls}`}>{cc.label}</span>
           </div>
           <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -187,7 +187,7 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
           className="flex items-center justify-between border-t border-border pt-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-[10px] text-muted-foreground/40">{timeAgo(insight.created_at)}</span>
+          <span className="text-xs text-muted-foreground">{timeAgo(insight.created_at)}</span>
           <div className="flex gap-1">
             {insight.status === "active" && (
               <button
@@ -284,7 +284,7 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
           {insight.episodes && (
             <div className="flex items-center gap-1 mt-1">
               <Mic className="h-3 w-3 text-muted-foreground/40" />
-              <span className="text-[10px] text-muted-foreground/60">{episodeLabel(insight.episodes)}</span>
+              <span className="text-xs text-muted-foreground">{episodeLabel(insight.episodes)}</span>
             </div>
           )}
         </SheetHeader>

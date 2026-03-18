@@ -522,9 +522,9 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    {!audit.canProduce && <Badge variant="destructive" className="text-[9px]">Bloqueado</Badge>}
+                    {!audit.canProduce && <Badge variant="destructive" className="text-xs">Bloqueado</Badge>}
                     <Button
-                      size="sm" variant="outline" className="h-7 text-xs"
+                      size="sm" variant="outline" className="h-9 text-xs"
                       onClick={(e) => { e.stopPropagation(); navigate(`/factory?episode_id=${ep.id}`); }}
                     >
                       <Zap className="h-3 w-3 mr-1" />Producir

@@ -314,7 +314,7 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
 
         <div className="flex items-center gap-1 mt-1">
           <Mic className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-          <span className="text-[10px] text-muted-foreground/60 line-clamp-1">
+          <span className="text-xs text-muted-foreground line-clamp-1">
             {episodeLabel(pub.episodes)}
           </span>
         </div>
@@ -342,7 +342,7 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
                 style={{ width: `${(checkDone / checkTotal) * 100}%` }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground/40">{checkDone}/{checkTotal} pasos</span>
+            <span className="text-xs text-muted-foreground">{checkDone}/{checkTotal} pasos</span>
           </div>
         )}
 
@@ -350,7 +350,7 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
           className="flex items-center justify-between border-t border-border pt-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-[10px] text-muted-foreground/40">{timeAgo(pub.created_at)}</span>
+          <span className="text-xs text-muted-foreground">{timeAgo(pub.created_at)}</span>
           {pub.status === "draft" && (
             <button
               className="text-[10px] text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"

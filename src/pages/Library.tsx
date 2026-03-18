@@ -345,29 +345,29 @@ export default function Library() {
                 )}
                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                   {asset.status === "generated" && (
-                    <Button size="sm" variant="outline" className="h-7 text-[10px] flex-1" onClick={() => updateStatus(asset.id, "approved")}>
+                    <Button size="sm" variant="outline" className="h-9 text-xs flex-1" onClick={() => updateStatus(asset.id, "approved")}>
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Aprobar
                     </Button>
                   )}
                   {asset.status === "approved" && (
-                    <Button size="sm" variant="outline" className="h-7 text-[10px] flex-1" onClick={() => updateStatus(asset.id, "published")}>
+                    <Button size="sm" variant="outline" className="h-9 text-xs flex-1" onClick={() => updateStatus(asset.id, "published")}>
                       Publicar
                     </Button>
                   )}
                   {asset.caption && (
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copyCaption(asset)}>
+                    <Button size="sm" variant="ghost" className="h-9 w-9 p-0" onClick={() => copyCaption(asset)}>
                       {copiedId === asset.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                     </Button>
                   )}
                   {asset.image_url && (
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild>
+                    <Button size="sm" variant="ghost" className="h-9 w-9 p-0" asChild>
                       <a href={asset.image_url} download target="_blank" rel="noopener noreferrer">
                         <Download className="h-3 w-3" />
                       </a>
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteAsset(asset.id)}>
+                  <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-destructive" onClick={() => deleteAsset(asset.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
