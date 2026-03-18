@@ -73,11 +73,11 @@ export default function EpisodeWorkspace() {
             <h1 className="text-xl font-display font-bold text-foreground truncate">
               {episode.final_title || episode.working_title || episode.title}
             </h1>
-            <Badge variant="outline" className={`text-[10px] ${level.color}`}>
+            <Badge variant="outline" className={`text-xs ${level.color}`}>
               {level.nivel} · {audit.healthScore}%
             </Badge>
             {!audit.canProduce && (
-              <Badge variant="destructive" className="text-[10px]">Bloqueado</Badge>
+              <Badge variant="destructive" className="text-xs">Bloqueado</Badge>
             )}
           </div>
           {episode.theme && (
@@ -149,14 +149,14 @@ export default function EpisodeWorkspace() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs h-7"
+                      className="text-xs h-9"
                       onClick={() => navigate(`/publications?episode=${episode.id}`)}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />Ver publicaciones
                     </Button>
                     <Button
                       size="sm"
-                      className="text-xs h-7"
+                      className="text-xs h-9"
                       onClick={() => navigate("/publications")}
                     >
                       <Plus className="h-3 w-3 mr-1" />Nueva publicación

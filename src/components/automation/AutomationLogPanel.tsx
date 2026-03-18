@@ -117,13 +117,13 @@ function LogRow({ log, episodeId }: { log: AutomationLogRow; episodeId: string }
 
         {/* Duration */}
         {log.duration_ms != null && (
-          <span className="text-[10px] text-muted-foreground/60 shrink-0">
+          <span className="text-xs text-muted-foreground shrink-0">
             {formatDuration(log.duration_ms)}
           </span>
         )}
 
         {/* Time */}
-        <span className="text-[10px] text-muted-foreground/60 shrink-0 w-16 text-right">
+        <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">
           {formatTime(log.created_at)}
         </span>
 
@@ -132,7 +132,7 @@ function LogRow({ log, episodeId }: { log: AutomationLogRow; episodeId: string }
           <Button
             size="icon"
             variant="ghost"
-            className="h-5 w-5 shrink-0 ml-1"
+            className="h-8 w-8 shrink-0 ml-1"
             onClick={(e) => {
               e.stopPropagation();
               handleRetry();
@@ -160,7 +160,7 @@ function LogRow({ log, episodeId }: { log: AutomationLogRow; episodeId: string }
       {expanded && (
         <div className="px-3 pb-3 pt-0 space-y-1.5 bg-secondary/20">
           {log.run_id && (
-            <p className="text-[10px] font-mono text-muted-foreground/60">
+            <p className="text-xs font-mono text-muted-foreground">
               run: {log.run_id}
             </p>
           )}
@@ -173,7 +173,7 @@ function LogRow({ log, episodeId }: { log: AutomationLogRow; episodeId: string }
             <p className="text-xs text-muted-foreground italic">{log.skip_reason}</p>
           )}
           {log.metadata && Object.keys(log.metadata).length > 0 && (
-            <pre className="text-[10px] font-mono text-muted-foreground/70 bg-secondary/50 rounded p-2 overflow-x-auto">
+            <pre className="text-xs font-mono text-muted-foreground bg-secondary/50 rounded p-2 overflow-x-auto">
               {JSON.stringify(log.metadata, null, 2)}
             </pre>
           )}
@@ -195,7 +195,7 @@ export function AutomationLogPanel({ episodeId }: Props) {
           Automatizaciones recientes
         </span>
         {logs && logs.length > 0 && (
-          <span className="ml-auto text-[10px] text-muted-foreground/60">
+          <span className="ml-auto text-xs text-muted-foreground">
             {logs.length} registros
           </span>
         )}

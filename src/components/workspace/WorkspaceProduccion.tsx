@@ -45,11 +45,11 @@ function Section({ icon, title, count, link, linkLabel, children }: SectionProps
           <span className="text-muted-foreground">{icon}</span>
           <h3 className="text-sm font-medium text-foreground">{title}</h3>
           {count !== undefined && (
-            <Badge variant="secondary" className="text-[10px] h-4">{count}</Badge>
+            <Badge variant="secondary" className="text-xs h-4">{count}</Badge>
           )}
         </div>
         {link && (
-          <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 text-muted-foreground" asChild>
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-muted-foreground" asChild>
             <Link to={link}>
               {linkLabel ?? "Ver"} <ArrowRight className="h-3 w-3" />
             </Link>
@@ -121,12 +121,12 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
           ) : (
             <div className="flex gap-2 flex-wrap">
               {masteredTakes > 0 && (
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-xs">
                   Masterizadas: {masteredTakes}
                 </Badge>
               )}
               {recordedTakes > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   Grabadas: {recordedTakes}
                 </Badge>
               )}
@@ -147,12 +147,12 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
           ) : (
             <div className="flex gap-2 flex-wrap">
               {doneTranscripts > 0 && (
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-xs">
                   Listas: {doneTranscripts}
                 </Badge>
               )}
               {transcripts.length - doneTranscripts > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   Procesando: {transcripts.length - doneTranscripts}
                 </Badge>
               )}
@@ -173,11 +173,11 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
           ) : (
             <div className="flex gap-2 flex-wrap">
               {approvedQuotes > 0 && (
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-xs">
                   Aprobados: {approvedQuotes}
                 </Badge>
               )}
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className="text-xs">
                 Total: {quotesData.length}
               </Badge>
             </div>
@@ -197,17 +197,17 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
           ) : (
             <div className="flex gap-2 flex-wrap">
               {approvedAssets > 0 && (
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-xs">
                   Aprobados: {approvedAssets}
                 </Badge>
               )}
               {renderedAssets > 0 && (
-                <Badge variant="default" className="text-[10px]">
+                <Badge variant="default" className="text-xs">
                   Renderizados: {renderedAssets}
                 </Badge>
               )}
               {pendingAssets > 0 && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   Pendientes: {pendingAssets}
                 </Badge>
               )}
@@ -232,7 +232,7 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
                 className="flex items-center justify-between gap-3 rounded-md border border-border bg-secondary/30 px-3 py-2"
               >
                 <p className="text-xs font-medium truncate">{pkg.title}</p>
-                <Badge variant="secondary" className="text-[10px] shrink-0">{pkg.status}</Badge>
+                <Badge variant="secondary" className="text-xs shrink-0">{pkg.status}</Badge>
               </div>
             ))}
             {exportsData.length > 4 && (
@@ -259,7 +259,7 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
               >
                 <div className="min-w-0">
                   <p className="text-xs font-medium">{item.platform}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(item.scheduled_at)}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(item.scheduled_at)}</p>
                 </div>
                 <Badge
                   variant={
@@ -269,7 +269,7 @@ export function WorkspaceProduccion({ episode, operationalState }: Props) {
                       ? "destructive"
                       : "secondary"
                   }
-                  className="text-[10px] shrink-0"
+                  className="text-xs shrink-0"
                 >
                   {item.status}
                 </Badge>

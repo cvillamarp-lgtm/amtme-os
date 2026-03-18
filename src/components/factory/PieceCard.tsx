@@ -82,9 +82,9 @@ export function PieceCard({
               {String(piece.id).padStart(2, "0")}
             </span>
             <span className="text-sm font-medium truncate">{piece.shortName}</span>
-            <Badge variant="outline" className="text-[10px]">{piece.format}</Badge>
+            <Badge variant="outline" className="text-xs">{piece.format}</Badge>
           </div>
-          <Badge variant="secondary" className={`text-[10px] ${statusColor}`}>
+          <Badge variant="secondary" className={`text-xs ${statusColor}`}>
             {status === "pending" ? "Pendiente" : status === "generated" ? "Generada" : status === "approved" ? "Aprobada" : "Publicada"}
           </Badge>
         </div>

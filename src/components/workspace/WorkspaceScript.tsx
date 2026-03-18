@@ -277,7 +277,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
               {autoExtracting ? "Extrayendo..." : "Extraer citas e insights"}
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Citas → <strong>Banco de Citas</strong> · Insights → <strong>Insights</strong>
             {" · "}
             <span className="text-primary/70">Se ejecuta automáticamente al guardar</span>

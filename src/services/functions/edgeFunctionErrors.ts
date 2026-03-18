@@ -49,11 +49,24 @@ const DEDUPE_TTL_MS = 30_000;
  * If the same message was shown within DEDUPE_TTL_MS, it is suppressed.
  */
 export function showEdgeFunctionError(e: unknown): void {
+  const err = e as EdgeFunctionError;
   const msg = getEdgeFunctionErrorMessage(e);
   const now = Date.now();
   const key = msg.slice(0, 120);
   const last = _shownAt.get(key);
   if (last !== undefined && now - last < DEDUPE_TTL_MS) return;
   _shownAt.set(key, now);
+
+  if (err instanceof Error && err.statusCode === 401) {
+    toast.error(msg, {
+      duration: 10_000,
+      action: {
+        label: "Iniciar sesión",
+        onClick: () => window.location.assign("/auth"),
+      },
+    });
+    return;
+  }
+
   toast.error(msg);
 }

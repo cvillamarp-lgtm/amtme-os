@@ -35,7 +35,7 @@ function statusConfig(status: string | null) {
     case "approved":   return { label: "Aprobada",   cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
     case "in_brief":   return { label: "En Brief",   cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
     case "backlog":    return { label: "Backlog",     cls: "text-purple-400 bg-purple-400/10 border-purple-400/20" };
-    case "archived":   return { label: "Archivada",  cls: "text-muted-foreground/50 bg-muted/30 border-border/40" };
+    case "archived":   return { label: "Archivada",  cls: "text-muted-foreground bg-muted/30 border-border/40" };
     default:           return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
   }
 }
@@ -86,7 +86,7 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-medium text-sm leading-snug line-clamp-2 flex-1">{idea.title}</h3>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
+          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
             {sc.label}
           </span>
         </div>
@@ -105,24 +105,24 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
         <div className="flex items-end justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground w-16">Contenido</span>
+              <span className="text-xs text-muted-foreground w-16">Contenido</span>
               <ScoreDots value={idea.content_potential_score} />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground w-16">Derivados</span>
+              <span className="text-xs text-muted-foreground w-16">Derivados</span>
               <ScoreDots value={idea.derivative_potential_score} />
             </div>
           </div>
-          <span className={`text-[10px] font-medium ${uc.cls}`}>{uc.label}</span>
+          <span className={`text-xs font-medium ${uc.cls}`}>{uc.label}</span>
         </div>
 
         {idea.tags && idea.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {idea.tags.slice(0, 3).map((t) => (
-              <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">{t}</Badge>
+              <Badge key={t} variant="secondary" className="text-xs px-1.5 py-0">{t}</Badge>
             ))}
             {idea.tags.length > 3 && (
-              <span className="text-[10px] text-muted-foreground/50">+{idea.tags.length - 3}</span>
+              <span className="text-xs text-muted-foreground">+{idea.tags.length - 3}</span>
             )}
           </div>
         )}
@@ -132,11 +132,11 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
           className="flex items-center justify-between border-t border-border pt-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-[10px] text-muted-foreground/40">{timeAgo(idea.created_at)}</span>
+          <span className="text-xs text-muted-foreground">{timeAgo(idea.created_at)}</span>
           <div className="flex gap-1">
             {idea.status === "captured" && (
               <button
-                className="text-[10px] text-muted-foreground hover:text-yellow-400 transition-colors px-1.5 py-0.5 rounded hover:bg-yellow-400/10"
+                className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors px-1.5 py-0.5 rounded hover:bg-yellow-400/10"
                 onClick={() => onStatusChange("evaluating")}
               >
                 Evaluar
@@ -144,7 +144,7 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
             )}
             {idea.status === "evaluating" && (
               <button
-                className="text-[10px] text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded hover:bg-emerald-400/10"
+                className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded hover:bg-emerald-400/10"
                 onClick={() => onStatusChange("approved")}
               >
                 Aprobar
@@ -152,7 +152,7 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
             )}
             {!["archived", "in_brief"].includes(idea.status ?? "") && (
               <button
-                className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors px-1.5 py-0.5 rounded"
+                className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors px-1.5 py-0.5 rounded"
                 onClick={() => onStatusChange("archived")}
               >
                 Archivar
@@ -255,10 +255,10 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>{sc.label}</span>
-            <span className={`text-[10px] font-medium ${uc.cls}`}>⚡ {uc.label}</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>{sc.label}</span>
+            <span className={`text-xs font-medium ${uc.cls}`}>⚡ {uc.label}</span>
             {idea.origin && (
-              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{idea.origin}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{idea.origin}</span>
             )}
           </div>
         </SheetHeader>
@@ -382,7 +382,7 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
             <div className="space-y-5">
               {idea.description && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Descripción</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Descripción</p>
                   <p className="text-sm leading-relaxed">{idea.description}</p>
                 </div>
               )}
@@ -391,13 +391,13 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                 <div className="grid grid-cols-2 gap-4">
                   {idea.theme && (
                     <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Tema</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Tema</p>
                       <p className="text-sm">{idea.theme}</p>
                     </div>
                   )}
                   {idea.emotional_theme && (
                     <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Tema emocional</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Tema emocional</p>
                       <p className="text-sm">{idea.emotional_theme}</p>
                     </div>
                   )}
@@ -406,17 +406,17 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 
               {/* Scores */}
               <div>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Potencial</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Potencial</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-muted/40 rounded-lg p-3 space-y-1">
-                    <p className="text-[10px] text-muted-foreground">Contenido</p>
+                    <p className="text-xs text-muted-foreground">Contenido</p>
                     <div className="flex items-center gap-2">
                       <ScoreDots value={idea.content_potential_score} />
                       <span className="text-base font-bold tabular-nums">{idea.content_potential_score ?? "—"}</span>
                     </div>
                   </div>
                   <div className="bg-muted/40 rounded-lg p-3 space-y-1">
-                    <p className="text-[10px] text-muted-foreground">Derivados</p>
+                    <p className="text-xs text-muted-foreground">Derivados</p>
                     <div className="flex items-center gap-2">
                       <ScoreDots value={idea.derivative_potential_score} />
                       <span className="text-base font-bold tabular-nums">{idea.derivative_potential_score ?? "—"}</span>
@@ -427,17 +427,17 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 
               {idea.audience_fit && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Encaje con audiencia</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Encaje con audiencia</p>
                   <p className="text-sm">{idea.audience_fit}</p>
                 </div>
               )}
 
               {idea.tags && idea.tags.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Tags</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Tags</p>
                   <div className="flex flex-wrap gap-1.5">
                     {idea.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                      <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
                     ))}
                   </div>
                 </div>
@@ -445,21 +445,21 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 
               {idea.notes && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Notas</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Notas</p>
                   <p className="text-sm text-muted-foreground">{idea.notes}</p>
                 </div>
               )}
 
               {idea.reference_links && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Referencias</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Referencias</p>
                   <p className="text-sm text-muted-foreground">{idea.reference_links}</p>
                 </div>
               )}
 
               {/* Action buttons */}
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
                 <div className="grid grid-cols-2 gap-2">
                   {idea.status === "captured" && (
                     <Button
@@ -510,7 +510,7 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground/30 pt-1">
+              <p className="text-xs text-muted-foreground pt-1">
                 Creada {timeAgo(idea.created_at)} · Actualizada {timeAgo(idea.updated_at)}
               </p>
             </div>
@@ -704,7 +704,7 @@ export default function Ideas() {
             <TabsTrigger key={value} value={value} className="text-xs gap-1.5">
               {label}
               {counts[value] > 0 && (
-                <span className="text-[10px] opacity-50 tabular-nums">{counts[value]}</span>
+                <span className="text-xs opacity-50 tabular-nums">{counts[value]}</span>
               )}
             </TabsTrigger>
           ))}

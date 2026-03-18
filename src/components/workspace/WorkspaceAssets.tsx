@@ -110,8 +110,8 @@ export function WorkspaceAssets({ episode, assets }: Props) {
                 )}
               </AspectRatio>
               <div className="p-2">
-                <p className="text-[10px] font-medium truncate text-foreground">{asset.piece_name}</p>
-                <Badge variant="secondary" className="text-[9px] mt-1">
+                <p className="text-xs font-medium truncate text-foreground">{asset.piece_name}</p>
+                <Badge variant="secondary" className="text-xs mt-1">
                   {statusLabel[asset.status || "pending"] || asset.status}
                 </Badge>
               </div>

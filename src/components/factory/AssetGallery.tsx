@@ -59,24 +59,24 @@ export function AssetGallery({ pieces, assets, onApprove, onDelete }: AssetGalle
             <CardContent className="p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium truncate">{piece.shortName}</span>
-                <Badge variant="secondary" className="text-[10px]">{statusLabel}</Badge>
+                <Badge variant="secondary" className="text-xs">{statusLabel}</Badge>
               </div>
               {asset.caption && (
-                <p className="text-[10px] text-muted-foreground line-clamp-2">{asset.caption}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{asset.caption}</p>
               )}
               <div className="flex gap-1">
                 {asset.status === "generated" && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-[10px] flex-1"
+                    className="h-9 text-xs flex-1"
                     onClick={() => onApprove(piece.id)}
                   >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Aprobar
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild>
+                <Button size="sm" variant="ghost" className="h-9 w-9 p-0" asChild>
                   <a href={asset.imageUrl} download target="_blank" rel="noopener noreferrer">
                     <Download className="h-3 w-3" />
                   </a>
@@ -84,7 +84,7 @@ export function AssetGallery({ pieces, assets, onApprove, onDelete }: AssetGalle
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 w-7 p-0 text-destructive"
+                  className="h-9 w-9 p-0 text-destructive"
                   onClick={() => onDelete(piece.id)}
                 >
                   <Trash2 className="h-3 w-3" />

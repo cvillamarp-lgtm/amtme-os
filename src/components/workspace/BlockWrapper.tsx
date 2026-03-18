@@ -52,7 +52,7 @@ export function BlockWrapper({
           <span className="text-sm font-medium text-foreground">{label}</span>
           <Badge
             variant="outline"
-            className={`text-[10px] gap-1 ${visual.color} ${visual.bgColor} border-transparent ${visual.animate ? "animate-pulse" : ""}`}
+            className={`text-xs gap-1 ${visual.color} ${visual.bgColor} border-transparent ${visual.animate ? "animate-pulse" : ""}`}
           >
             <StatusIcon status={status} />
             {visual.label}
@@ -64,7 +64,7 @@ export function BlockWrapper({
           {versionHistory.length > 0 && onRestoreVersion && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-muted-foreground">
+                <Button variant="ghost" size="sm" className="h-8 px-1.5 text-xs text-muted-foreground">
                   <History className="h-3 w-3 mr-1" />
                   {versionHistory.length}
                 </Button>
@@ -91,7 +91,7 @@ export function BlockWrapper({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-1.5 text-[10px] text-emerald-600 hover:text-emerald-700"
+              className="h-8 px-1.5 text-xs text-emerald-600 hover:text-emerald-700"
               onClick={onApprove}
             >
               <Check className="h-3 w-3 mr-1" />Aprobar
@@ -103,7 +103,7 @@ export function BlockWrapper({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 px-1.5 text-[10px] text-primary hover:text-primary/80"
+              className="h-8 px-1.5 text-xs text-primary hover:text-primary/80"
               onClick={onRegenerate}
               disabled={isRegenerating}
             >
@@ -117,17 +117,17 @@ export function BlockWrapper({
       {/* Stale message */}
       {status === "stale" && state?.stale_reason && (
         <div className="flex items-center justify-between bg-orange-500/5 border border-orange-500/20 rounded-md px-3 py-1.5 mb-2">
-          <p className="text-[11px] text-orange-600">
+          <p className="text-xs text-orange-600">
             Este contenido quedó desactualizado porque {state.stale_reason}.
           </p>
           <div className="flex gap-1 ml-2 shrink-0">
             {onRegenerate && (
-              <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px]" onClick={onRegenerate} disabled={isRegenerating}>
+              <Button variant="ghost" size="sm" className="h-8 px-1.5 text-xs" onClick={onRegenerate} disabled={isRegenerating}>
                 Regenerar
               </Button>
             )}
             {onDismissStale && (
-              <Button variant="ghost" size="sm" className="h-5 px-1 text-[10px]" onClick={onDismissStale}>
+              <Button variant="ghost" size="sm" className="h-8 px-1 text-xs" onClick={onDismissStale}>
                 <X className="h-3 w-3" />
               </Button>
             )}

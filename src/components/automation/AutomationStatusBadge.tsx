@@ -58,7 +58,7 @@ export function AutomationStatusBadge({ episodeId, eventType, className }: Props
   return (
     <span
       title={title}
-      className={cn("inline-flex items-center gap-0.5 text-[11px] font-medium", config.className, className)}
+      className={cn("inline-flex items-center gap-0.5 text-xs font-medium", config.className, className)}
     >
       <Icon className="h-3 w-3" />
       {config.label}
