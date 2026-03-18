@@ -100,6 +100,8 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       conflicto: formData.conflicto_detectado,
       block_states: states,
       version_history: history,
+      // Date columns must be null, not empty string
+      release_date: formData.release_date || null,
     };
     const hash = JSON.stringify(payload);
     if (hash === lastSavedRef.current) return;
@@ -259,6 +261,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         conflicto: form.conflicto_detectado,
         block_states: blockStates,
         version_history: versionHistory,
+        release_date: form.release_date || null,
       });
       toast.success("Episodio actualizado");
     } catch (e: any) {
