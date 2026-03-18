@@ -35,6 +35,8 @@ const Insights         = lazyWithRecovery(() => import("./pages/Insights"));
 const QuoteCandidates  = lazyWithRecovery(() => import("./pages/QuoteCandidates"));
 const PlatformAccounts = lazyWithRecovery(() => import("./pages/PlatformAccounts"));
 const Notes            = lazyWithRecovery(() => import("./pages/Notes"));
+const Seasons          = lazyWithRecovery(() => import("./pages/Seasons"));
+const Sponsors         = lazyWithRecovery(() => import("./pages/Sponsors"));
 const NotFound         = lazyWithRecovery(() => import("./pages/NotFound"));
 
 // Archived routes (still accessible but not in main nav)
@@ -209,6 +211,8 @@ const App = () => (
                         <Route path="/quotes" element={<R C={QuoteCandidates} />} />
                         <Route path="/accounts" element={<R C={PlatformAccounts} />} />
                         <Route path="/notes" element={<R C={Notes} />} />
+                        <Route path="/seasons" element={<R C={Seasons} />} />
+                        <Route path="/sponsors" element={<R C={Sponsors} />} />
 
                         {/* Archived routes (accessible but not in nav) */}
                         <Route path="/audience" element={<R C={Audience} />} />

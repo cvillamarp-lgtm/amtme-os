@@ -1,7 +1,8 @@
 import {
   Home, Mic, Factory, BarChart3, ListTodo, LogOut,
   Lightbulb, Send, FlaskConical, Users, Sun, Moon,
-  AudioWaveform, BookOpen, StickyNote,
+  AudioWaveform, BookOpen, StickyNote, Layers, DollarSign,
+  CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -29,17 +30,21 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
-  { label: "Dashboard",  url: "/",         icon: Home },
-  { label: "Ideas",      url: "/ideas",     icon: Lightbulb },
-  { label: "Episodios",  url: "/episodes",  icon: Mic },
-  { label: "Fábrica",    url: "/factory",   icon: Factory },
+  { label: "Dashboard",   url: "/",         icon: Home },
+  { label: "Ideas",       url: "/ideas",    icon: Lightbulb },
+  { label: "Episodios",   url: "/episodes", icon: Mic },
+  { label: "Temporadas",  url: "/seasons",  icon: Layers },
+  { label: "Fábrica",     url: "/factory",  icon: Factory },
 ];
 
 const distributeNav: NavItem[] = [
   { label: "Publicaciones", url: "/publications", icon: Send },
-  { label: "Audio",          url: "/audio",        icon: AudioWaveform },
-  { label: "Cuentas",        url: "/accounts",     icon: Users },
-  { label: "Tareas",         url: "/tasks",        icon: ListTodo, badgeKey: "pendingTasks" },
+  { label: "Calendario",    url: "/calendar",     icon: CalendarDays },
+  { label: "Audio",         url: "/audio",        icon: AudioWaveform },
+  { label: "Cuentas",       url: "/accounts",     icon: Users },
+  { label: "Invitados",     url: "/guests",       icon: Users },
+  { label: "Patrocinadores",url: "/sponsors",     icon: DollarSign },
+  { label: "Tareas",        url: "/tasks",        icon: ListTodo, badgeKey: "pendingTasks" },
 ];
 
 const measureNav: NavItem[] = [
