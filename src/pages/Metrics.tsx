@@ -155,7 +155,7 @@ export default function MetricsPage() {
                           {Math.abs(card.change).toFixed(1)}%
                         </div>
                       )}
-                      {card.source && <p className="text-[10px] text-muted-foreground/60 mt-1 capitalize">{card.source}</p>}
+                      {card.source && <p className="text-xs text-muted-foreground mt-1 capitalize">{card.source}</p>}
                     </CardContent>
                   </Card>
                 ))}

@@ -66,13 +66,13 @@ function EpisodeContextPanel({
         )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+        <Button variant="ghost" size="sm" className="h-9 text-xs gap-1" asChild>
           <Link to={`/episodes/${episode.id}`}>
             <ExternalLink className="h-3 w-3" />
             Workspace
           </Link>
         </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onChangeEpisode}>
+        <Button variant="outline" size="sm" className="h-9 text-xs gap-1" onClick={onChangeEpisode}>
           <SwitchCamera className="h-3 w-3" />
           Cambiar
         </Button>
@@ -358,7 +358,7 @@ export default function ContentFactory() {
                       <Label className="text-xs text-muted-foreground">Tema / Tesis</Label>
                       <p className="text-sm mt-1 text-muted-foreground">{theme || <span className="italic">—</span>}</p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground border-t pt-3">
+                    <p className="text-xs text-muted-foreground border-t pt-3">
                       Para editar estos datos, usa la pestaña{" "}
                       <Link to={`/episodes/${episode.id}`} className="text-primary hover:underline">
                         Datos base del Workspace

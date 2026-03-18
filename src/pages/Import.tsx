@@ -269,16 +269,16 @@ export default function ImportPage() {
         <div className="flex-1 flex flex-col gap-4 overflow-hidden">
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total bloques</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total bloques</p>
               <p className="text-2xl font-display font-bold text-foreground">{stats.total}</p>
             </Card>
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Episodios</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Episodios</p>
               <p className="text-2xl font-display font-bold text-foreground">{episodes.length}</p>
             </Card>
             {Object.entries(stats.byDestination).slice(0, 4).map(([dest, count]) => (
               <Card key={dest} className="p-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider truncate">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">
                   {DESTINATION_LABELS[dest] || dest}
                 </p>
                 <p className="text-2xl font-display font-bold text-foreground">{count}</p>
@@ -291,7 +291,7 @@ export default function ImportPage() {
             <Button
               variant={filterDest === null ? "default" : "outline"}
               size="sm"
-              className="text-xs h-7"
+              className="text-xs h-9"
               onClick={() => setFilterDest(null)}
             >
               Todos ({stats.total})
@@ -303,7 +303,7 @@ export default function ImportPage() {
                   key={dest}
                   variant={filterDest === dest ? "default" : "outline"}
                   size="sm"
-                  className="text-xs h-7 gap-1"
+                  className="text-xs h-9 gap-1"
                   onClick={() => setFilterDest(filterDest === dest ? null : dest)}
                 >
                   <Icon className="h-3 w-3" />
@@ -332,23 +332,23 @@ export default function ImportPage() {
                             <span className="text-sm font-medium text-foreground truncate max-w-xs">
                               {block.title}
                             </span>
-                            <Badge variant="outline" className="text-[10px] shrink-0">
+                            <Badge variant="outline" className="text-xs shrink-0">
                               {CONTENT_TYPE_LABELS[block.contentType] || block.contentType}
                             </Badge>
                           </div>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
                             {block.sourceSection}
                             {block.sourceSubsection && ` > ${block.sourceSubsection}`}
                           </p>
                         </div>
-                        <Badge className="text-[10px] shrink-0 bg-primary/10 text-primary border-0">
+                        <Badge className="text-xs shrink-0 bg-primary/10 text-primary border-0">
                           {block.destinationLabel}
                         </Badge>
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <div className="px-3 pb-3 border-t border-border">
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                           <div>
                             <span className="text-muted-foreground">Tipo:</span>{" "}
                             <span className="text-foreground">{block.contentType}</span>
@@ -367,7 +367,7 @@ export default function ImportPage() {
                           </div>
                         </div>
                         <div className="mt-2 bg-secondary/50 rounded p-2 max-h-32 overflow-auto">
-                          <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap font-mono">
+                          <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
                             {block.content.substring(0, 500)}
                             {block.content.length > 500 && "..."}
                           </pre>
@@ -417,23 +417,23 @@ export default function ImportPage() {
         <div className="flex-1 flex flex-col gap-4 overflow-hidden">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+              <p className="text-xs text-muted-foreground uppercase">Total</p>
               <p className="text-2xl font-display font-bold text-foreground">{summary.total}</p>
             </Card>
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase">Insertados</p>
+              <p className="text-xs text-muted-foreground uppercase">Insertados</p>
               <p className="text-2xl font-display font-bold text-primary">{summary.inserted}</p>
             </Card>
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase">Fusionados</p>
+              <p className="text-xs text-muted-foreground uppercase">Fusionados</p>
               <p className="text-2xl font-display font-bold text-accent-foreground">{summary.merged}</p>
             </Card>
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase">Omitidos</p>
+              <p className="text-xs text-muted-foreground uppercase">Omitidos</p>
               <p className="text-2xl font-display font-bold text-muted-foreground">{summary.skipped}</p>
             </Card>
             <Card className="p-3">
-              <p className="text-[10px] text-muted-foreground uppercase">Errores</p>
+              <p className="text-xs text-muted-foreground uppercase">Errores</p>
               <p className={`text-2xl font-display font-bold ${summary.errors > 0 ? "text-destructive" : "text-muted-foreground"}`}>
                 {summary.errors}
               </p>
@@ -449,14 +449,14 @@ export default function ImportPage() {
                   {result.action === "error" && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
                   {result.action === "skipped" && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                   <span className="flex-1 truncate text-foreground">{result.title}</span>
-                  <Badge variant="outline" className="text-[10px] shrink-0">
+                  <Badge variant="outline" className="text-xs shrink-0">
                     {DESTINATION_LABELS[result.destination] || result.destination}
                   </Badge>
-                  <span className="text-[10px] text-muted-foreground shrink-0 w-16 text-right">
+                  <span className="text-xs text-muted-foreground shrink-0 w-16 text-right">
                     {result.action}
                   </span>
                   {result.error && (
-                    <span className="text-[10px] text-destructive shrink-0 max-w-32 truncate">{result.error}</span>
+                    <span className="text-xs text-destructive shrink-0 max-w-32 truncate">{result.error}</span>
                   )}
                 </div>
               ))}

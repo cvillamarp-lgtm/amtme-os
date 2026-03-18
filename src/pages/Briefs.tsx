@@ -67,7 +67,7 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-medium text-sm leading-snug line-clamp-2 flex-1">{brief.title}</h3>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
+          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
             {sc.label}
           </span>
         </div>
@@ -76,7 +76,7 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
         {brief.ideas?.title && (
           <div className="flex items-center gap-1 mt-0.5">
             <Lightbulb className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-            <span className="text-[10px] text-muted-foreground/60 line-clamp-1">{brief.ideas.title}</span>
+            <span className="text-xs text-muted-foreground line-clamp-1">{brief.ideas.title}</span>
           </div>
         )}
       </CardHeader>
@@ -86,7 +86,7 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
         {brief.thesis ? (
           <p className="text-xs text-muted-foreground line-clamp-2 italic">"{brief.thesis}"</p>
         ) : (
-          <p className="text-xs text-muted-foreground/40 italic">Sin tesis definida aún</p>
+          <p className="text-xs text-muted-foreground italic">Sin tesis definida aún</p>
         )}
 
         {/* Field pills */}
@@ -99,10 +99,10 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
           ].map(({ key, label }) => (
             <span
               key={key}
-              className={`text-[10px] px-1.5 py-0.5 rounded ${
+              className={`text-xs px-1.5 py-0.5 rounded ${
                 brief[key as keyof typeof brief]
                   ? "bg-primary/10 text-primary"
-                  : "bg-muted/50 text-muted-foreground/40"
+                  : "bg-muted/50 text-muted-foreground"
               }`}
             >
               {label}
@@ -113,8 +113,8 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
         {/* Completeness bar */}
         <div className="space-y-1">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] text-muted-foreground/50">Completitud</span>
-            <span className="text-[10px] text-muted-foreground/50 tabular-nums">{pct}%</span>
+            <span className="text-xs text-muted-foreground">Completitud</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{pct}%</span>
           </div>
           <div className="h-1 bg-muted rounded-full overflow-hidden">
             <div
@@ -129,18 +129,18 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
           className="flex items-center justify-between border-t border-border pt-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-[10px] text-muted-foreground/40">{timeAgo(brief.created_at)}</span>
+          <span className="text-xs text-muted-foreground">{timeAgo(brief.created_at)}</span>
           <div className="flex gap-1">
             {brief.status === "draft" && (
               <button
-                className="text-[10px] text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"
+                className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"
                 onClick={() => onStatusChange("approved")}
               >
                 Aprobar
               </button>
             )}
             {brief.status === "approved" && (
-              <span className="text-[10px] text-emerald-400 flex items-center gap-0.5">
+              <span className="text-xs text-emerald-400 flex items-center gap-0.5">
                 <ArrowRight className="h-2.5 w-2.5" />Listo para episodio
               </span>
             )}
@@ -268,7 +268,7 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
   const Field = ({ label, value }: { label: string; value: string | null | undefined }) =>
     value ? (
       <div>
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
         <p className="text-sm leading-relaxed">{value}</p>
       </div>
     ) : null;
@@ -284,14 +284,14 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
               {sc.label}
             </span>
             {brief.tone && (
-              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{brief.tone}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{brief.tone}</span>
             )}
             {brief.ideas?.title && (
-              <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Lightbulb className="h-2.5 w-2.5" />{brief.ideas.title}
               </span>
             )}
@@ -454,10 +454,10 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               {/* Keywords */}
               {brief.keywords && brief.keywords.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Palabras clave</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Palabras clave</p>
                   <div className="flex flex-wrap gap-1.5">
                     {brief.keywords.map((k) => (
-                      <Badge key={k} variant="secondary" className="text-[10px]">{k}</Badge>
+                      <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
                     ))}
                   </div>
                 </div>
@@ -475,7 +475,7 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-blue-400 h-7 text-xs"
+                    className="text-blue-400 h-9 text-xs"
                     onClick={() => { onClose(); navigate(`/episodes/${brief.episode_id}`); }}
                   >
                     Abrir <ArrowRight className="h-3 w-3 ml-1" />
@@ -485,7 +485,7 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
 
               {/* Action buttons */}
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
                 <div className="grid grid-cols-2 gap-2">
                   {brief.status === "draft" && (
                     <>
@@ -528,7 +528,7 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground/30 pt-1">
+              <p className="text-xs text-muted-foreground pt-1">
                 Creado {timeAgo(brief.created_at)} · Actualizado {timeAgo(brief.updated_at)}
               </p>
             </div>
@@ -698,7 +698,7 @@ export default function Briefs() {
             <TabsTrigger key={value} value={value} className="text-xs gap-1.5">
               {label}
               {counts[value] > 0 && (
-                <span className="text-[10px] opacity-50 tabular-nums">{counts[value]}</span>
+                <span className="text-xs opacity-50 tabular-nums">{counts[value]}</span>
               )}
             </TabsTrigger>
           ))}

@@ -89,7 +89,7 @@ function formatNumber(n: number | undefined): string {
 function PlatformBadge({ platform }: { platform: string }) {
   const cfg = PLATFORM_CONFIG[platform] ?? { label: platform, emoji: "🔗", bg: "bg-secondary", text: "text-foreground", border: "border-border" };
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
       {cfg.emoji} {cfg.label}
     </span>
   );
@@ -111,7 +111,7 @@ function OAuthStatus({ account, onConnect, connecting }: {
 
     if (incomplete || expired) {
       return (
-        <div className="flex items-center gap-1.5 text-[11px] text-amber-500">
+        <div className="flex items-center gap-1.5 text-xs text-amber-500">
           <AlertCircle className="h-3 w-3" />
           {incomplete ? "Páginas no vinculadas" : "Token expirado"}
           <button
@@ -126,7 +126,7 @@ function OAuthStatus({ account, onConnect, connecting }: {
     }
 
     return (
-      <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
+      <div className="flex items-center gap-1.5 text-xs text-emerald-500">
         <CheckCircle2 className="h-3 w-3" />Conectado vía OAuth
       </div>
     );
@@ -136,7 +136,7 @@ function OAuthStatus({ account, onConnect, connecting }: {
     <button
       onClick={(e) => { e.stopPropagation(); onConnect(); }}
       disabled={connecting}
-      className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
     >
       {connecting ? (
         <><Loader2 className="h-3 w-3 animate-spin" />Conectando...</>
@@ -165,7 +165,7 @@ function AccountCard({ account, onClick, onConnect, connecting }: {
         <PlatformBadge platform={account.platform} />
         <div className="flex items-center gap-2">
           {!account.is_active && (
-            <Badge variant="outline" className="text-[10px]">Inactiva</Badge>
+            <Badge variant="outline" className="text-xs">Inactiva</Badge>
           )}
           {meta.url && (
             <a
@@ -199,25 +199,25 @@ function AccountCard({ account, onClick, onConnect, connecting }: {
         <div className="text-center rounded-lg bg-secondary/50 p-2">
           <Users className="h-3 w-3 text-muted-foreground mx-auto mb-0.5" />
           <div className="text-sm font-bold text-foreground">{formatNumber(meta.followers)}</div>
-          <div className="text-[9px] text-muted-foreground">Seguidores</div>
+          <div className="text-xs text-muted-foreground">Seguidores</div>
         </div>
         <div className="text-center rounded-lg bg-secondary/50 p-2">
           <TrendingUp className="h-3 w-3 text-muted-foreground mx-auto mb-0.5" />
           <div className="text-sm font-bold text-foreground">{formatNumber(meta.avg_reach)}</div>
-          <div className="text-[9px] text-muted-foreground">Alcance prom.</div>
+          <div className="text-xs text-muted-foreground">Alcance prom.</div>
         </div>
         <div className="text-center rounded-lg bg-secondary/50 p-2">
           <Heart className="h-3 w-3 text-muted-foreground mx-auto mb-0.5" />
           <div className="text-sm font-bold text-foreground">
             {meta.avg_engagement ? `${meta.avg_engagement.toFixed(1)}%` : "—"}
           </div>
-          <div className="text-[9px] text-muted-foreground">Engagement</div>
+          <div className="text-xs text-muted-foreground">Engagement</div>
         </div>
       </div>
 
       {/* Notes preview */}
       {meta.notes && (
-        <p className="text-[11px] text-muted-foreground mt-3 line-clamp-2">{meta.notes}</p>
+        <p className="text-xs text-muted-foreground mt-3 line-clamp-2">{meta.notes}</p>
       )}
     </div>
   );
@@ -246,7 +246,7 @@ function SyncedField({
       <div
         className={`min-h-9 px-3 py-2 flex items-center rounded-md border text-sm ${
           isNull
-            ? "bg-muted/30 text-muted-foreground/40 italic border-dashed"
+            ? "bg-muted/30 text-muted-foreground italic border-dashed"
             : "bg-muted/40 text-foreground border-border"
         }`}
       >
@@ -465,7 +465,7 @@ function AccountDetailSheet({
                     variant="outline"
                     onClick={() => syncMutation.mutate()}
                     disabled={isSyncing}
-                    className="h-7 text-[11px] shrink-0"
+                    className="h-9 text-xs shrink-0"
                   >
                     <RefreshCw className={`h-3 w-3 mr-1.5 ${isSyncing ? "animate-spin" : ""}`} />
                     {isSyncing ? "Sincronizando..." : "Sincronizar cuenta"}
@@ -474,7 +474,7 @@ function AccountDetailSheet({
               </div>
 
               {/* Meta row: last synced / connected date */}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {display?.connected_at && (
                   <span className="flex items-center gap-1">
                     <Link2 className="h-2.5 w-2.5" />
@@ -499,7 +499,7 @@ function AccountDetailSheet({
 
               {/* Sync error message */}
               {syncError && (
-                <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2 leading-relaxed">
+                <p className="text-xs text-amber-600 bg-amber-500/10 rounded-lg px-3 py-2 leading-relaxed">
                   ⚠️ {syncError}
                 </p>
               )}
@@ -511,7 +511,7 @@ function AccountDetailSheet({
                     if (confirm("¿Desconectar OAuth? El token será eliminado.")) disconnectMutation.mutate();
                   }}
                   disabled={disconnectMutation.isPending}
-                  className="text-[11px] text-muted-foreground underline underline-offset-2 hover:opacity-70 block"
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:opacity-70 block"
                 >
                   Desconectar OAuth
                 </button>
@@ -547,7 +547,7 @@ function AccountDetailSheet({
             <div className="surface rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-semibold text-foreground">Datos de la cuenta</h3>
-                <Badge variant="outline" className="text-[9px] gap-0.5">
+                <Badge variant="outline" className="text-xs gap-0.5">
                   <Lock className="h-2 w-2" /> Desde API
                 </Badge>
               </div>
@@ -582,7 +582,7 @@ function AccountDetailSheet({
               </div>
 
               {!syncedAt && !isSyncing && (
-                <p className="text-[11px] text-muted-foreground/60 italic">
+                <p className="text-xs text-muted-foreground italic">
                   Haz clic en "Sincronizar cuenta" para cargar los datos desde la API.
                 </p>
               )}
@@ -880,7 +880,7 @@ export default function PlatformAccounts() {
         ].map((s) => (
           <div key={s.label} className="surface rounded-xl p-4 text-center">
             <div className={`text-2xl font-display font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
           </div>
         ))}
       </div>
