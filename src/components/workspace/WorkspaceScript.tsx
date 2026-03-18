@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { onScriptSaved } from "@/services/automation/onScriptSaved";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { AutomationStatusBadge } from "@/components/automation/AutomationStatusBadge";
 
 // Supabase URL with hardcoded fallback for streaming SSE calls
@@ -120,7 +121,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         // internally, but we need to invalidate the cache here so the UI reflects it.
         qc.invalidateQueries({ queryKey: ["episode", episode.id] });
       } else {
-        toast.error(`Error en extracción automática: ${result.error}`);
+        showEdgeFunctionError(new Error(result.error ?? "Error en extracción automática"));
       }
     } finally {
       setAutoExtracting(false);
