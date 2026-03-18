@@ -341,7 +341,8 @@ export function useContentProduction() {
         try {
           const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
             "generate-image",
-            { prompt, hostReference: piece.hostReference }
+            { prompt, hostReference: piece.hostReference },
+            { timeoutMs: 120_000, maxRetries: 0 }
           );
           if (imgData?.imageUrl) {
             handleImageGenerated(piece.id, imgData.imageUrl, prompt);
@@ -370,7 +371,8 @@ export function useContentProduction() {
               await new Promise((r) => setTimeout(r, 3000));
               const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
                 "generate-image",
-                { prompt, hostReference: piece.hostReference }
+                { prompt, hostReference: piece.hostReference },
+                { timeoutMs: 120_000, maxRetries: 0 }
               );
               if (imgData?.imageUrl) {
                 handleImageGenerated(piece.id, imgData.imageUrl, prompt);
