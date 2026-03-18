@@ -1,23 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const ALLOWED_ORIGINS = [
-  "https://amitampocomeexplicaron.com",
-  "https://www.amitampocomeexplicaron.com",
-  "https://amtmeos.vercel.app",
-  "http://localhost:5173",
-  "http://localhost:8080",
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("Origin") ?? "";
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
-  };
-}
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 /** Resolves AI endpoint + key. Priority: Groq → OpenAI → Lovable gateway. */
 function resolveAI(): { url: string; key: string; model: string } {
