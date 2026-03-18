@@ -37,7 +37,7 @@ export interface InvokeOptions {
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
 function isRetryableStatus(status: number): boolean {
-  return status === 429 || (status >= 500 && status <= 599);
+  return status === 401 || status === 429 || (status >= 500 && status <= 599);
 }
 
 function makeError(
@@ -72,6 +72,9 @@ export async function invokeEdgeFunction<T = unknown>(
   } = options ?? {};
 
   let lastError: EdgeFunctionError | undefined;
+
+  // Ensure session is fresh before the first attempt
+  await supabase.auth.getSession();
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     // Exponential backoff with jitter before every retry
@@ -111,6 +114,10 @@ export async function invokeEdgeFunction<T = unknown>(
         lastError = makeError(message, statusCode, isRetryable, attempt);
 
         if (isRetryable && attempt < maxRetries) {
+          if (statusCode === 401) {
+            // Token may have expired — force a refresh before retrying
+            await supabase.auth.refreshSession();
+          }
           console.warn(`[invokeEdgeFunction] "${name}" failed with ${statusCode ?? "error"}, retrying (attempt ${attempt + 1}/${maxRetries})…`);
           continue;
         }
