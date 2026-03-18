@@ -144,7 +144,7 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium leading-snug line-clamp-2">{insight.finding}</p>
           </div>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
+          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
             {sc.label}
           </span>
         </div>
@@ -152,7 +152,7 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
         {insight.episodes && (
           <div className="flex items-center gap-1 mt-0.5 ml-6">
             <Mic className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-            <span className="text-[10px] text-muted-foreground/60 line-clamp-1">
+            <span className="text-xs text-muted-foreground line-clamp-1">
               {episodeLabel(insight.episodes)}
             </span>
           </div>
@@ -168,8 +168,8 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
 
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground/50">Confianza</span>
-            <span className={`text-[10px] font-medium ${cc.cls}`}>{cc.label}</span>
+            <span className="text-xs text-muted-foreground">Confianza</span>
+            <span className={`text-xs font-medium ${cc.cls}`}>{cc.label}</span>
           </div>
           <div className="h-1 bg-muted rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all ${cc.bar}`} style={{ width: `${cc.pct}%` }} />
@@ -179,7 +179,7 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
         {insight.recommendation && (
           <div className="flex items-start gap-1.5 bg-primary/5 rounded-md p-2">
             <TrendingUp className="h-3 w-3 text-primary shrink-0 mt-0.5" />
-            <p className="text-[10px] text-primary line-clamp-2">{insight.recommendation}</p>
+            <p className="text-xs text-primary line-clamp-2">{insight.recommendation}</p>
           </div>
         )}
 
@@ -187,11 +187,11 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
           className="flex items-center justify-between border-t border-border pt-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="text-[10px] text-muted-foreground/40">{timeAgo(insight.created_at)}</span>
+          <span className="text-xs text-muted-foreground">{timeAgo(insight.created_at)}</span>
           <div className="flex gap-1">
             {insight.status === "active" && (
               <button
-                className="text-[10px] text-muted-foreground hover:text-yellow-400 transition-colors px-1.5 py-0.5 rounded"
+                className="text-xs text-muted-foreground hover:text-yellow-400 transition-colors px-1.5 py-0.5 rounded"
                 onClick={() => onStatusChange("experimenting")}
               >
                 Experimentar
@@ -200,13 +200,13 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
             {insight.status === "experimenting" && (
               <>
                 <button
-                  className="text-[10px] text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"
+                  className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"
                   onClick={() => onStatusChange("accepted")}
                 >
                   Confirmar
                 </button>
                 <button
-                  className="text-[10px] text-muted-foreground hover:text-muted-foreground/60 transition-colors px-1.5 py-0.5 rounded"
+                  className="text-xs text-muted-foreground hover:text-muted-foreground/60 transition-colors px-1.5 py-0.5 rounded"
                   onClick={() => onStatusChange("discarded")}
                 >
                   Descartar
@@ -258,7 +258,7 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
   const StatusIcon = sc.icon;
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{children}</p>
+    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{children}</p>
   );
 
   return (
@@ -275,16 +275,16 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>{sc.label}</span>
-            <span className={`text-[10px] font-medium ${cc.cls}`}>Confianza: {cc.label}</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>{sc.label}</span>
+            <span className={`text-xs font-medium ${cc.cls}`}>Confianza: {cc.label}</span>
             {insight.source === "auto_detected" && (
-              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Auto-detectado</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Auto-detectado</span>
             )}
           </div>
           {insight.episodes && (
             <div className="flex items-center gap-1 mt-1">
               <Mic className="h-3 w-3 text-muted-foreground/40" />
-              <span className="text-[10px] text-muted-foreground/60">{episodeLabel(insight.episodes)}</span>
+              <span className="text-xs text-muted-foreground">{episodeLabel(insight.episodes)}</span>
             </div>
           )}
         </SheetHeader>
@@ -410,7 +410,7 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground/30">
+              <p className="text-xs text-muted-foreground">
                 Creado {timeAgo(insight.created_at)} · Actualizado {timeAgo(insight.updated_at)}
               </p>
             </div>
@@ -701,15 +701,15 @@ export default function Insights() {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-muted/40 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold tabular-nums">{insights.length}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Insights totales</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Insights totales</p>
           </div>
           <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold tabular-nums text-yellow-400">{experimentingCount}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Experimentando</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Experimentando</p>
           </div>
           <div className="bg-emerald-400/5 border border-emerald-400/20 rounded-lg p-3 text-center">
             <p className="text-2xl font-bold tabular-nums text-emerald-400">{acceptedCount}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Confirmados</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Confirmados</p>
           </div>
         </div>
       )}

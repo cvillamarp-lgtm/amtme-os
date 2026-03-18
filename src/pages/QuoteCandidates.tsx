@@ -170,23 +170,23 @@ function QuoteCard({ q, onClick, selected, onToggleSelect }: { q: QuoteWithEpiso
       </div>
 
       <div className="flex items-center gap-2 flex-wrap mb-3">
-        <Badge variant={status.badgeVariant} className="text-[10px]">
+        <Badge variant={status.badgeVariant} className="text-xs">
           {status.label}
         </Badge>
         {qtype && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
             {qtype}
           </span>
         )}
         {q.timestamp_ref && (
-          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
             <Clock className="h-2.5 w-2.5" />{q.timestamp_ref}
           </span>
         )}
       </div>
 
       {episodeLabel && (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-3">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
           <Mic className="h-3 w-3" />
           <span className="truncate">{episodeLabel}</span>
         </div>
@@ -200,7 +200,7 @@ function QuoteCard({ q, onClick, selected, onToggleSelect }: { q: QuoteWithEpiso
               <ScoreBar key={f.key} value={q[f.key] as number | null} color={f.color} />
             ))}
           </div>
-          <span className="text-[10px] font-bold text-foreground">{q.score_total?.toFixed(1)}</span>
+          <span className="text-xs font-bold text-foreground">{q.score_total?.toFixed(1)}</span>
         </div>
       )}
     </div>
@@ -687,7 +687,7 @@ export default function QuoteCandidates() {
         ].map((s) => (
           <div key={s.label} className="surface rounded-xl p-4 text-center">
             <div className={`text-2xl font-display font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
           </div>
         ))}
       </div>
