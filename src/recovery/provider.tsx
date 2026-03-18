@@ -89,6 +89,11 @@ export function RecoveryAgentProvider({
     if (!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "TOKEN_REFRESHED") return;
+      if (event === "TOKEN_REFRESH_FAILED") {
+        // Refresh failed — redirect immediately, no point trying recovery
+        window.location.assign("/auth");
+        return;
+      }
       if (event === "SIGNED_OUT") {
         void reportRecoveryIncident({
           kind: "runtime",
