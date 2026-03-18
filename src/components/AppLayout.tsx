@@ -8,12 +8,16 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
+
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-12 flex items-center border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-            <SidebarTrigger className="ml-3" />
+          {/* Topbar — macOS-style: thin, translucent, minimal */}
+          <header className="h-11 flex items-center border-b border-border/50 sticky top-0 z-20 glass">
+            <SidebarTrigger className="ml-3 h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-[6px] transition-colors duration-150" />
           </header>
+
+          {/* Main content area */}
           <main className="flex-1 overflow-auto">
             {children}
           </main>
