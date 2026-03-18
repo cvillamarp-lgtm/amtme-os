@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ListTodo, Plus, Trash2, Pencil } from "lucide-react";
+import { TruncatedText } from "@/components/ui/text-clamp";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -441,8 +442,8 @@ export default function Tasks() {
                       onCheckedChange={(checked) => toggleTask.mutate({ id: t.id, done: !!checked })}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{t.title}</p>
-                      {t.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.description}</p>}
+                      <TruncatedText className="text-sm font-medium text-foreground">{t.title}</TruncatedText>
+                      {t.description && <TruncatedText className="text-xs text-muted-foreground mt-0.5">{t.description}</TruncatedText>}
                       {t.category && <p className="text-xs text-muted-foreground mt-0.5">{t.category}</p>}
                     </div>
                     <Badge variant={priorityVariant(t.priority)} className="text-xs shrink-0">

@@ -2,7 +2,7 @@ import {
   Home, Mic, Factory, BarChart3, ListTodo, LogOut,
   Lightbulb, Send, FlaskConical, Users, Sun, Moon,
   AudioWaveform, BookOpen, StickyNote, Layers, DollarSign,
-  CalendarDays,
+  CalendarDays, FileText, Wand2, Palette, Brush,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -45,6 +45,13 @@ const distributeNav: NavItem[] = [
   { label: "Invitados",     url: "/guests",       icon: Users },
   { label: "Patrocinadores",url: "/sponsors",     icon: DollarSign },
   { label: "Tareas",        url: "/tasks",        icon: ListTodo, badgeKey: "pendingTasks" },
+];
+
+const studioNav: NavItem[] = [
+  { label: "Guiones",    url: "/script-generator", icon: FileText },
+  { label: "Prompts",    url: "/prompt-builder",   icon: Wand2 },
+  { label: "Brand",      url: "/brand",            icon: Palette },
+  { label: "Diseño",     url: "/design",           icon: Brush },
 ];
 
 const measureNav: NavItem[] = [
@@ -164,6 +171,7 @@ export function AppSidebar() {
       <SidebarContent className="py-1">
         <NavGroup label="Crear"      items={mainNav}       collapsed={collapsed} counts={countsMap} />
         <NavGroup label="Distribuir" items={distributeNav} collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Estudio"    items={studioNav}     collapsed={collapsed} counts={countsMap} />
         <NavGroup label="Medir"      items={measureNav}    collapsed={collapsed} counts={countsMap} />
       </SidebarContent>
 

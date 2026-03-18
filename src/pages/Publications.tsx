@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, Plus, CheckSquare, Square, ExternalLink, Calendar, Mic } from "lucide-react";
+import { TruncatedText, SubtitleClamp } from "@/components/ui/text-clamp";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -314,15 +315,15 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
 
         <div className="flex items-center gap-1 mt-1">
           <Mic className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-          <span className="text-xs text-muted-foreground line-clamp-1">
+          <TruncatedText className="text-xs text-muted-foreground">
             {episodeLabel(pub.episodes)}
-          </span>
+          </TruncatedText>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-3">
         {pub.copy_final ? (
-          <p className="text-xs text-muted-foreground line-clamp-3">{pub.copy_final}</p>
+          <SubtitleClamp>{pub.copy_final}</SubtitleClamp>
         ) : (
           <p className="text-xs text-muted-foreground/30 italic">Sin copy definido</p>
         )}

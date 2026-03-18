@@ -35,6 +35,7 @@ import {
   type KnowledgeDocInput,
 } from "@/lib/schemas";
 import { Plus, BookOpen, Trash2, Pencil } from "lucide-react";
+import { TitleClamp } from "@/components/ui/text-clamp";
 import { supabase } from "@/integrations/supabase/client";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -295,7 +296,9 @@ export default function KnowledgeBase() {
             <Card key={doc.id} className="flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base leading-snug">{doc.title}</CardTitle>
+                  <CardTitle className="text-base leading-snug min-w-0">
+                    <TitleClamp lines={2}>{doc.title}</TitleClamp>
+                  </CardTitle>
                   <div className="flex gap-1 shrink-0">
                     <Button
                       variant="ghost"

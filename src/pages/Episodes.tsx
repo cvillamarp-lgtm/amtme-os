@@ -14,6 +14,7 @@ import {
   Mic, Plus, Download, Factory, ChevronDown, Loader2,
   Sparkles, Trash2, ArrowLeft, RefreshCw, Check, Pencil, History,
 } from "lucide-react";
+import { TruncatedText } from "@/components/ui/text-clamp";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
@@ -828,17 +829,19 @@ export default function Episodes() {
                           onCheckedChange={() => table.toggleSelection(ep.id)}
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground hover:text-primary transition-colors">
+                      <td className="px-4 py-3 max-w-[280px]">
+                        <div className="flex flex-col min-w-0">
+                          <TruncatedText className="font-medium text-foreground hover:text-primary transition-colors">
                             {ep.final_title || ep.working_title || ep.title}
-                          </span>
+                          </TruncatedText>
                           {ep.number && (
                             <span className="text-xs text-muted-foreground mt-0.5">#{ep.number}</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-foreground">{ep.theme || "—"}</td>
+                      <td className="px-4 py-3 max-w-[180px]">
+                        <TruncatedText className="text-foreground">{ep.theme || "—"}</TruncatedText>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Progress value={audit.healthScore} className="h-1.5 w-16" />
