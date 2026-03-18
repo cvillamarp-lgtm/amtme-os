@@ -22,10 +22,35 @@ import {
   BASE_FIELDS,
 } from "@/lib/block-states";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Episode = Tables<"episodes">;
+
+interface FormFields {
+  number: string;
+  working_title: string;
+  final_title: string;
+  titulo_original: string;
+  theme: string;
+  core_thesis: string;
+  summary: string;
+  descripcion_spotify: string;
+  link_spotify: string;
+  hook: string;
+  cta: string;
+  quote: string;
+  release_date: string;
+  duration: string;
+  nota_trazabilidad: string;
+  conflicto_detectado: boolean;
+  conflicto_nota: string;
+  fecha_es_estimada: boolean;
+  nivel_completitud: string;
+}
 
 interface Props {
-  episode: Record<string, any>;
-  onSave: (updates: Record<string, any>) => Promise<void>;
+  episode: Episode;
+  onSave: (updates: Partial<Episode> & { title?: string; conflicto?: string | null }) => Promise<void>;
   isSaving: boolean;
 }
 
@@ -36,7 +61,7 @@ const PROPAGATING_FIELDS = ["idea_principal", "theme", "core_thesis", "summary",
 const BLOCK_FIELDS = [...BASE_FIELDS] as string[];
 
 export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
-  const [form, setForm] = useState<Record<string, any>>({
+  const [form, setForm] = useState<FormFields>({
     number: "",
     working_title: "",
     final_title: "",
@@ -93,7 +118,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   }, [episode]);
 
   // ─── Autosave with 2s debounce ─────────────────────────────────────
-  const doAutoSave = useCallback(async (formData: Record<string, any>, states: BlockStatesMap, history: VersionHistoryMap) => {
+  const doAutoSave = useCallback(async (formData: FormFields, states: BlockStatesMap, history: VersionHistoryMap) => {
     const payload = {
       ...formData,
       title: formData.final_title || formData.working_title,
@@ -115,13 +140,13 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
     }
   }, [onSave]);
 
-  const scheduleAutoSave = useCallback((formData: Record<string, any>, states: BlockStatesMap, history: VersionHistoryMap) => {
+  const scheduleAutoSave = useCallback((formData: FormFields, states: BlockStatesMap, history: VersionHistoryMap) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => doAutoSave(formData, states, history), 2000);
   }, [doAutoSave]);
 
   // ─── Field update with dependency propagation ──────────────────────
-  const update = (key: string, value: any) => {
+  const update = (key: keyof FormFields, value: FormFields[keyof FormFields]) => {
     const newForm = { ...form, [key]: value };
     let newStates = { ...blockStates };
     let newHistory = { ...versionHistory };
@@ -228,8 +253,8 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       setVersionHistory(newHistory);
       scheduleAutoSave(newForm, newStates, newHistory);
       toast.success(`${FIELD_LABELS[fieldName] || fieldName} regenerado`);
-    } catch (e: any) {
-      showEdgeFunctionError(e);
+    } catch (e: unknown) {
+      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
     } finally {
       setRegeneratingField(null);
     }
@@ -261,8 +286,8 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         version_history: versionHistory,
       });
       toast.success("Episodio actualizado");
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Error al guardar");
     }
   };
 
