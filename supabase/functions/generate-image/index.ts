@@ -204,27 +204,55 @@ serve(async (req) => {
       : prompt;
 
     if (ai.provider === "gemini") {
-      // Google Gemini API — free tier, 1500 req/day
-      const geminiModel = "gemini-2.5-flash-image";
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${ai.key}`;
-      const response = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: textPrompt.slice(0, 8000) }] }],
-          generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
-        }),
+      // Google Gemini API — free tier ~1500 req/day
+      // Model fallback chain: try each until one responds (not 404)
+      const GEMINI_MODELS = [
+        "gemini-2.5-flash-image",          // GA stable (confirmed 2026-03)
+        "gemini-2.0-flash-exp",             // Standard flash with image modality
+        "gemini-2.0-flash",                 // Non-exp flash with image modality
+      ];
+
+      const geminiBody = JSON.stringify({
+        contents: [{ parts: [{ text: textPrompt.slice(0, 8000) }] }],
+        generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
       });
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado (1500/día). Intenta más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        const t = await response.text();
-        console.error("Gemini error:", response.status, t);
-        let geminiMsg = `Error de Gemini (${response.status})`;
-        try { geminiMsg = JSON.parse(t)?.error?.message ?? geminiMsg; } catch { /* ignore */ }
-        // Use 400 so the client doesn't retry and shows the real error immediately
-        return new Response(JSON.stringify({ error: geminiMsg }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+
+      let geminiResponse: Response | null = null;
+      let lastGeminiError = "";
+
+      for (const model of GEMINI_MODELS) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${ai.key}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: geminiBody,
+        });
+        // 404 = model doesn't exist, try next. Any other status = use this response.
+        if (res.status !== 404) {
+          geminiResponse = res;
+          console.log("Gemini model used:", model, "status:", res.status);
+          break;
+        }
+        console.warn("Gemini model not found:", model, "— trying next");
       }
-      const data = await response.json();
+
+      if (!geminiResponse) {
+        return new Response(JSON.stringify({ error: "Ningún modelo de Gemini disponible. Contacta soporte." }), {
+          status: 500, headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!geminiResponse.ok) {
+        if (geminiResponse.status === 429) return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+        const t = await geminiResponse.text();
+        console.error("Gemini error:", geminiResponse.status, t);
+        try { lastGeminiError = JSON.parse(t)?.error?.message ?? t; } catch { lastGeminiError = t; }
+        return new Response(JSON.stringify({ error: lastGeminiError || `Error de Gemini (${geminiResponse.status})` }), {
+          status: 400, headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+
+      const data = await geminiResponse.json();
       const parts = data.candidates?.[0]?.content?.parts ?? [];
       for (const part of parts) {
         if (part.inlineData?.data) {
