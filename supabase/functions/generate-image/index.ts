@@ -205,20 +205,24 @@ serve(async (req) => {
 
     if (ai.provider === "gemini") {
       // Google Gemini API — free tier, 1500 req/day
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${ai.key}`;
+      const geminiModel = "gemini-2.5-flash-image";
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${ai.key}`;
       const response = await fetch(geminiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: textPrompt.slice(0, 8000) }] }],
-          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
         }),
       });
       if (!response.ok) {
         if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado (1500/día). Intenta más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
         const t = await response.text();
         console.error("Gemini error:", response.status, t);
-        return new Response(JSON.stringify({ error: `Error de Gemini (${response.status})` }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+        let geminiMsg = `Error de Gemini (${response.status})`;
+        try { geminiMsg = JSON.parse(t)?.error?.message ?? geminiMsg; } catch { /* ignore */ }
+        // Use 400 so the client doesn't retry and shows the real error immediately
+        return new Response(JSON.stringify({ error: geminiMsg }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
       }
       const data = await response.json();
       const parts = data.candidates?.[0]?.content?.parts ?? [];
