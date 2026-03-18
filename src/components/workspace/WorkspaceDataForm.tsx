@@ -50,7 +50,7 @@ interface FormFields {
 
 interface Props {
   episode: Episode;
-  onSave: (updates: Partial<Episode> & { title?: string; conflicto?: string | null }) => Promise<void>;
+  onSave: (updates: Partial<Episode> & { title?: string }) => Promise<void>;
   isSaving: boolean;
 }
 
@@ -122,7 +122,6 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
     const payload = {
       ...formData,
       title: formData.final_title || formData.working_title,
-      conflicto: formData.conflicto_detectado,
       block_states: states,
       version_history: history,
     };
@@ -281,7 +280,6 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       await onSave({
         ...form,
         title: form.final_title || form.working_title,
-        conflicto: form.conflicto_detectado,
         block_states: blockStates,
         version_history: versionHistory,
       });
