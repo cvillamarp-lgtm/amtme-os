@@ -42,7 +42,7 @@ BEGIN
     'published',
     'complete',
     'published',
-    ep.release_date,
+    ep.release_date::date,
     ep.theme,
     'íntimo',
     ep.nivel,
@@ -140,5 +140,5 @@ BEGIN
   );
 
   RAISE NOTICE 'seed_episode_catalog: inserted % episodes.',
-    (SELECT count(*) FROM public.episodes WHERE user_id = _user_id AND number::integer <= 28);
+    (SELECT count(*) FROM public.episodes WHERE user_id = _user_id AND number ~ '^\d+$' AND number::integer <= 28);
 END $$;

@@ -261,11 +261,10 @@ export default function Episodes() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
-      const { count } = await supabase
-        .from("episodes")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-      const nextNumber = String((count || 0) + 1).padStart(2, "0");
+      const { data: numData, error: numError } = await supabase
+        .rpc("next_episode_number", { p_user_id: user.id });
+      if (numError) throw numError;
+      const nextNumber = numData as string;
 
       const { data: episode, error: insertError } = await supabase
         .from("episodes")
