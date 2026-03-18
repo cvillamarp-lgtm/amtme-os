@@ -177,7 +177,7 @@ function detectHeading(line: string): HeadingInfo | null {
   if (secMatch) return { level: 1, text: secMatch[2].trim(), lineIndex: 0 };
 
   // Numbered sections: "1. MAPA DE ESTRUCTURA"
-  const numMatch = line.match(/^\d+\.\s+([A-ZÁÉÍÓÚ][A-ZÁÉÍÓÚ\s—–\-]+)/);
+  const numMatch = line.match(/^\d+\.\s+([A-ZÁÉÍÓÚ][A-ZÁÉÍÓÚ\s—–-]+)/);
   if (numMatch && numMatch[1].length > 5) return { level: 2, text: numMatch[1].trim(), lineIndex: 0 };
 
   // ALL CAPS lines (>10 chars, no lowercase)

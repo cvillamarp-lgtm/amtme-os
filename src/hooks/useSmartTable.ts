@@ -135,7 +135,7 @@ export function useSmartTable<T extends { id: string }>(config: SmartTableConfig
   }, [config.columns, config.searchFields]);
 
   const sorted = useMemo(() => {
-    let result = [...config.data];
+    const result = [...config.data];
 
     for (const sort of prefs.sortRules) {
       const column = config.columns.find(c => c.id === sort.field);
