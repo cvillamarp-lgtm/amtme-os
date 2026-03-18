@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Loader2, Save, Copy, Check, Quote } from "lucide-react";
+import { Sparkles, Loader2, Save, Copy, Check, Quote, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,6 +27,28 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [autoExtracting, setAutoExtracting] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef("");
+
+  const doAutoSave = useCallback(async (base: string, generated: string) => {
+    const hash = `${base}||${generated}`;
+    if (hash === lastSavedRef.current) return;
+    setAutoSaveStatus("saving");
+    try {
+      await onSave({ script_base: base || null, script_generated: generated || null });
+      lastSavedRef.current = hash;
+      setAutoSaveStatus("saved");
+      setTimeout(() => setAutoSaveStatus("idle"), 2000);
+    } catch {
+      setAutoSaveStatus("idle");
+    }
+  }, [onSave]);
+
+  const scheduleAutoSave = useCallback((base: string, generated: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doAutoSave(base, generated), 2000);
+  }, [doAutoSave]);
 
   const generateScript = async () => {
     if (!episode.theme && !episode.working_title) {
@@ -96,7 +118,10 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
    * Called both automatically on save and from the manual extraction buttons.
    */
   const runExtraction = async (script: string) => {
-    if (!episode.id || !script || script.trim().length < 50) return;
+    if (!episode.id || !script || script.trim().length < 50) {
+      toast.warning("El guión debe tener al menos 50 caracteres para extraer citas e insights");
+      return;
+    }
 
     setAutoExtracting(true);
     try {
@@ -133,10 +158,8 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       script_base: scriptBase || null,
       script_generated: scriptGenerated || null,
     });
+    lastSavedRef.current = `${scriptBase}||${scriptGenerated}`;
     toast.success("Guiones guardados");
-    // Extraction is triggered automatically by the backend SQL trigger
-    // trg_episode_script_changed → automation-script-extraction.
-    // Use the "Extraer del guión" button below for on-demand extraction with feedback.
   };
 
   const copyScript = () => {
@@ -156,6 +179,16 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
           Escribe o genera el guión directamente desde los datos del episodio.
         </p>
         <div className="flex items-center gap-2">
+          {autoSaveStatus === "saving" && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />Guardando...
+            </span>
+          )}
+          {autoSaveStatus === "saved" && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-500">
+              <CheckCircle2 className="h-3 w-3" />Guardado
+            </span>
+          )}
           {autoExtracting && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -184,7 +217,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         <Label>Guión base (manual)</Label>
         <Textarea
           value={scriptBase}
-          onChange={(e) => setScriptBase(e.target.value)}
+          onChange={(e) => { setScriptBase(e.target.value); scheduleAutoSave(e.target.value, scriptGenerated); }}
           rows={8}
           placeholder="Pega o escribe tu guión aquí..."
           className="font-mono text-sm"

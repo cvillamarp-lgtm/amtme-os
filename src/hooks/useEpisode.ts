@@ -54,7 +54,7 @@ export function useEpisode(id?: string) {
     enabled: !!id,
     staleTime: 3_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("tasks").select("*");
+      const { data, error } = await supabase.from("tasks").select("*").eq("episode_id", id!);
       if (error) throw error;
       return data ?? [];
     },

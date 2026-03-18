@@ -20,53 +20,23 @@ function useDashboardCounts() {
   return useQuery({
     queryKey: ["dashboard-counts-v2"],
     queryFn: async () => {
-      const [
-        eps,
-        tasks,
-        assetsTotal,
-        assetsPending,
-        ideasCapturadas,
-        ideasAprobadas,
-        briefsTotal,
-        briefsConvertidos,
-        pubsScheduled,
-        pubsPublished,
-        insightsExperimenting,
-        insightsAccepted,
-        quotesTotal,
-        quotesApproved,
-      ] = await Promise.all([
-        supabase.from("episodes").select("*", { count: "exact", head: true }),
-        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "todo"),
-        supabase.from("content_assets").select("*", { count: "exact", head: true }),
-        supabase.from("content_assets").select("*", { count: "exact", head: true }).in("status", ["generated", "pending"]),
-        supabase.from("ideas").select("*", { count: "exact", head: true }).eq("status", "captured"),
-        supabase.from("ideas").select("*", { count: "exact", head: true }).eq("status", "approved"),
-        supabase.from("briefs").select("*", { count: "exact", head: true }).neq("status", "converted"),
-        supabase.from("briefs").select("*", { count: "exact", head: true }).eq("status", "converted"),
-        supabase.from("publications").select("*", { count: "exact", head: true }).eq("status", "scheduled"),
-        supabase.from("publications").select("*", { count: "exact", head: true }).eq("status", "published"),
-        supabase.from("insights").select("*", { count: "exact", head: true }).eq("status", "experimenting"),
-        supabase.from("insights").select("*", { count: "exact", head: true }).eq("status", "accepted"),
-        supabase.from("quote_candidates").select("*", { count: "exact", head: true }),
-        supabase.from("quote_candidates").select("*", { count: "exact", head: true }).eq("status", "approved"),
-      ]);
-
-      return {
-        episodes:             eps.count ?? 0,
-        tasks:                tasks.count ?? 0,
-        assets:               assetsTotal.count ?? 0,
-        assetsPending:        assetsPending.count ?? 0,
-        ideasCapturadas:      ideasCapturadas.count ?? 0,
-        ideasAprobadas:       ideasAprobadas.count ?? 0,
-        briefsActivos:        briefsTotal.count ?? 0,
-        briefsConvertidos:    briefsConvertidos.count ?? 0,
-        pubsScheduled:        pubsScheduled.count ?? 0,
-        pubsPublished:        pubsPublished.count ?? 0,
-        insightsExperimenting:insightsExperimenting.count ?? 0,
-        insightsAccepted:     insightsAccepted.count ?? 0,
-        quotesTotal:          quotesTotal.count ?? 0,
-        quotesApproved:       quotesApproved.count ?? 0,
+      const { data, error } = await supabase.rpc("dashboard_counts");
+      if (error) throw error;
+      return data as {
+        episodes: number;
+        tasks: number;
+        assets: number;
+        assetsPending: number;
+        ideasCapturadas: number;
+        ideasAprobadas: number;
+        briefsActivos: number;
+        briefsConvertidos: number;
+        pubsScheduled: number;
+        pubsPublished: number;
+        insightsExperimenting: number;
+        insightsAccepted: number;
+        quotesTotal: number;
+        quotesApproved: number;
       };
     },
   });

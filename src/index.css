@@ -1,170 +1,289 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
-
+/* ─── SF Pro: usa la fuente del sistema (SF Pro en macOS/iOS automáticamente) ─── */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* ── Light theme (default) ── */
+  /* ─────────────────────────────────────────────────────────────
+     LIGHT MODE  — Apple Human Interface Guidelines palette
+     ───────────────────────────────────────────────────────────── */
   :root {
-    --background: 210 20% 98%;
-    --foreground: 228 20% 12%;
+    /* Surfaces */
+    --background:          240 6% 97%;   /* #F5F5F7 — Apple systemBackground */
+    --foreground:          240 4% 12%;   /* #1D1D1F — Apple label */
 
-    --card: 0 0% 100%;
-    --card-foreground: 228 20% 12%;
+    --card:                0 0% 100%;    /* #FFFFFF — white card */
+    --card-foreground:     240 4% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 228 20% 12%;
+    --popover:             0 0% 100%;
+    --popover-foreground:  240 4% 12%;
 
-    --primary: 161 93% 30%;
-    --primary-foreground: 151 80% 95%;
+    /* Brand primary — AMTME Teal #407E8C → Apple-ified */
+    --primary:             193 37% 40%;
+    --primary-foreground:  0 0% 100%;
 
-    --secondary: 210 30% 94%;
-    --secondary-foreground: 228 20% 20%;
+    /* Semantic */
+    --secondary:           240 5% 94%;   /* #EFEFF0 — systemGray6 */
+    --secondary-foreground: 240 4% 12%;
 
-    --muted: 210 25% 92%;
-    --muted-foreground: 220 12% 46%;
+    --muted:               240 5% 91%;   /* #E8E8EA — systemGray5 */
+    --muted-foreground:    240 3% 44%;   /* #6E6E73 — Apple secondaryLabel */
 
-    --accent: 210 30% 94%;
-    --accent-foreground: 161 70% 30%;
+    --accent:              240 5% 94%;
+    --accent-foreground:   193 37% 35%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    --destructive:         356 100% 45%; /* #E5000A — Apple systemRed */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214 25% 88%;
-    --input: 214 25% 88%;
-    --ring: 161 93% 30%;
+    --border:              240 5% 84%;   /* #D2D2D7 — Apple separator */
+    --input:               240 5% 91%;   /* same as muted — filled input bg */
+    --ring:                193 37% 40%;
 
-    --radius: 0.75rem;
+    /* Sidebar — macOS sidebar style */
+    --sidebar-background:  240 6% 97%;
+    --sidebar-foreground:  240 4% 12%;
+    --sidebar-primary:     193 37% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent:      240 5% 91%;
+    --sidebar-accent-foreground: 240 4% 12%;
+    --sidebar-border:      240 5% 88%;
+    --sidebar-ring:        193 37% 40%;
+    --sidebar:             240 6% 97%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 228 20% 20%;
-    --sidebar-primary: 161 93% 30%;
-    --sidebar-primary-foreground: 151 80% 95%;
-    --sidebar-accent: 210 30% 94%;
-    --sidebar-accent-foreground: 228 20% 12%;
-    --sidebar-border: 214 25% 90%;
-    --sidebar-ring: 161 93% 30%;
+    /* Charts — muted brand tones */
+    --chart-1: 193 37% 40%;
+    --chart-2: 196 75% 22%;
+    --chart-3: 36 38% 52%;
+    --chart-4: 168 40% 45%;
+    --chart-5: 240 3% 60%;
 
-    --chart-1: 158 64% 40%;
-    --chart-2: 141 69% 45%;
-    --chart-3: 172 66% 38%;
-    --chart-4: 43 80% 50%;
-    --chart-5: 220 10% 45%;
+    --success:             142 71% 38%;
+    --success-foreground:  0 0% 100%;
+    --warning:             38 92% 45%;
+    --warning-foreground:  0 0% 100%;
 
-    --success: 142 71% 40%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 45%;
-    --warning-foreground: 0 0% 100%;
-    --sidebar: 0 0% 100%;
-    --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    --font-display: 'Syne', ui-sans-serif, system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.06);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.06);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 2px 4px -1px hsl(0 0% 0% / 0.08);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 4px 6px -1px hsl(0 0% 0% / 0.08);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 8px 10px -1px hsl(0 0% 0% / 0.08);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.12);
-    --tracking-normal: 0em;
+    /* Layout */
+    --radius: 0.875rem;   /* 14px — Apple's standard card radius */
+
+    /* Apple-style layered shadows (light) */
+    --shadow-2xs: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-xs:  0 1px 4px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
+    --shadow:     0 2px 12px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05);
+    --shadow-md:  0 4px 16px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05);
+    --shadow-lg:  0 8px 28px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06);
+    --shadow-xl:  0 16px 48px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
+    --shadow-2xl: 0 24px 64px rgba(0,0,0,0.16), 0 0 0 0.5px rgba(0,0,0,0.08);
+
+    /* Typography */
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+                 system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                    system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+
+    --tracking-normal: -0.022em;
     --spacing: 0.25rem;
   }
 
-  /* ── Dark theme ── */
+  /* ─────────────────────────────────────────────────────────────
+     DARK MODE  — Apple dark palette (iOS/macOS system dark)
+     ───────────────────────────────────────────────────────────── */
   .dark {
-    --background: 228 20% 6%;
-    --foreground: 40 20% 95%;
+    /* Surfaces — pure black base like Apple dark mode */
+    --background:          0 0% 0%;      /* #000000 — systemBackground dark */
+    --foreground:          0 0% 100%;    /* #FFFFFF */
 
-    --card: 228 18% 9%;
-    --card-foreground: 40 20% 95%;
+    --card:                240 5% 11%;   /* #1C1C1E — secondarySystemBackground */
+    --card-foreground:     0 0% 100%;
 
-    --popover: 228 18% 12%;
-    --popover-foreground: 40 20% 95%;
+    --popover:             240 4% 17%;   /* #2C2C2E — tertiarySystemBackground */
+    --popover-foreground:  0 0% 100%;
 
-    --primary: 161 93% 30%;
-    --primary-foreground: 151 80% 95%;
+    /* Brand primary — lighter teal for dark */
+    --primary:             193 37% 58%;
+    --primary-foreground:  0 0% 100%;
 
-    --secondary: 228 15% 15%;
-    --secondary-foreground: 40 15% 85%;
+    --secondary:           240 4% 17%;   /* #2C2C2E */
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 228 12% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted:               240 4% 23%;   /* #3A3A3C — quaternarySystemBackground */
+    --muted-foreground:    240 5% 62%;   /* Apple secondaryLabel dark */
 
-    --accent: 228 15% 15%;
-    --accent-foreground: 161 70% 55%;
+    --accent:              240 4% 17%;
+    --accent-foreground:   193 37% 65%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    --destructive:         356 100% 62%; /* #FF453A — Apple systemRed dark */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 228 12% 16%;
-    --input: 228 12% 16%;
-    --ring: 161 93% 30%;
+    --border:              240 4% 19%;   /* barely-visible separator */
+    --input:               240 4% 17%;
+    --ring:                193 37% 58%;
 
-    --sidebar-background: 230 20% 4%;
-    --sidebar-foreground: 40 15% 85%;
-    --sidebar-primary: 161 93% 30%;
-    --sidebar-primary-foreground: 151 80% 95%;
-    --sidebar-accent: 228 15% 12%;
-    --sidebar-accent-foreground: 40 20% 95%;
-    --sidebar-border: 228 12% 14%;
-    --sidebar-ring: 161 93% 30%;
+    /* Sidebar — slightly darker than card */
+    --sidebar-background:  240 5% 8%;    /* #141416 */
+    --sidebar-foreground:  0 0% 85%;
+    --sidebar-primary:     193 37% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent:      240 4% 17%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border:      240 4% 14%;
+    --sidebar-ring:        193 37% 58%;
+    --sidebar:             240 5% 8%;
 
-    --chart-1: 158 64% 51%;
-    --chart-2: 141 69% 58%;
-    --chart-3: 172 66% 50%;
-    --chart-4: 43 80% 60%;
-    --chart-5: 220 10% 50%;
+    /* Charts */
+    --chart-1: 193 37% 58%;
+    --chart-2: 193 50% 70%;
+    --chart-3: 36 38% 65%;
+    --chart-4: 168 40% 58%;
+    --chart-5: 240 5% 55%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --sidebar: 230 20% 4%;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.15);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.15);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 4px 6px -1px hsl(0 0% 0% / 0.2);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 8px 10px -1px hsl(0 0% 0% / 0.2);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.35);
+    --success:             142 60% 45%;
+    --success-foreground:  0 0% 100%;
+    --warning:             38 90% 58%;
+    --warning-foreground:  0 0% 0%;
+
+    /* Apple-style layered shadows (dark — deeper) */
+    --shadow-2xs: 0 1px 2px rgba(0,0,0,0.30);
+    --shadow-xs:  0 1px 4px rgba(0,0,0,0.40), 0 0 0 0.5px rgba(255,255,255,0.04);
+    --shadow-sm:  0 2px 8px rgba(0,0,0,0.45), 0 0 0 0.5px rgba(255,255,255,0.05);
+    --shadow:     0 2px 12px rgba(0,0,0,0.50), 0 0 0 0.5px rgba(255,255,255,0.06);
+    --shadow-md:  0 4px 20px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.06);
+    --shadow-lg:  0 8px 32px rgba(0,0,0,0.60), 0 0 0 0.5px rgba(255,255,255,0.07);
+    --shadow-xl:  0 16px 52px rgba(0,0,0,0.65), 0 0 0 0.5px rgba(255,255,255,0.07);
+    --shadow-2xl: 0 28px 72px rgba(0,0,0,0.70), 0 0 0 0.5px rgba(255,255,255,0.08);
   }
 }
 
+/* ─── Global base styles ─── */
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    letter-spacing: var(--tracking-normal);
   }
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  /* Apple-style selection */
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+    color: hsl(var(--foreground));
+  }
+
+  /* Scrollbar — minimal, Apple-like */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
 
+/* ─── Component utilities ─── */
 @layer components {
+  /* Page container — more breathing room */
   .page-container {
-    @apply p-6 lg:p-8 space-y-6;
+    @apply p-6 lg:p-8 space-y-6 max-w-[1440px] mx-auto;
   }
+
+  /* Typography */
   .page-title {
-    @apply text-2xl font-display font-bold text-foreground;
+    @apply text-2xl font-semibold text-foreground tracking-tight;
+    letter-spacing: -0.025em;
   }
   .page-subtitle {
-    @apply text-sm text-muted-foreground mt-0.5;
+    @apply text-sm text-muted-foreground mt-1;
+    letter-spacing: -0.011em;
   }
+
+  /* Apple-style stat card — shadow, no visible border */
   .stat-card {
-    @apply bg-card rounded-xl p-5 border border-border hover:border-primary/20 transition-all;
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
   }
-  .empty-state {
-    @apply flex flex-col items-center justify-center py-16 text-center;
+  .stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
   }
+
+  /* Generic surface */
   .surface {
-    @apply bg-card border border-border rounded-xl;
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
   }
   .surface-hover {
-    @apply hover:bg-secondary/50 transition-colors;
+    @apply transition-colors duration-150;
   }
+  .surface-hover:hover {
+    background: hsl(var(--muted) / 0.6);
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-20 text-center;
+  }
+
+  /* Apple vibrancy — frosted glass for overlays */
+  .glass {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 0.5px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Grouped section (iOS settings style) */
+  .section-group {
+    @apply space-y-px overflow-hidden;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+  }
+  .section-group > * {
+    @apply bg-card px-4 py-3 border-b border-border/50 last:border-b-0;
+  }
+}
+
+/* ─── Animation ─── */
+@layer utilities {
+  .animate-fade-in {
+    animation: apple-fade-in 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+  .animate-slide-up {
+    animation: apple-slide-up 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+}
+
+@keyframes apple-fade-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+@keyframes apple-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }

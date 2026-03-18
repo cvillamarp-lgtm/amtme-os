@@ -13,43 +13,43 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-script]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-image]
-verify_jwt = false
+verify_jwt = true
 
 [functions.extract-content]
-verify_jwt = false
+verify_jwt = true
 
 [functions.extract-from-script]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-captions]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-episode-fields]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-visual-copy]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-conflict-options]
-verify_jwt = false
+verify_jwt = true
 
 [functions.oauth-init]
-verify_jwt = false
+verify_jwt = true
 
 [functions.oauth-callback]
-verify_jwt = false
+verify_jwt = true
 
 [functions.post-publication]
-verify_jwt = false
+verify_jwt = true
 
 [functions.queue-audio-master]
-verify_jwt = false
+verify_jwt = true
 
 [functions.queue-audio-transcript]
-verify_jwt = false
+verify_jwt = true
 
 [functions.queue-audio-clip-export]
-verify_jwt = false
+verify_jwt = true

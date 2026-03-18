@@ -262,7 +262,6 @@ serve(async (req: Request) => {
         memorability: 3,
         shareability: 3,
         visual_fit: 3,
-        score_total: 3,
         source_type: "ai_extracted",
         source_module: "automation.script_extraction",
       }));
