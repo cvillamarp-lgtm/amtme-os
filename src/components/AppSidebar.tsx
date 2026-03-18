@@ -1,7 +1,7 @@
 import {
   Home, Mic, Factory, BarChart3, ListTodo, LogOut,
   Lightbulb, Send, FlaskConical, Users, Sun, Moon,
-  AudioWaveform, BookOpen,
+  AudioWaveform, BookOpen, StickyNote,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -46,6 +46,7 @@ const measureNav: NavItem[] = [
   { label: "Métricas",  url: "/metrics",   icon: BarChart3 },
   { label: "Insights",  url: "/insights",  icon: FlaskConical },
   { label: "Knowledge", url: "/knowledge", icon: BookOpen },
+  { label: "Notas",     url: "/notes",     icon: StickyNote },
 ];
 
 function NavGroup({
