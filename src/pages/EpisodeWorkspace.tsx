@@ -15,6 +15,7 @@ import {
   Plus,
   ExternalLink,
   Activity,
+  Zap,
 } from "lucide-react";
 import { useEpisode } from "@/hooks/useEpisode";
 import { useEpisodeOperationalState } from "@/hooks/useEpisodeOperationalState";
@@ -25,6 +26,7 @@ import { WorkspaceScript } from "@/components/workspace/WorkspaceScript";
 import { WorkspaceAudit } from "@/components/workspace/WorkspaceAudit";
 import { WorkspaceAssets } from "@/components/workspace/WorkspaceAssets";
 import { WorkspaceProduccion } from "@/components/workspace/WorkspaceProduccion";
+import { WorkspaceCopilot } from "@/components/workspace/WorkspaceCopilot";
 import { NextActionBanner } from "@/components/workspace/NextActionBanner";
 
 export default function EpisodeWorkspace() {
@@ -116,6 +118,9 @@ export default function EpisodeWorkspace() {
           </TabsTrigger>
           <TabsTrigger value="audit" className="text-xs gap-1.5">
             <Shield className="h-3.5 w-3.5" />Auditoría
+          </TabsTrigger>
+          <TabsTrigger value="copilot" className="text-xs gap-1.5 text-violet-500 data-[state=active]:text-violet-600">
+            <Zap className="h-3.5 w-3.5" />Copiloto
           </TabsTrigger>
         </TabsList>
 
@@ -209,6 +214,10 @@ export default function EpisodeWorkspace() {
                 </Link>
               </Button>
             </div>
+          </TabsContent>
+
+          <TabsContent value="copilot" className="mt-0">
+            <WorkspaceCopilot episode={episode} />
           </TabsContent>
         </div>
       </Tabs>
