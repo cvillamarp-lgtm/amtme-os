@@ -2,15 +2,22 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Image, Download, CheckCircle2, Trash2, Search, Filter, Copy, Check, FileArchive } from "lucide-react";
+import { Image, Download, CheckCircle2, Trash2, Copy, Check, FileArchive } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AssetPreviewModal } from "@/components/library/AssetPreviewModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
+import { useSmartTable } from "@/hooks/useSmartTable";
+import {
+  ListingToolbar,
+  FiltersPanel,
+  ViewsTabs,
+  BulkActionsBar,
+  SmartEmptyState,
+} from "@/components/smart-table";
+import type { FilterDef, SortOption, SavedView } from "@/components/smart-table";
 
 interface ContentAsset {
   id: string;
@@ -24,16 +31,70 @@ interface ContentAsset {
   episode_id: string | null;
 }
 
+// ─── Config ────────────────────────────────────────────────────────────────
+
+export const LIBRARY_COLUMNS = [
+  { id: 'piece_name', label: 'Pieza', sortable: true, visible: true },
+  { id: 'status', label: 'Estado', sortable: true, visible: true },
+  { id: 'episode_id', label: 'Episodio', sortable: false, visible: true },
+  { id: 'created_at', label: 'Creado', sortable: true, visible: false },
+];
+
+const LIBRARY_SORT_OPTIONS: SortOption[] = [
+  { value: 'piece_name', label: 'Nombre' },
+  { value: 'status', label: 'Estado' },
+  { value: 'created_at', label: 'Fecha de creación' },
+];
+
+const LIBRARY_FILTER_DEFS: FilterDef[] = [
+  {
+    field: 'status',
+    label: 'Estado',
+    type: 'select',
+    options: [
+      { value: 'pending', label: 'Pendiente' },
+      { value: 'generated', label: 'Generado' },
+      { value: 'approved', label: 'Aprobado' },
+      { value: 'published', label: 'Publicado' },
+    ],
+  },
+  {
+    field: 'image_url',
+    label: 'Imagen',
+    type: 'exists',
+  },
+];
+
+const LIBRARY_DEFAULT_VIEWS: SavedView[] = [];
+
+const statusLabel: Record<string, string> = {
+  pending: "Pendiente",
+  generated: "Generada",
+  approved: "Aprobada",
+  published: "Publicada",
+};
+
 export default function Library() {
   const qc = useQueryClient();
-  const [assets, setAssets] = useState<ContentAsset[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [episodeFilter, setEpisodeFilter] = useState("all");
-  const [search, setSearch] = useState("");
   const [previewAsset, setPreviewAsset] = useState<ContentAsset | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const { data: assets = [], isLoading } = useQuery({
+    queryKey: ["library-assets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("content_assets")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        toast.error("Error cargando biblioteca");
+        throw error;
+      }
+      return (data as any[]) as ContentAsset[];
+    },
+  });
 
   const { data: episodes = [] } = useQuery({
     queryKey: ["library-episodes"],
@@ -43,28 +104,20 @@ export default function Library() {
     },
   });
 
-  const fetchAssets = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("content_assets")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast.error("Error cargando biblioteca");
-      console.error(error);
-    } else {
-      setAssets((data as any) || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchAssets();
-  }, []);
+  const table = useSmartTable({
+    data: assets,
+    columns: LIBRARY_COLUMNS,
+    searchFields: ['piece_name', 'caption'],
+    defaultSort: [{ field: 'created_at', direction: 'desc' }],
+    defaultViews: LIBRARY_DEFAULT_VIEWS,
+    persistKey: 'amtme:list:library:v1',
+    pageSize: 50,
+    defaultViewType: 'grid',
+  });
 
   const updateStatus = async (id: string, status: string) => {
-    const episodeId = assets.find((a) => a.id === id)?.episode_id;
+    const asset = assets.find((a) => a.id === id);
+    const episodeId = asset?.episode_id;
     const { error } = await supabase
       .from("content_assets")
       .update({ status } as any)
@@ -72,19 +125,20 @@ export default function Library() {
     if (error) {
       toast.error("Error actualizando estado");
     } else {
-      setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+      qc.invalidateQueries({ queryKey: ["library-assets"] });
       if (episodeId) qc.invalidateQueries({ queryKey: ["episode-assets", episodeId] });
       toast.success("Estado actualizado");
     }
   };
 
   const deleteAsset = async (id: string) => {
-    const episodeId = assets.find((a) => a.id === id)?.episode_id;
+    const asset = assets.find((a) => a.id === id);
+    const episodeId = asset?.episode_id;
     const { error } = await supabase.from("content_assets").delete().eq("id", id);
     if (error) {
       toast.error("Error eliminando asset");
     } else {
-      setAssets((prev) => prev.filter((a) => a.id !== id));
+      qc.invalidateQueries({ queryKey: ["library-assets"] });
       if (episodeId) qc.invalidateQueries({ queryKey: ["episode-assets", episodeId] });
       toast.success("Asset eliminado");
     }
@@ -98,8 +152,38 @@ export default function Library() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const approveSelected = async () => {
+    const ids = Array.from(table.selectedIds);
+    const { error } = await supabase
+      .from("content_assets")
+      .update({ status: 'approved' } as any)
+      .in("id", ids);
+    if (error) {
+      toast.error("Error aprobando assets");
+    } else {
+      qc.invalidateQueries({ queryKey: ["library-assets"] });
+      table.clearSelection();
+      toast.success(`${ids.length} assets aprobados`);
+    }
+  };
+
+  const publishSelected = async () => {
+    const ids = Array.from(table.selectedIds);
+    const { error } = await supabase
+      .from("content_assets")
+      .update({ status: 'published' } as any)
+      .in("id", ids);
+    if (error) {
+      toast.error("Error publicando assets");
+    } else {
+      qc.invalidateQueries({ queryKey: ["library-assets"] });
+      table.clearSelection();
+      toast.success(`${ids.length} assets publicados`);
+    }
+  };
+
   const exportFilteredZip = async () => {
-    const withImages = filtered.filter((a) => a.image_url);
+    const withImages = table.filtered.filter((a) => a.image_url);
     if (withImages.length === 0) return toast.error("No hay imágenes para exportar");
 
     setExporting(true);
@@ -115,7 +199,7 @@ export default function Library() {
       } catch { /* skip */ }
     }
 
-    const captionsText = filtered
+    const captionsText = table.filtered
       .filter((a) => a.caption || a.hashtags)
       .map((a) => `--- ${a.piece_name} ---\n${a.caption || ""}\n\n${a.hashtags || ""}`)
       .join("\n\n\n");
@@ -132,20 +216,6 @@ export default function Library() {
     toast.success("ZIP descargado");
   };
 
-  const filtered = assets.filter((a) => {
-    if (filter !== "all" && a.status !== filter) return false;
-    if (episodeFilter !== "all" && a.episode_id !== episodeFilter) return false;
-    if (search && !a.piece_name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const statusLabel: Record<string, string> = {
-    pending: "Pendiente",
-    generated: "Generada",
-    approved: "Aprobada",
-    published: "Publicada",
-  };
-
   return (
     <div className="page-container animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -155,67 +225,91 @@ export default function Library() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{assets.length} assets</Badge>
-          <Button variant="outline" size="sm" onClick={exportFilteredZip} disabled={exporting || filtered.length === 0}>
-            <FileArchive className="h-3.5 w-3.5 mr-1.5" />
-            Exportar ZIP
-          </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar pieza..."
-            className="pl-9"
-          />
-        </div>
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[160px]">
-            <Filter className="h-3.5 w-3.5 mr-1.5" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pending">Pendientes</SelectItem>
-            <SelectItem value="generated">Generados</SelectItem>
-            <SelectItem value="approved">Aprobados</SelectItem>
-            <SelectItem value="published">Publicados</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={episodeFilter} onValueChange={setEpisodeFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Episodio" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los episodios</SelectItem>
-            {episodes.map((ep) => (
-              <SelectItem key={ep.id} value={ep.id}>
-                {ep.number ? `#${ep.number} — ` : ""}{ep.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <BulkActionsBar
+        selectedCount={table.selectedIds.size}
+        totalCount={table.filteredCount}
+        onSelectAll={table.selectAll}
+        onClearSelection={table.clearSelection}
+        isAllSelected={table.isAllSelected}
+        isIndeterminate={table.isIndeterminate}
+        actions={[
+          {
+            label: 'Aprobar seleccionados',
+            icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+            onClick: approveSelected,
+          },
+          {
+            label: 'Publicar seleccionados',
+            onClick: publishSelected,
+          },
+        ]}
+      />
 
-      {/* Grid */}
-      {loading ? (
+      <ListingToolbar
+        searchQuery={table.searchQuery}
+        onSearchChange={table.setSearchQuery}
+        searchPlaceholder="Buscar pieza..."
+        sortOptions={LIBRARY_SORT_OPTIONS}
+        currentSort={table.currentSort}
+        onSortChange={table.setSortRule}
+        filters={table.filters}
+        onClearFilters={table.clearFilters}
+        onRemoveFilter={table.removeFilter}
+        totalCount={table.totalCount}
+        filteredCount={table.filteredCount}
+        filtersOpen={filtersOpen}
+        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        showViewToggle={true}
+        viewType={table.viewType}
+        onViewTypeChange={table.setViewType}
+      >
+        <Button variant="outline" size="sm" onClick={exportFilteredZip} disabled={exporting || table.filteredCount === 0}>
+          <FileArchive className="h-3.5 w-3.5 mr-1.5" />
+          Exportar ZIP
+        </Button>
+      </ListingToolbar>
+
+      <FiltersPanel
+        open={filtersOpen}
+        filterDefs={LIBRARY_FILTER_DEFS}
+        activeFilters={table.filters}
+        onAddFilter={table.addFilter}
+        onRemoveFilter={table.removeFilter}
+        onClearAll={table.clearFilters}
+      />
+
+      <ViewsTabs
+        views={table.views}
+        activeViewId={table.activeViewId}
+        onApplyView={table.applyView}
+        onSaveView={table.saveView}
+        onDeleteView={table.deleteView}
+        onReset={table.resetToDefault}
+      />
+
+      {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Image className="h-10 w-10 mb-3 opacity-30" />
-          <p className="text-sm">No hay assets{filter !== "all" ? ` con estado "${statusLabel[filter]}"` : ""}</p>
-        </div>
+      ) : table.filteredCount === 0 ? (
+        <SmartEmptyState
+          filtered={table.filters.length > 0 || !!table.searchQuery}
+          onClearFilters={table.clearFilters}
+          title="No hay assets aún"
+          description="Los assets se generan desde el Content Factory"
+        />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filtered.map((asset) => (
-            <Card key={asset.id} className="overflow-hidden group cursor-pointer" onClick={() => setPreviewAsset(asset)}>
-              <div className="rounded-t-lg overflow-hidden border-b border-border">
+          {table.paginated.map((asset) => (
+            <Card
+              key={asset.id}
+              className={`overflow-hidden group cursor-pointer ${table.selectedIds.has(asset.id) ? 'border-primary/50 bg-primary/5' : ''}`}
+              onClick={() => setPreviewAsset(asset)}
+            >
+              <div className="rounded-t-lg overflow-hidden border-b border-border relative">
                 <AspectRatio ratio={1}>
                   {asset.image_url ? (
                     <img src={asset.image_url} alt={asset.piece_name} className="w-full h-full object-cover" loading="lazy" />
@@ -225,6 +319,19 @@ export default function Library() {
                     </div>
                   )}
                 </AspectRatio>
+                {/* Selection checkbox overlay */}
+                <div
+                  className="absolute top-1.5 left-1.5"
+                  onClick={(e) => { e.stopPropagation(); table.toggleSelection(asset.id); }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={table.selectedIds.has(asset.id)}
+                    onChange={() => table.toggleSelection(asset.id)}
+                    className="h-4 w-4 rounded border-2 border-white accent-primary cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
               </div>
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
@@ -267,6 +374,22 @@ export default function Library() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {table.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <span className="text-xs text-muted-foreground">
+            Página {table.currentPage + 1} de {table.totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage - 1)} disabled={!table.hasPrevPage}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage + 1)} disabled={!table.hasNextPage}>
+              Siguiente
+            </Button>
+          </div>
         </div>
       )}
 
