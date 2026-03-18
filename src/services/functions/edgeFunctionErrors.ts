@@ -5,6 +5,8 @@
 // for errors thrown by invokeEdgeFunction.
 // ============================================================
 
+import { toast } from "sonner";
+
 /** Typed error thrown by invokeEdgeFunction */
 export interface EdgeFunctionError extends Error {
   /** HTTP status code from the Edge Function response, if available */
@@ -33,4 +35,25 @@ export function getEdgeFunctionErrorMessage(e: unknown): string {
     default:
       return err.message || "Error desconocido";
   }
+}
+
+// ── Toast dedupe (in-memory, 30s TTL) ────────────────────────────────────────
+// Prevents the same error toast from spamming when an Edge Function is down
+// or rate-limited and multiple actions fire in quick succession.
+
+const _shownAt = new Map<string, number>();
+const DEDUPE_TTL_MS = 30_000;
+
+/**
+ * Show a toast.error deduped by message key.
+ * If the same message was shown within DEDUPE_TTL_MS, it is suppressed.
+ */
+export function showEdgeFunctionError(e: unknown): void {
+  const msg = getEdgeFunctionErrorMessage(e);
+  const now = Date.now();
+  const key = msg.slice(0, 120);
+  const last = _shownAt.get(key);
+  if (last !== undefined && now - last < DEDUPE_TTL_MS) return;
+  _shownAt.set(key, now);
+  toast.error(msg);
 }

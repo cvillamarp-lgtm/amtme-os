@@ -9,6 +9,7 @@ import { Save, Loader2, Check, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { BlockWrapper } from "./BlockWrapper";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import {
   BlockStatesMap,
   VersionHistoryMap,
@@ -228,7 +229,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       scheduleAutoSave(newForm, newStates, newHistory);
       toast.success(`${FIELD_LABELS[fieldName] || fieldName} regenerado`);
     } catch (e: any) {
-      toast.error(`Error al regenerar: ${e.message}`);
+      showEdgeFunctionError(e);
     } finally {
       setRegeneratingField(null);
     }

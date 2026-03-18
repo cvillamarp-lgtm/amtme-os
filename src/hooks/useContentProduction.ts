@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { VISUAL_PIECES, buildPiecePrompt, type EpisodeInput, type VisualPiece } from "@/lib/visual-templates";
 import { toast } from "sonner";
 
@@ -97,8 +97,7 @@ export function useContentProduction() {
         throw new Error("Respuesta incompleta de IA");
       }
     } catch (e: unknown) {
-      const msg = getEdgeFunctionErrorMessage(e);
-      toast.error(msg);
+      showEdgeFunctionError(e);
       return null;
     } finally {
       setLoading(false);
@@ -194,8 +193,7 @@ export function useContentProduction() {
         toast.success("Captions generados para las 15 piezas");
       }
     } catch (e: unknown) {
-      const msg = getEdgeFunctionErrorMessage(e);
-      toast.error(msg);
+      showEdgeFunctionError(e);
     } finally {
       setLoading(false);
     }
@@ -397,8 +395,7 @@ export function useContentProduction() {
       await new Promise((r) => setTimeout(r, 500));
       // saveToDatabase will be called externally after produceAll
     } catch (e: unknown) {
-      const msg = getEdgeFunctionErrorMessage(e);
-      toast.error(msg);
+      showEdgeFunctionError(e);
     } finally {
       setProducing(false);
     }

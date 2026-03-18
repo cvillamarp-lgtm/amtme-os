@@ -7,7 +7,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Image, Loader2, RefreshCw, CheckCircle2, Copy, Check, Download } from "lucide-react";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
 
@@ -48,7 +48,7 @@ export function PieceCard({
         throw new Error("No se recibió imagen");
       }
     } catch (e: unknown) {
-      toast.error(getEdgeFunctionErrorMessage(e));
+      showEdgeFunctionError(e);
     } finally {
       setGenerating(false);
     }
