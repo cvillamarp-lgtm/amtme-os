@@ -22,28 +22,18 @@ function getCorsHeaders(req: Request) {
 
 /**
  * Resolves image generation endpoint.
- * Priority: Lovable gateway (Gemini) → OpenAI DALL-E 3.
- * Groq is intentionally skipped — it does not support image generation.
+ * Priority: Gemini (free) → OpenAI DALL-E 3 (paid).
+ * Groq and LOVABLE_API_KEY are skipped — neither supports external image generation.
  */
-function resolveImageAI(): { url: string; key: string; provider: "lovable" | "openai" } {
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return {
-      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      key: lovableKey,
-      provider: "lovable",
-    };
-  }
+function resolveImageAI(): { key: string; provider: "gemini" | "openai" } {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (geminiKey) return { key: geminiKey, provider: "gemini" };
+
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return {
-      url: "https://api.openai.com/v1/images/generations",
-      key: openaiKey,
-      provider: "openai",
-    };
-  }
+  if (openaiKey) return { key: openaiKey, provider: "openai" };
+
   throw new Error(
-    "No image AI key configured. Set LOVABLE_API_KEY (for Gemini) or OPENAI_API_KEY (for DALL-E 3) in Supabase Edge Function secrets. Groq does not support image generation."
+    "No image AI key configured. Get a free GEMINI_API_KEY at aistudio.google.com/apikey and add it to Supabase Edge Function secrets."
   );
 }
 
@@ -208,37 +198,44 @@ serve(async (req) => {
     let imageDataUrl: string | undefined;
     let text = "";
 
-    if (ai.provider === "lovable") {
-      // Lovable gateway → Google Gemini image model (chat completions format)
-      const response = await fetch(ai.url, {
+    // Extract the text prompt from the messages array
+    const textPrompt = Array.isArray(messages[0]?.content)
+      ? messages[0].content.find((p: { type: string }) => p.type === "text")?.text ?? prompt
+      : prompt;
+
+    if (ai.provider === "gemini") {
+      // Google Gemini API — free tier, 1500 req/day
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${ai.key}`;
+      const response = await fetch(geminiUrl, {
         method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-image",
-          messages,
-          modalities: ["image", "text"],
+          contents: [{ parts: [{ text: textPrompt.slice(0, 8000) }] }],
+          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
         }),
       });
       if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos agotados. Agrega fondos en Settings → Workspace → Usage." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
+        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado (1500/día). Intenta más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
         const t = await response.text();
-        console.error("Lovable AI error:", response.status, t);
-        return new Response(JSON.stringify({ error: "Error del servicio de IA" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+        console.error("Gemini error:", response.status, t);
+        return new Response(JSON.stringify({ error: `Error de Gemini (${response.status})` }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       }
       const data = await response.json();
-      imageDataUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-      text = data.choices?.[0]?.message?.content || "";
+      const parts = data.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        if (part.inlineData?.data) {
+          imageDataUrl = `data:${part.inlineData.mimeType ?? "image/png"};base64,${part.inlineData.data}`;
+        }
+        if (part.text) text = part.text;
+      }
     } else {
-      // OpenAI DALL-E 3 (images/generations endpoint — different from chat completions)
-      const dallePrompt = messages[0]?.content?.find?.((p: { type: string; text?: string }) => p.type === "text")?.text
-        ?? (typeof messages[0]?.content === "string" ? messages[0]?.content : prompt);
-      const response = await fetch(ai.url, {
+      // OpenAI DALL-E 3 (paid fallback)
+      const response = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
         headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "dall-e-3",
-          prompt: dallePrompt.slice(0, 4000), // DALL-E 3 max prompt length
+          prompt: textPrompt.slice(0, 4000),
           n: 1,
           size: "1024x1024",
           response_format: "b64_json",
@@ -246,10 +243,9 @@ serve(async (req) => {
       });
       if (!response.ok) {
         if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos agotados." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
         const t = await response.text();
         console.error("OpenAI DALL-E error:", response.status, t);
-        return new Response(JSON.stringify({ error: "Error del servicio de IA" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: `Error de OpenAI (${response.status})` }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       }
       const data = await response.json();
       const b64 = data.data?.[0]?.b64_json;
