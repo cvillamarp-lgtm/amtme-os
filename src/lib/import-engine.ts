@@ -124,8 +124,8 @@ async function distributeToTasks(userId: string, block: ParsedBlock): Promise<{ 
   const taskLines = block.content
     .split("\n")
     .map(l => l.trim())
-    .filter(l => /^[•\-\*]\s+/.test(l))
-    .map(l => l.replace(/^[•\-\*]\s+/, "").replace(/^\[[ x]\]\s*/i, "").trim())
+    .filter(l => /^[•\-*]\s+/.test(l))
+    .map(l => l.replace(/^[•\-*]\s+/, "").replace(/^\[[ x]\]\s*/i, "").trim())
     .filter(l => l.length > 5);
 
   const ids: string[] = [];
