@@ -39,7 +39,8 @@ export function PieceCard({
       const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
       const data = await invokeEdgeFunction<{ imageUrl?: string }>(
         "generate-image",
-        { prompt, hostReference: piece.hostReference }
+        { prompt, hostReference: piece.hostReference },
+        { timeoutMs: 120_000, maxRetries: 0 }
       );
       if (data?.imageUrl) {
         onImageGenerated(piece.id, data.imageUrl, prompt);

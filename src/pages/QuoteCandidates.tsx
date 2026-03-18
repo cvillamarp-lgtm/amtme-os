@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -34,12 +33,76 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { Plus, Quote, Star, CheckCircle2, Archive, Sparkles, Clock, Mic, Loader2, Wand2 } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { useSmartTable } from "@/hooks/useSmartTable";
+import {
+  ListingToolbar,
+  FiltersPanel,
+  ViewsTabs,
+  BulkActionsBar,
+  SmartEmptyState,
+} from "@/components/smart-table";
+import type { FilterDef, SortOption, SavedView } from "@/components/smart-table";
 
 type QuoteWithEpisode = Tables<"quote_candidates"> & {
   episodes: { title: string | null; working_title: string | null; number: string | null } | null;
 };
+
+// ─── Config ────────────────────────────────────────────────────────────────
+
+export const QUOTE_COLUMNS = [
+  { id: 'text', label: 'Cita', sortable: false, visible: true },
+  { id: 'quote_type', label: 'Tipo', sortable: true, visible: true },
+  { id: 'score_total', label: 'Score', sortable: true, visible: true },
+  { id: 'status', label: 'Estado', sortable: true, visible: true },
+  { id: 'timestamp_ref', label: 'Timestamp', sortable: false, visible: false },
+  { id: 'created_at', label: 'Fecha', sortable: true, visible: false },
+];
+
+const QUOTE_SORT_OPTIONS: SortOption[] = [
+  { value: 'score_total', label: 'Score' },
+  { value: 'status', label: 'Estado' },
+  { value: 'quote_type', label: 'Tipo' },
+  { value: 'created_at', label: 'Fecha' },
+];
+
+const QUOTE_FILTER_DEFS: FilterDef[] = [
+  {
+    field: 'status',
+    label: 'Estado',
+    type: 'select',
+    options: [
+      { value: 'captured', label: 'Capturada' },
+      { value: 'approved', label: 'Aprobada' },
+      { value: 'used', label: 'Usada' },
+      { value: 'discarded', label: 'Descartada' },
+    ],
+  },
+  {
+    field: 'quote_type',
+    label: 'Tipo',
+    type: 'select',
+    options: [
+      { value: 'hook', label: 'Hook' },
+      { value: 'opening', label: 'Apertura' },
+      { value: 'closing', label: 'Cierre' },
+      { value: 'social', label: 'Social' },
+      { value: 'bridge', label: 'Puente' },
+      { value: 'punchline', label: 'Punchline' },
+      { value: 'revelation', label: 'Revelación' },
+      { value: 'question', label: 'Pregunta' },
+    ],
+  },
+  {
+    field: 'score_total',
+    label: 'Score mínimo',
+    type: 'number_range',
+    min: 0,
+    max: 5,
+  },
+];
+
+const QUOTE_DEFAULT_VIEWS: SavedView[] = [];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; badgeVariant: "default" | "secondary" | "outline" | "destructive" }> = {
   captured:  { label: "Capturada",  color: "text-blue-500",   badgeVariant: "secondary" },
@@ -76,7 +139,7 @@ function ScoreBar({ value, color }: { value: number | null; color: string }) {
   );
 }
 
-function QuoteCard({ q, onClick }: { q: QuoteWithEpisode; onClick: () => void }) {
+function QuoteCard({ q, onClick, selected, onToggleSelect }: { q: QuoteWithEpisode; onClick: () => void; selected?: boolean; onToggleSelect?: () => void }) {
   const status = STATUS_CONFIG[q.status ?? "captured"] ?? STATUS_CONFIG.captured;
   const qtype = q.quote_type ? QUOTE_TYPES[q.quote_type] : null;
   const episodeLabel = q.episodes
@@ -85,18 +148,27 @@ function QuoteCard({ q, onClick }: { q: QuoteWithEpisode; onClick: () => void })
 
   return (
     <div
-      className="surface p-5 cursor-pointer hover:border-primary/30 transition-all group rounded-xl border border-border"
+      className={`surface p-5 cursor-pointer hover:border-primary/30 transition-all group rounded-xl border ${selected ? 'border-primary/50 bg-primary/5' : 'border-border'}`}
       onClick={onClick}
     >
-      {/* Quote text */}
       <div className="flex gap-3 mb-4">
+        {onToggleSelect && (
+          <div onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={onToggleSelect}
+              className="h-3.5 w-3.5 rounded border-border accent-primary mt-0.5"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
         <Quote className="h-4 w-4 text-primary/40 shrink-0 mt-0.5" />
         <p className="text-sm text-foreground leading-relaxed line-clamp-3 italic">
           {q.text}
         </p>
       </div>
 
-      {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap mb-3">
         <Badge variant={status.badgeVariant} className="text-[10px]">
           {status.label}
@@ -113,7 +185,6 @@ function QuoteCard({ q, onClick }: { q: QuoteWithEpisode; onClick: () => void })
         )}
       </div>
 
-      {/* Episode */}
       {episodeLabel && (
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-3">
           <Mic className="h-3 w-3" />
@@ -121,7 +192,6 @@ function QuoteCard({ q, onClick }: { q: QuoteWithEpisode; onClick: () => void })
         </div>
       )}
 
-      {/* Score bar */}
       {q.score_total !== null && (
         <div className="flex items-center gap-2">
           <Star className="h-3 w-3 text-yellow-500 shrink-0" />
@@ -138,16 +208,8 @@ function QuoteCard({ q, onClick }: { q: QuoteWithEpisode; onClick: () => void })
 }
 
 function ScoreEditor({
-  label,
-  value,
-  onChange,
-  color,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  color: string;
-}) {
+  label, value, onChange, color,
+}: { label: string; value: number; onChange: (v: number) => void; color: string }) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
@@ -155,12 +217,7 @@ function ScoreEditor({
         <span className="text-xs font-bold text-foreground">{value}/5</span>
       </div>
       <div className="flex items-center gap-3">
-        <Slider
-          min={0} max={5} step={0.5}
-          value={[value]}
-          onValueChange={([v]) => onChange(v)}
-          className="flex-1"
-        />
+        <Slider min={0} max={5} step={0.5} value={[value]} onValueChange={([v]) => onChange(v)} className="flex-1" />
         <div className={`h-2 w-2 rounded-full ${color}`} />
       </div>
     </div>
@@ -168,9 +225,7 @@ function ScoreEditor({
 }
 
 function QuoteDetailSheet({
-  quote,
-  onClose,
-  episodes,
+  quote, onClose, episodes,
 }: {
   quote: QuoteWithEpisode | null;
   onClose: () => void;
@@ -240,26 +295,16 @@ function QuoteDetailSheet({
         </SheetHeader>
 
         <div className="space-y-6">
-          {/* Quote text */}
           <div className="space-y-1.5">
             <Label>Texto de la cita *</Label>
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={5}
-              placeholder="Escribe aquí la cita textual..."
-              className="text-sm leading-relaxed font-medium italic"
-            />
+            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} placeholder="Escribe aquí la cita textual..." className="text-sm leading-relaxed font-medium italic" />
           </div>
 
-          {/* Episode + Timestamp */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Episodio</Label>
               <Select value={episodeId ?? ""} onValueChange={(v) => setEpisodeId(v || null)}>
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Seleccionar..." />
-                </SelectTrigger>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>
                   {episodes.map((ep) => (
                     <SelectItem key={ep.id} value={ep.id} className="text-xs">
@@ -275,14 +320,11 @@ function QuoteDetailSheet({
             </div>
           </div>
 
-          {/* Type + Format */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Tipo de cita</Label>
               <Select value={quoteType} onValueChange={setQuoteType}>
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Seleccionar..." />
-                </SelectTrigger>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(QUOTE_TYPES).map(([k, v]) => (
                     <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
@@ -296,7 +338,6 @@ function QuoteDetailSheet({
             </div>
           </div>
 
-          {/* Scores */}
           <div className="surface rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -318,7 +359,6 @@ function QuoteDetailSheet({
             ))}
           </div>
 
-          {/* Status actions */}
           <div className="flex gap-2 flex-wrap">
             {quote.status !== "approved" && (
               <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50"
@@ -340,7 +380,6 @@ function QuoteDetailSheet({
             )}
           </div>
 
-          {/* Save */}
           <div className="flex justify-end pt-2 border-t border-border">
             <Button onClick={() => saveMutation.mutate()} disabled={!text.trim() || !episodeId || saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : "Guardar cambios"}
@@ -355,15 +394,13 @@ function QuoteDetailSheet({
 export default function QuoteCandidates() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState("all");
-  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<QuoteWithEpisode | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [extractOpen, setExtractOpen] = useState(false);
   const [extractEpisodeId, setExtractEpisodeId] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Create form state
   const [newText, setNewText] = useState("");
   const [newEpisodeId, setNewEpisodeId] = useState("");
   const [newType, setNewType] = useState("");
@@ -374,7 +411,6 @@ export default function QuoteCandidates() {
     setIsExtracting(true);
 
     try {
-      // 1. Fetch episode script
       const { data: ep, error: epError } = await supabase
         .from("episodes")
         .select("id, title, working_title, number, script_generated, script_base")
@@ -388,7 +424,6 @@ export default function QuoteCandidates() {
         return;
       }
 
-      // 2. Call Edge Function
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("No autenticado"); return; }
 
@@ -411,7 +446,6 @@ export default function QuoteCandidates() {
         return;
       }
 
-      // 3. Insert quote_candidates
       const rows = quotes.map((q) => ({
         user_id: user.id,
         episode_id: extractEpisodeId,
@@ -465,6 +499,17 @@ export default function QuoteCandidates() {
     },
   });
 
+  const table = useSmartTable({
+    data: quotes,
+    columns: QUOTE_COLUMNS,
+    searchFields: ['text'],
+    defaultSort: [{ field: 'score_total', direction: 'desc' }],
+    defaultViews: QUOTE_DEFAULT_VIEWS,
+    persistKey: 'amtme:list:quotes:v1',
+    pageSize: 50,
+    defaultViewType: 'grid',
+  });
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("No user");
@@ -496,14 +541,30 @@ export default function QuoteCandidates() {
     onError: () => toast.error("Error al crear la cita"),
   });
 
-  const filtered = quotes.filter((q) => {
-    const matchTab =
-      tab === "all" ? true :
-      tab === "captured" ? q.status === "captured" :
-      tab === "approved" ? q.status === "approved" :
-      tab === "used" ? q.status === "used" : true;
-    const matchSearch = !search || q.text.toLowerCase().includes(search.toLowerCase());
-    return matchTab && matchSearch;
+  const approveBulk = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("quote_candidates").update({ status: 'approved' }).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      table.clearSelection();
+      toast.success("Citas aprobadas");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const discardBulk = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("quote_candidates").update({ status: 'discarded' }).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      table.clearSelection();
+      toast.success("Citas descartadas");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const counts = {
@@ -513,9 +574,6 @@ export default function QuoteCandidates() {
     used:     quotes.filter((q) => q.status === "used").length,
   };
 
-  // Sort by score descending
-  const sorted = [...filtered].sort((a, b) => (b.score_total ?? 0) - (a.score_total ?? 0));
-
   return (
     <div className="page-container animate-fade-in">
       <PageHeader
@@ -523,7 +581,6 @@ export default function QuoteCandidates() {
         subtitle="Captura y puntúa frases memorables de tus episodios para reutilizarlas como contenido."
         actions={
           <div className="flex gap-2">
-            {/* Extract from script */}
             <Dialog open={extractOpen} onOpenChange={setExtractOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" className="gap-2">
@@ -541,9 +598,7 @@ export default function QuoteCandidates() {
                   <div className="space-y-1.5">
                     <Label>Episodio *</Label>
                     <Select value={extractEpisodeId} onValueChange={setExtractEpisodeId}>
-                      <SelectTrigger className="text-xs">
-                        <SelectValue placeholder="Seleccionar episodio..." />
-                      </SelectTrigger>
+                      <SelectTrigger className="text-xs"><SelectValue placeholder="Seleccionar episodio..." /></SelectTrigger>
                       <SelectContent>
                         {episodes.map((ep) => (
                           <SelectItem key={ep.id} value={ep.id} className="text-xs">
@@ -555,11 +610,7 @@ export default function QuoteCandidates() {
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="outline" onClick={() => setExtractOpen(false)} disabled={isExtracting}>Cancelar</Button>
-                    <Button
-                      onClick={extractFromScript}
-                      disabled={!extractEpisodeId || isExtracting}
-                      className="gap-2"
-                    >
+                    <Button onClick={extractFromScript} disabled={!extractEpisodeId || isExtracting} className="gap-2">
                       {isExtracting
                         ? <><Loader2 className="h-4 w-4 animate-spin" />Extrayendo...</>
                         : <><Sparkles className="h-4 w-4" />Extraer</>}
@@ -569,79 +620,64 @@ export default function QuoteCandidates() {
               </DialogContent>
             </Dialog>
 
-            {/* Manual capture */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-2">
                   <Plus className="h-4 w-4" />Capturar cita
                 </Button>
               </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-display">Nueva cita</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
-                <div className="space-y-1.5">
-                  <Label>Texto *</Label>
-                  <Textarea
-                    value={newText}
-                    onChange={(e) => setNewText(e.target.value)}
-                    rows={4}
-                    placeholder="Escribe la frase textual aquí..."
-                    className="italic"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Nueva cita</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
                   <div className="space-y-1.5">
-                    <Label>Episodio *</Label>
-                    <Select value={newEpisodeId} onValueChange={setNewEpisodeId}>
-                      <SelectTrigger className="text-xs">
-                        <SelectValue placeholder="Seleccionar..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {episodes.map((ep) => (
-                          <SelectItem key={ep.id} value={ep.id} className="text-xs">
-                            {ep.number ? `#${ep.number} ` : ""}{ep.title || ep.working_title || "Sin título"}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Texto *</Label>
+                    <Textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={4} placeholder="Escribe la frase textual aquí..." className="italic" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Episodio *</Label>
+                      <Select value={newEpisodeId} onValueChange={setNewEpisodeId}>
+                        <SelectTrigger className="text-xs"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                        <SelectContent>
+                          {episodes.map((ep) => (
+                            <SelectItem key={ep.id} value={ep.id} className="text-xs">
+                              {ep.number ? `#${ep.number} ` : ""}{ep.title || ep.working_title || "Sin título"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Tipo</Label>
+                      <Select value={newType} onValueChange={setNewType}>
+                        <SelectTrigger className="text-xs"><SelectValue placeholder="Opcional..." /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(QUOTE_TYPES).map(([k, v]) => (
+                            <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Tipo</Label>
-                    <Select value={newType} onValueChange={setNewType}>
-                      <SelectTrigger className="text-xs">
-                        <SelectValue placeholder="Opcional..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(QUOTE_TYPES).map(([k, v]) => (
-                          <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Timestamp (ej. 12:34)</Label>
+                    <Input value={newTimestamp} onChange={(e) => setNewTimestamp(e.target.value)} placeholder="00:00" />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                    <Button onClick={() => createMutation.mutate()} disabled={!newText.trim() || !newEpisodeId || createMutation.isPending}>
+                      {createMutation.isPending ? "Guardando..." : "Capturar"}
+                    </Button>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Timestamp (ej. 12:34)</Label>
-                  <Input value={newTimestamp} onChange={(e) => setNewTimestamp(e.target.value)} placeholder="00:00" />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-                  <Button
-                    onClick={() => createMutation.mutate()}
-                    disabled={!newText.trim() || !newEpisodeId || createMutation.isPending}
-                  >
-                    {createMutation.isPending ? "Guardando..." : "Capturar"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
+              </DialogContent>
             </Dialog>
           </div>
         }
       />
 
-      {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Total", value: counts.all, color: "text-foreground" },
@@ -656,37 +692,106 @@ export default function QuoteCandidates() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Tabs value={tab} onValueChange={setTab} className="flex-1">
-          <TabsList>
-            <TabsTrigger value="all">Todas <span className="ml-1.5 text-[10px] opacity-60">{counts.all}</span></TabsTrigger>
-            <TabsTrigger value="captured">Capturadas <span className="ml-1.5 text-[10px] opacity-60">{counts.captured}</span></TabsTrigger>
-            <TabsTrigger value="approved">Aprobadas <span className="ml-1.5 text-[10px] opacity-60">{counts.approved}</span></TabsTrigger>
-            <TabsTrigger value="used">Usadas <span className="ml-1.5 text-[10px] opacity-60">{counts.used}</span></TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Input
-          placeholder="Buscar en citas..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="sm:w-64"
-        />
-      </div>
+      <BulkActionsBar
+        selectedCount={table.selectedIds.size}
+        totalCount={table.filteredCount}
+        onSelectAll={table.selectAll}
+        onClearSelection={table.clearSelection}
+        isAllSelected={table.isAllSelected}
+        isIndeterminate={table.isIndeterminate}
+        actions={[
+          {
+            label: 'Aprobar',
+            icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+            onClick: () => approveBulk.mutate(Array.from(table.selectedIds)),
+          },
+          {
+            label: 'Descartar',
+            variant: 'destructive',
+            icon: <Archive className="h-3.5 w-3.5" />,
+            onClick: () => discardBulk.mutate(Array.from(table.selectedIds)),
+          },
+        ]}
+      />
 
-      {/* Grid */}
+      <ListingToolbar
+        searchQuery={table.searchQuery}
+        onSearchChange={table.setSearchQuery}
+        searchPlaceholder="Buscar en citas..."
+        sortOptions={QUOTE_SORT_OPTIONS}
+        currentSort={table.currentSort}
+        onSortChange={table.setSortRule}
+        filters={table.filters}
+        onClearFilters={table.clearFilters}
+        onRemoveFilter={table.removeFilter}
+        totalCount={table.totalCount}
+        filteredCount={table.filteredCount}
+        filtersOpen={filtersOpen}
+        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        showViewToggle={true}
+        viewType={table.viewType}
+        onViewTypeChange={table.setViewType}
+      />
+
+      <FiltersPanel
+        open={filtersOpen}
+        filterDefs={QUOTE_FILTER_DEFS}
+        activeFilters={table.filters}
+        onAddFilter={table.addFilter}
+        onRemoveFilter={table.removeFilter}
+        onClearAll={table.clearFilters}
+      />
+
+      <ViewsTabs
+        views={table.views}
+        activeViewId={table.activeViewId}
+        onApplyView={table.applyView}
+        onSaveView={table.saveView}
+        onDeleteView={table.deleteView}
+        onReset={table.resetToDefault}
+      />
+
       {isLoading ? (
         <LoadingSkeleton count={6} variant="card" />
-      ) : sorted.length === 0 ? (
-        <EmptyState
-          icon={Quote}
-          message="No hay citas — captura frases memorables de tus episodios"
+      ) : table.filteredCount === 0 ? (
+        <SmartEmptyState
+          filtered={table.filters.length > 0 || !!table.searchQuery}
+          onClearFilters={table.clearFilters}
+          title="No hay citas"
+          description="Captura frases memorables de tus episodios para reutilizarlas como contenido"
+          action={
+            <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />Capturar cita
+            </Button>
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {sorted.map((q) => (
-            <QuoteCard key={q.id} q={q} onClick={() => setSelected(q)} />
+          {table.paginated.map((q) => (
+            <QuoteCard
+              key={q.id}
+              q={q}
+              onClick={() => setSelected(q)}
+              selected={table.selectedIds.has(q.id)}
+              onToggleSelect={() => table.toggleSelection(q.id)}
+            />
           ))}
+        </div>
+      )}
+
+      {table.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <span className="text-xs text-muted-foreground">
+            Página {table.currentPage + 1} de {table.totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage - 1)} disabled={!table.hasPrevPage}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage + 1)} disabled={!table.hasNextPage}>
+              Siguiente
+            </Button>
+          </div>
         </div>
       )}
 

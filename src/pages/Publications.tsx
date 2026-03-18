@@ -7,12 +7,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Plus, Search, CheckSquare, Square, ExternalLink, Calendar, Mic } from "lucide-react";
+import { Send, Plus, CheckSquare, Square, ExternalLink, Calendar, Mic } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { useSmartTable } from "@/hooks/useSmartTable";
+import {
+  ListingToolbar,
+  FiltersPanel,
+  ViewsTabs,
+  BulkActionsBar,
+  SmartEmptyState,
+} from "@/components/smart-table";
+import type { FilterDef, SortOption, SavedView } from "@/components/smart-table";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +33,88 @@ type PublicationWithEpisode = Tables<"publications"> & {
     number: string | null;
   } | null;
 };
+
+// ── Column / Filter Config ─────────────────────────────────────────────────
+
+export const PUB_COLUMNS = [
+  { id: 'platform', label: 'Plataforma', sortable: true, visible: true },
+  { id: 'status', label: 'Estado', sortable: true, visible: true },
+  { id: 'copy_final', label: 'Copy', sortable: false, visible: true },
+  { id: 'scheduled_at', label: 'Programada', sortable: true, visible: true },
+  { id: 'created_at', label: 'Creada', sortable: true, visible: false },
+];
+
+const PUB_SORT_OPTIONS: SortOption[] = [
+  { value: 'platform', label: 'Plataforma' },
+  { value: 'status', label: 'Estado' },
+  { value: 'scheduled_at', label: 'Fecha programada' },
+  { value: 'created_at', label: 'Fecha de creación' },
+];
+
+const PUB_FILTER_DEFS: FilterDef[] = [
+  {
+    field: 'status',
+    label: 'Estado',
+    type: 'select',
+    options: [
+      { value: 'draft', label: 'Borrador' },
+      { value: 'approved', label: 'Aprobado' },
+      { value: 'scheduled', label: 'Programado' },
+      { value: 'published', label: 'Publicado' },
+      { value: 'failed', label: 'Fallido' },
+    ],
+  },
+  {
+    field: 'platform',
+    label: 'Plataforma',
+    type: 'select',
+    options: [
+      { value: 'instagram_feed', label: 'IG Feed' },
+      { value: 'instagram_reel', label: 'IG Reel' },
+      { value: 'instagram_story', label: 'IG Story' },
+      { value: 'tiktok', label: 'TikTok' },
+      { value: 'youtube', label: 'YouTube' },
+      { value: 'spotify', label: 'Spotify' },
+      { value: 'x', label: 'X' },
+    ],
+  },
+];
+
+const PUB_DEFAULT_VIEWS: SavedView[] = [
+  {
+    id: 'view-all',
+    name: 'Todos',
+    filters: [],
+    sortRules: [{ field: 'created_at', direction: 'desc' }],
+    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
+    viewType: 'grid',
+    isDefault: true,
+  },
+  {
+    id: 'view-draft',
+    name: 'Borradores',
+    filters: [{ id: 'f-draft', field: 'status', operator: 'equals', value: 'draft', label: 'Estado: Borrador' }],
+    sortRules: [],
+    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
+    viewType: 'grid',
+  },
+  {
+    id: 'view-approved',
+    name: 'Aprobados',
+    filters: [{ id: 'f-approved', field: 'status', operator: 'equals', value: 'approved', label: 'Estado: Aprobado' }],
+    sortRules: [],
+    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
+    viewType: 'grid',
+  },
+  {
+    id: 'view-published',
+    name: 'Publicados',
+    filters: [{ id: 'f-published', field: 'status', operator: 'equals', value: 'published', label: 'Estado: Publicado' }],
+    sortRules: [],
+    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
+    viewType: 'grid',
+  },
+];
 
 // ── Platform config ────────────────────────────────────────────────────────
 
@@ -48,47 +138,47 @@ function platformCfg(platform: string | null) {
 
 const DEFAULT_CHECKLISTS: Record<string, ChecklistItem[]> = {
   instagram_feed: [
-    { id: "copy",       label: "Copy revisado",               done: false },
-    { id: "hashtags",   label: "Hashtags optimizados (20-30)", done: false },
-    { id: "asset",      label: "Asset visual listo",           done: false },
-    { id: "schedule",   label: "Horario definido",             done: false },
-    { id: "link_bio",   label: "Link en bio actualizado",      done: false },
+    { id: "copy", label: "Copy revisado", done: false },
+    { id: "hashtags", label: "Hashtags optimizados (20-30)", done: false },
+    { id: "asset", label: "Asset visual listo", done: false },
+    { id: "schedule", label: "Horario definido", done: false },
+    { id: "link_bio", label: "Link en bio actualizado", done: false },
   ],
   instagram_reel: [
-    { id: "video",  label: "Video editado y exportado",  done: false },
-    { id: "cover",  label: "Portada del reel",            done: false },
-    { id: "copy",   label: "Copy + hashtags escritos",   done: false },
-    { id: "audio",  label: "Audio/música ajustado",       done: false },
-    { id: "cta",    label: "CTA visible en el video",    done: false },
+    { id: "video", label: "Video editado y exportado", done: false },
+    { id: "cover", label: "Portada del reel", done: false },
+    { id: "copy", label: "Copy + hashtags escritos", done: false },
+    { id: "audio", label: "Audio/música ajustado", done: false },
+    { id: "cta", label: "CTA visible en el video", done: false },
   ],
   instagram_story: [
-    { id: "asset",    label: "Asset de story listo",        done: false },
-    { id: "link",     label: "Link sticker configurado",    done: false },
-    { id: "sequence", label: "Secuencia de stories",        done: false },
+    { id: "asset", label: "Asset de story listo", done: false },
+    { id: "link", label: "Link sticker configurado", done: false },
+    { id: "sequence", label: "Secuencia de stories", done: false },
   ],
   tiktok: [
-    { id: "video",    label: "Video optimizado para TikTok", done: false },
-    { id: "hook",     label: "Hook en los primeros 3s",      done: false },
-    { id: "caption",  label: "Caption con keywords",         done: false },
-    { id: "hashtags", label: "Hashtags trending",            done: false },
+    { id: "video", label: "Video optimizado para TikTok", done: false },
+    { id: "hook", label: "Hook en los primeros 3s", done: false },
+    { id: "caption", label: "Caption con keywords", done: false },
+    { id: "hashtags", label: "Hashtags trending", done: false },
   ],
   youtube: [
-    { id: "thumbnail",   label: "Thumbnail diseñada",            done: false },
-    { id: "title",       label: "Título SEO optimizado",          done: false },
-    { id: "description", label: "Descripción con timestamps",     done: false },
-    { id: "tags",        label: "Tags configurados",              done: false },
-    { id: "cards",       label: "Cards y end screens",            done: false },
+    { id: "thumbnail", label: "Thumbnail diseñada", done: false },
+    { id: "title", label: "Título SEO optimizado", done: false },
+    { id: "description", label: "Descripción con timestamps", done: false },
+    { id: "tags", label: "Tags configurados", done: false },
+    { id: "cards", label: "Cards y end screens", done: false },
   ],
   spotify: [
-    { id: "upload",      label: "Episodio subido",          done: false },
-    { id: "description", label: "Descripción editada",       done: false },
-    { id: "cover",       label: "Portada actualizada",       done: false },
-    { id: "scheduled",   label: "Fecha de publicación set", done: false },
+    { id: "upload", label: "Episodio subido", done: false },
+    { id: "description", label: "Descripción editada", done: false },
+    { id: "cover", label: "Portada actualizada", done: false },
+    { id: "scheduled", label: "Fecha de publicación set", done: false },
   ],
   x: [
-    { id: "copy",   label: "Copy (280 chars)",  done: false },
-    { id: "media",  label: "Media adjunta",     done: false },
-    { id: "thread", label: "Thread si aplica",  done: false },
+    { id: "copy", label: "Copy (280 chars)", done: false },
+    { id: "media", label: "Media adjunta", done: false },
+    { id: "thread", label: "Thread si aplica", done: false },
   ],
 };
 
@@ -117,7 +207,7 @@ function statusConfig(status: string | null) {
     case "scheduled": return { label: "Programado", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
     case "published": return { label: "Publicado",  cls: "text-primary bg-primary/10 border-primary/20" };
     case "failed":    return { label: "Fallido",    cls: "text-red-400 bg-red-400/10 border-red-400/20" };
-    default:          return { label: status ?? "—",cls: "text-muted-foreground bg-muted border-border" };
+    default:          return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
   }
 }
 
@@ -149,14 +239,9 @@ function ChecklistEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          Checklist
-        </p>
-        <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-          {done}/{items.length}
-        </span>
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Checklist</p>
+        <span className="text-[10px] text-muted-foreground/50 tabular-nums">{done}/{items.length}</span>
       </div>
-      {/* Progress */}
       <div className="h-1 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-primary/60 rounded-full transition-all"
@@ -191,9 +276,11 @@ interface PubCardProps {
   pub: PublicationWithEpisode;
   onOpen: () => void;
   onStatusChange: (status: string) => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-function PublicationCard({ pub, onOpen, onStatusChange }: PubCardProps) {
+function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect }: PubCardProps) {
   const pc = platformCfg(pub.platform);
   const sc = statusConfig(pub.status);
   const checklist = parseChecklist(pub.checklist_json);
@@ -201,19 +288,30 @@ function PublicationCard({ pub, onOpen, onStatusChange }: PubCardProps) {
   const checkTotal = checklist.length;
 
   return (
-    <Card className="cursor-pointer hover:border-primary/30 transition-colors" onClick={onOpen}>
+    <Card className={`cursor-pointer hover:border-primary/30 transition-colors ${selected ? 'border-primary/50 bg-primary/5' : ''}`} onClick={onOpen}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          {/* Platform badge */}
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
-            {pc.emoji} {pc.label}
-          </span>
+          <div className="flex items-center gap-2">
+            {onToggleSelect && (
+              <div onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={onToggleSelect}
+                  className="h-3.5 w-3.5 rounded border-border accent-primary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
+              {pc.emoji} {pc.label}
+            </span>
+          </div>
           <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
             {sc.label}
           </span>
         </div>
 
-        {/* Episode */}
         <div className="flex items-center gap-1 mt-1">
           <Mic className="h-3 w-3 text-muted-foreground/40 shrink-0" />
           <span className="text-[10px] text-muted-foreground/60 line-clamp-1">
@@ -223,14 +321,12 @@ function PublicationCard({ pub, onOpen, onStatusChange }: PubCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* Copy preview */}
         {pub.copy_final ? (
           <p className="text-xs text-muted-foreground line-clamp-3">{pub.copy_final}</p>
         ) : (
           <p className="text-xs text-muted-foreground/30 italic">Sin copy definido</p>
         )}
 
-        {/* Scheduled date */}
         {pub.scheduled_at && (
           <div className="flex items-center gap-1.5 text-[10px] text-blue-400">
             <Calendar className="h-3 w-3" />
@@ -238,7 +334,6 @@ function PublicationCard({ pub, onOpen, onStatusChange }: PubCardProps) {
           </div>
         )}
 
-        {/* Checklist mini-progress */}
         {checkTotal > 0 && (
           <div className="space-y-1">
             <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -251,7 +346,6 @@ function PublicationCard({ pub, onOpen, onStatusChange }: PubCardProps) {
           </div>
         )}
 
-        {/* Footer */}
         <div
           className="flex items-center justify-between border-t border-border pt-2"
           onClick={(e) => e.stopPropagation()}
@@ -366,7 +460,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
 
         <div className="px-6 py-5 space-y-5">
           {editing ? (
-            /* ── Edit form ── */
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">Copy final</Label>
@@ -376,16 +469,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                   value={form.copy_final ?? ""}
                   onChange={(e) => setField("copy_final", e.target.value)}
                 />
-                {pub.platform.startsWith("instagram") && (
-                  <p className={`text-[10px] mt-1 ${(form.copy_final?.length ?? 0) > 2200 ? "text-red-400" : "text-muted-foreground/40"}`}>
-                    {form.copy_final?.length ?? 0} / 2200 chars
-                  </p>
-                )}
-                {pub.platform === "x" && (
-                  <p className={`text-[10px] mt-1 ${(form.copy_final?.length ?? 0) > 280 ? "text-red-400" : "text-muted-foreground/40"}`}>
-                    {form.copy_final?.length ?? 0} / 280 chars
-                  </p>
-                )}
               </div>
 
               <div>
@@ -437,7 +520,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 />
               </div>
 
-              {/* Checklist editor */}
               <ChecklistEditor items={checklist} onChange={setChecklist} />
 
               <Button className="w-full" onClick={() => save.mutate()} disabled={save.isPending}>
@@ -445,9 +527,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
               </Button>
             </div>
           ) : (
-            /* ── View mode ── */
             <div className="space-y-5">
-              {/* Copy */}
               {pub.copy_final ? (
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Copy</p>
@@ -461,7 +541,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 </div>
               )}
 
-              {/* CTA + hashtags */}
               <div className="grid grid-cols-1 gap-4">
                 {pub.cta_text && (
                   <div>
@@ -481,7 +560,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 )}
               </div>
 
-              {/* Scheduled */}
               {pub.scheduled_at && (
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-blue-400" />
@@ -489,7 +567,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 </div>
               )}
 
-              {/* Objective */}
               {pub.objective && (
                 <div>
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Objetivo</p>
@@ -497,29 +574,20 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 </div>
               )}
 
-              {/* Published link */}
               {pub.link_published && (
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
                   <span className="text-sm text-primary truncate">{pub.link_published}</span>
-                  <a
-                    href={pub.link_published}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-2 shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <a href={pub.link_published} target="_blank" rel="noreferrer" className="ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <ExternalLink className="h-4 w-4 text-primary" />
                   </a>
                 </div>
               )}
 
-              {/* Checklist (interactive even in view mode) */}
               {checklist.length > 0 && (
                 <ChecklistEditor
                   items={checklist}
                   onChange={(updated) => {
                     setChecklist(updated);
-                    // Auto-save checklist changes
                     supabase
                       .from("publications")
                       .update({ checklist_json: updated as unknown as Tables<"publications">["checklist_json"] })
@@ -529,38 +597,24 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 />
               )}
 
-              {/* Actions */}
               <div className="border-t border-border pt-4 space-y-3">
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
                 <div className="grid grid-cols-2 gap-2">
                   {pub.status === "draft" && (
-                    <Button
-                      variant="outline" size="sm"
-                      onClick={() => { onStatusChange(pub.id, "approved"); onClose(); }}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => { onStatusChange(pub.id, "approved"); onClose(); }}>
                       Aprobar
                     </Button>
                   )}
                   {pub.status === "approved" && (
-                    <Button
-                      variant="outline" size="sm"
-                      onClick={() => { onStatusChange(pub.id, "scheduled"); onClose(); }}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => { onStatusChange(pub.id, "scheduled"); onClose(); }}>
                       Programar
                     </Button>
                   )}
                   {(pub.status === "approved" || pub.status === "scheduled") && (
-                    <MarkPublishedButton
-                      onConfirm={(link) => markPublished.mutate(link)}
-                      loading={markPublished.isPending}
-                    />
+                    <MarkPublishedButton onConfirm={(link) => markPublished.mutate(link)} loading={markPublished.isPending} />
                   )}
                   {pub.status === "published" && (
-                    <Button
-                      variant="ghost" size="sm"
-                      className="text-red-400 hover:text-red-400"
-                      onClick={() => { onStatusChange(pub.id, "failed"); onClose(); }}
-                    >
+                    <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-400" onClick={() => { onStatusChange(pub.id, "failed"); onClose(); }}>
                       Reportar error
                     </Button>
                   )}
@@ -578,7 +632,6 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
   );
 }
 
-// Inline "mark as published" with link input
 function MarkPublishedButton({ onConfirm, loading }: { onConfirm: (link: string) => void; loading: boolean }) {
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState("");
@@ -593,17 +646,8 @@ function MarkPublishedButton({ onConfirm, loading }: { onConfirm: (link: string)
         <DialogHeader><DialogTitle>¿Publicado?</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Label>Link de la publicación <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-          <Input
-            placeholder="https://www.instagram.com/p/..."
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            autoFocus
-          />
-          <Button
-            className="w-full"
-            onClick={() => { onConfirm(link); setOpen(false); }}
-            disabled={loading}
-          >
+          <Input placeholder="https://www.instagram.com/p/..." value={link} onChange={(e) => setLink(e.target.value)} autoFocus />
+          <Button className="w-full" onClick={() => { onConfirm(link); setOpen(false); }} disabled={loading}>
             {loading ? "Guardando..." : "Confirmar publicación"}
           </Button>
         </div>
@@ -614,25 +658,13 @@ function MarkPublishedButton({ onConfirm, loading }: { onConfirm: (link: string)
 
 // ── Publications (main page) ───────────────────────────────────────────────
 
-const TABS = [
-  { value: "all",       label: "Todos" },
-  { value: "draft",     label: "Borrador" },
-  { value: "approved",  label: "Aprobados" },
-  { value: "scheduled", label: "Programados" },
-  { value: "published", label: "Publicados" },
-  { value: "failed",    label: "Fallidos" },
-] as const;
-
 export default function Publications() {
   const [openCreate, setOpenCreate] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<string>("all");
-  const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [createPlatform, setCreatePlatform] = useState<string>("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const qc = useQueryClient();
 
-  // ── Fetch publications ─────────────────────────────────────────────────
   const { data: publications = [], isLoading } = useQuery({
     queryKey: ["publications"],
     queryFn: async () => {
@@ -645,7 +677,6 @@ export default function Publications() {
     },
   });
 
-  // ── Fetch episodes for the create dialog ───────────────────────────────
   const { data: episodes = [] } = useQuery({
     queryKey: ["episodes-for-select"],
     queryFn: async () => {
@@ -658,7 +689,6 @@ export default function Publications() {
     },
   });
 
-  // ── Fetch platform accounts for the create dialog ──────────────────────
   const { data: platformAccounts = [] } = useQuery({
     queryKey: ["platform-accounts-active"],
     queryFn: async () => {
@@ -671,14 +701,23 @@ export default function Publications() {
     },
   });
 
-  // Accounts matching the selected platform prefix (instagram_feed → instagram)
   const matchingAccounts = platformAccounts.filter((a) => {
     if (!createPlatform) return false;
-    const base = createPlatform.split("_")[0]; // "instagram", "tiktok", etc.
+    const base = createPlatform.split("_")[0];
     return a.platform.toLowerCase().includes(base);
   });
 
-  // ── Mutations ──────────────────────────────────────────────────────────
+  const table = useSmartTable({
+    data: publications,
+    columns: PUB_COLUMNS,
+    searchFields: ['copy_final', 'platform'],
+    defaultSort: [{ field: 'created_at', direction: 'desc' }],
+    defaultViews: PUB_DEFAULT_VIEWS,
+    persistKey: 'amtme:list:publications:v1',
+    pageSize: 50,
+    defaultViewType: 'grid',
+  });
+
   const createPublication = useMutation({
     mutationFn: async (fd: FormData) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -725,48 +764,95 @@ export default function Publications() {
     onError: (e) => toast.error(e.message),
   });
 
-  // ── Derived ────────────────────────────────────────────────────────────
-  const counts = Object.fromEntries(
-    TABS.map(({ value }) => [
-      value,
-      value === "all" ? publications.length : publications.filter((p) => p.status === value).length,
-    ])
-  );
-
-  const filtered = publications.filter((p) => {
-    if (tab !== "all" && p.status !== tab) return false;
-    if (platformFilter !== "all" && p.platform !== platformFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        p.copy_final?.toLowerCase().includes(q) ||
-        p.episodes?.title?.toLowerCase().includes(q) ||
-        p.episodes?.working_title?.toLowerCase().includes(q)
-      );
-    }
-    return true;
+  const approveBulk = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("publications").update({ status: 'approved' }).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["publications"] });
+      table.clearSelection();
+      toast.success("Publicaciones aprobadas");
+    },
+    onError: (e) => toast.error(e.message),
   });
+
+  const exportCSV = () => {
+    const selected = table.selectedIds.size > 0
+      ? publications.filter(p => table.selectedIds.has(p.id))
+      : table.filtered;
+    if (!selected.length) return;
+    const headers = ["platform", "status", "copy_final", "scheduled_at", "created_at"];
+    const rows = selected.map((p) =>
+      headers.map((h) => {
+        const val = (p as any)[h];
+        return val === null || val === undefined ? "" : String(val).replace(/"/g, '""');
+      })
+    );
+    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "publicaciones.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success("CSV exportado");
+  };
 
   const selected = publications.find((p) => p.id === selectedId) ?? null;
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="page-container animate-fade-in">
-
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Publicaciones</h1>
           <p className="page-subtitle">Planea y rastrea la distribución de cada episodio</p>
         </div>
+      </div>
+
+      <BulkActionsBar
+        selectedCount={table.selectedIds.size}
+        totalCount={table.filteredCount}
+        onSelectAll={table.selectAll}
+        onClearSelection={table.clearSelection}
+        isAllSelected={table.isAllSelected}
+        isIndeterminate={table.isIndeterminate}
+        actions={[
+          {
+            label: 'Aprobar',
+            onClick: () => approveBulk.mutate(Array.from(table.selectedIds)),
+          },
+          {
+            label: 'Exportar CSV',
+            onClick: exportCSV,
+          },
+        ]}
+      />
+
+      <ListingToolbar
+        searchQuery={table.searchQuery}
+        onSearchChange={table.setSearchQuery}
+        searchPlaceholder="Buscar publicaciones..."
+        sortOptions={PUB_SORT_OPTIONS}
+        currentSort={table.currentSort}
+        onSortChange={table.setSortRule}
+        filters={table.filters}
+        onClearFilters={table.clearFilters}
+        onRemoveFilter={table.removeFilter}
+        totalCount={table.totalCount}
+        filteredCount={table.filteredCount}
+        filtersOpen={filtersOpen}
+        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        showViewToggle={true}
+        viewType={table.viewType}
+        onViewTypeChange={table.setViewType}
+      >
         <Dialog open={openCreate} onOpenChange={(v) => { setOpenCreate(v); if (!v) setCreatePlatform(""); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Nueva publicación</Button>
+            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nueva publicación</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nueva publicación</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Nueva publicación</DialogTitle></DialogHeader>
             <form
               onSubmit={(e) => { e.preventDefault(); createPublication.mutate(new FormData(e.currentTarget)); }}
               className="space-y-4"
@@ -813,12 +899,7 @@ export default function Publications() {
 
               <div>
                 <Label>Copy inicial <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-                <Textarea
-                  name="copy_final"
-                  placeholder="Puedes editarlo después..."
-                  rows={3}
-                  className="mt-1"
-                />
+                <Textarea name="copy_final" placeholder="Puedes editarlo después..." rows={3} className="mt-1" />
               </div>
 
               <Button type="submit" className="w-full" disabled={createPublication.isPending}>
@@ -827,81 +908,73 @@ export default function Publications() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </ListingToolbar>
 
-      {/* Search + platform filter */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar publicaciones..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={platformFilter} onValueChange={setPlatformFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las plataformas</SelectItem>
-            {PLATFORMS.map((p) => (
-              <SelectItem key={p.value} value={p.value}>{p.emoji} {p.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FiltersPanel
+        open={filtersOpen}
+        filterDefs={PUB_FILTER_DEFS}
+        activeFilters={table.filters}
+        onAddFilter={table.addFilter}
+        onRemoveFilter={table.removeFilter}
+        onClearAll={table.clearFilters}
+      />
 
-      {/* Status tabs */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="h-8">
-          {TABS.map(({ value, label }) => (
-            <TabsTrigger key={value} value={value} className="text-xs gap-1.5">
-              {label}
-              {counts[value] > 0 && (
-                <span className="text-[10px] opacity-50 tabular-nums">{counts[value]}</span>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <ViewsTabs
+        views={table.views}
+        activeViewId={table.activeViewId}
+        onApplyView={table.applyView}
+        onSaveView={table.saveView}
+        onDeleteView={table.deleteView}
+        onReset={table.resetToDefault}
+      />
 
-      {/* Content */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <Card key={i} className="h-44 animate-pulse bg-muted" />)}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <Send className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">
-            {search || platformFilter !== "all"
-              ? "Sin resultados para ese filtro"
-              : tab === "all"
-              ? "Aún no hay publicaciones. Crea la primera para un episodio."
-              : "No hay publicaciones en esta categoría"}
-          </p>
-          {!search && tab === "all" && (
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setOpenCreate(true)}>
+      ) : table.filteredCount === 0 ? (
+        <SmartEmptyState
+          filtered={table.filters.length > 0 || !!table.searchQuery}
+          onClearFilters={table.clearFilters}
+          title="Sin publicaciones"
+          description="Crea la primera publicación para un episodio"
+          action={
+            <Button variant="outline" size="sm" onClick={() => setOpenCreate(true)}>
               <Plus className="h-4 w-4 mr-2" />Crear primera publicación
             </Button>
-          )}
-        </div>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((pub) => (
+          {table.paginated.map((pub) => (
             <PublicationCard
               key={pub.id}
               pub={pub}
               onOpen={() => setSelectedId(pub.id)}
               onStatusChange={(status) => updateStatus.mutate({ id: pub.id, status })}
+              selected={table.selectedIds.has(pub.id)}
+              onToggleSelect={() => table.toggleSelection(pub.id)}
             />
           ))}
         </div>
       )}
 
-      {/* Detail sheet */}
+      {table.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <span className="text-xs text-muted-foreground">
+            Página {table.currentPage + 1} de {table.totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage - 1)} disabled={!table.hasPrevPage}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage + 1)} disabled={!table.hasNextPage}>
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
+
       <PublicationDetailSheet
         pub={selected}
         open={!!selectedId}

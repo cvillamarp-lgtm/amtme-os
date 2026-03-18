@@ -14,8 +14,68 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { useSmartTable } from "@/hooks/useSmartTable";
+import {
+  ListingToolbar,
+  FiltersPanel,
+  ViewsTabs,
+  BulkActionsBar,
+  SmartEmptyState,
+} from "@/components/smart-table";
+import type { FilterDef, SortOption, SavedView } from "@/components/smart-table";
 
 type Task = Tables<"tasks">;
+
+// ─── Config ────────────────────────────────────────────────────────────────
+
+export const TASK_COLUMNS = [
+  { id: 'title', label: 'Tarea', sortable: true, visible: true },
+  { id: 'category', label: 'Categoría', sortable: true, visible: true },
+  { id: 'priority', label: 'Prioridad', sortable: true, visible: true },
+  { id: 'status', label: 'Estado', sortable: true, visible: false },
+  { id: 'created_at', label: 'Creada', sortable: true, visible: false },
+];
+
+const TASK_SORT_OPTIONS: SortOption[] = [
+  { value: 'title', label: 'Título' },
+  { value: 'priority', label: 'Prioridad' },
+  { value: 'category', label: 'Categoría' },
+  { value: 'created_at', label: 'Fecha de creación' },
+];
+
+const TASK_FILTER_DEFS: FilterDef[] = [
+  {
+    field: 'priority',
+    label: 'Prioridad',
+    type: 'select',
+    options: [
+      { value: 'high', label: 'Alta' },
+      { value: 'medium', label: 'Media' },
+      { value: 'low', label: 'Baja' },
+    ],
+  },
+  {
+    field: 'status',
+    label: 'Estado',
+    type: 'select',
+    options: [
+      { value: 'todo', label: 'Pendiente' },
+      { value: 'done', label: 'Completada' },
+    ],
+  },
+];
+
+const TASK_DEFAULT_VIEWS: SavedView[] = [
+  {
+    id: 'view-pending',
+    name: 'Pendientes',
+    filters: [{ id: 'f-pending', field: 'status', operator: 'equals', value: 'todo', label: 'Estado: Pendiente' }],
+    sortRules: [],
+    visibleColumns: ['title', 'category', 'priority'],
+    viewType: 'table',
+    isDefault: true,
+  },
+];
 
 const PRIORITY_CONFIG = {
   high:   { label: "Alta",   variant: "destructive" as const },
@@ -147,6 +207,7 @@ function TaskEditSheet({
 export default function Tasks() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: tasks = [], isLoading } = useQuery({
@@ -159,6 +220,17 @@ export default function Tasks() {
       if (error) throw error;
       return data as Task[];
     },
+  });
+
+  const table = useSmartTable({
+    data: tasks,
+    columns: TASK_COLUMNS,
+    searchFields: ['title', 'description', 'category'],
+    defaultSort: [{ field: 'created_at', direction: 'desc' }],
+    defaultViews: TASK_DEFAULT_VIEWS,
+    persistKey: 'amtme:list:tasks:v1',
+    pageSize: 50,
+    defaultViewType: 'table',
   });
 
   const addTask = useMutation({
@@ -197,8 +269,39 @@ export default function Tasks() {
     },
   });
 
-  const pending = tasks.filter((t) => t.status !== "done");
-  const done = tasks.filter((t) => t.status === "done");
+  const markCompletedBulk = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "done" })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["sidebar-counts"] });
+      table.clearSelection();
+      toast.success("Tareas marcadas como completadas");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteBulk = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("tasks").delete().in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["sidebar-counts"] });
+      table.clearSelection();
+      toast.success("Tareas eliminadas");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const pending = table.filtered.filter((t) => t.status !== "done");
+  const done = table.filtered.filter((t) => t.status === "done");
 
   return (
     <div className="page-container animate-fade-in">
@@ -206,12 +309,55 @@ export default function Tasks() {
         <div>
           <h1 className="page-title">Tareas</h1>
           <p className="page-subtitle">
-            {pending.length} pendiente{pending.length !== 1 ? "s" : ""} · {done.length} completada{done.length !== 1 ? "s" : ""}
+            {tasks.filter(t => t.status !== 'done').length} pendiente{tasks.filter(t => t.status !== 'done').length !== 1 ? "s" : ""} · {tasks.filter(t => t.status === 'done').length} completada{tasks.filter(t => t.status === 'done').length !== 1 ? "s" : ""}
           </p>
         </div>
+      </div>
+
+      <BulkActionsBar
+        selectedCount={table.selectedIds.size}
+        totalCount={table.filteredCount}
+        onSelectAll={table.selectAll}
+        onClearSelection={table.clearSelection}
+        isAllSelected={table.isAllSelected}
+        isIndeterminate={table.isIndeterminate}
+        actions={[
+          {
+            label: 'Marcar completadas',
+            onClick: () => markCompletedBulk.mutate(Array.from(table.selectedIds)),
+          },
+          {
+            label: 'Eliminar',
+            variant: 'destructive',
+            icon: <Trash2 className="h-3.5 w-3.5" />,
+            onClick: () => {
+              if (confirm(`¿Eliminar ${table.selectedIds.size} tarea(s)? Esta acción no se puede deshacer.`)) {
+                deleteBulk.mutate(Array.from(table.selectedIds));
+              }
+            },
+          },
+        ]}
+      />
+
+      <ListingToolbar
+        searchQuery={table.searchQuery}
+        onSearchChange={table.setSearchQuery}
+        searchPlaceholder="Buscar tareas..."
+        sortOptions={TASK_SORT_OPTIONS}
+        currentSort={table.currentSort}
+        onSortChange={table.setSortRule}
+        filters={table.filters}
+        onClearFilters={table.clearFilters}
+        onRemoveFilter={table.removeFilter}
+        totalCount={table.totalCount}
+        filteredCount={table.filteredCount}
+        filtersOpen={filtersOpen}
+        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        showViewToggle={false}
+      >
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Nueva tarea</Button>
+            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nueva tarea</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Nueva tarea</DialogTitle></DialogHeader>
@@ -244,23 +390,52 @@ export default function Tasks() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </ListingToolbar>
+
+      <FiltersPanel
+        open={filtersOpen}
+        filterDefs={TASK_FILTER_DEFS}
+        activeFilters={table.filters}
+        onAddFilter={table.addFilter}
+        onRemoveFilter={table.removeFilter}
+        onClearAll={table.clearFilters}
+      />
+
+      <ViewsTabs
+        views={table.views}
+        activeViewId={table.activeViewId}
+        onApplyView={table.applyView}
+        onSaveView={table.saveView}
+        onDeleteView={table.deleteView}
+        onReset={table.resetToDefault}
+      />
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map(i => <Card key={i} className="h-16 animate-pulse bg-muted" />)}</div>
-      ) : tasks.length === 0 ? (
-        <div className="empty-state">
-          <ListTodo className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">No hay tareas aún</p>
-        </div>
+      ) : table.filteredCount === 0 ? (
+        <SmartEmptyState
+          filtered={table.filters.length > 0 || !!table.searchQuery}
+          onClearFilters={table.clearFilters}
+          title="No hay tareas aún"
+          description="Crea tu primera tarea"
+          action={
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />Nueva tarea
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-6">
-          {/* Pending */}
           {pending.length > 0 && (
             <div className="space-y-2">
               {pending.map((t) => (
-                <Card key={t.id} className="group hover:border-primary/30 transition-colors">
+                <Card key={t.id} className={`group hover:border-primary/30 transition-colors ${table.selectedIds.has(t.id) ? 'border-primary/50 bg-primary/5' : ''}`}>
                   <CardContent className="flex items-center gap-3 py-3">
+                    <Checkbox
+                      checked={table.selectedIds.has(t.id)}
+                      onCheckedChange={() => table.toggleSelection(t.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
                     <Checkbox
                       checked={false}
                       onCheckedChange={(checked) => toggleTask.mutate({ id: t.id, done: !!checked })}
@@ -287,13 +462,17 @@ export default function Tasks() {
             </div>
           )}
 
-          {/* Done */}
           {done.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Completadas</p>
               {done.map((t) => (
-                <Card key={t.id} className="opacity-50 group hover:opacity-70 transition-opacity">
+                <Card key={t.id} className={`group hover:opacity-70 transition-opacity ${table.selectedIds.has(t.id) ? 'opacity-70 border-primary/50' : 'opacity-50'}`}>
                   <CardContent className="flex items-center gap-3 py-3">
+                    <Checkbox
+                      checked={table.selectedIds.has(t.id)}
+                      onCheckedChange={() => table.toggleSelection(t.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
                     <Checkbox
                       checked={true}
                       onCheckedChange={(checked) => toggleTask.mutate({ id: t.id, done: !!checked })}
@@ -314,6 +493,22 @@ export default function Tasks() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {table.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <span className="text-xs text-muted-foreground">
+            Página {table.currentPage + 1} de {table.totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage - 1)} disabled={!table.hasPrevPage}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage + 1)} disabled={!table.hasNextPage}>
+              Siguiente
+            </Button>
+          </div>
         </div>
       )}
 

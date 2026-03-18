@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Mic, Plus, Search, Download, Factory, ChevronDown, Loader2,
+  Mic, Plus, Download, Factory, ChevronDown, Loader2,
   Sparkles, Trash2, ArrowLeft, RefreshCw, Check, Pencil, History,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,71 @@ import { initBlockStatesFromAI } from "@/lib/block-states";
 import { useEpisodeDraft } from "@/hooks/useEpisodeDraft";
 import type { ConflictOption } from "@/hooks/useEpisodeDraft";
 import type { Json } from "@/integrations/supabase/types";
+import { useSmartTable } from "@/hooks/useSmartTable";
+import {
+  ListingToolbar,
+  FiltersPanel,
+  ViewsTabs,
+  BulkActionsBar,
+  SmartEmptyState,
+} from "@/components/smart-table";
+import type { FilterDef, SortOption, SavedView } from "@/components/smart-table";
+
+// ─── Config ────────────────────────────────────────────────────────────────
+
+export const EPISODE_COLUMNS = [
+  { id: 'number', label: 'Ep.', sortable: true, visible: true },
+  { id: 'title', label: 'Título', sortable: true, visible: true, getValue: (e: any) => e.working_title || e.title || '' },
+  { id: 'theme', label: 'Tema', sortable: true, visible: true },
+  { id: 'health_score', label: 'Salud', sortable: true, visible: true },
+  { id: 'status', label: 'Estado', sortable: true, visible: true },
+  { id: 'nivel_completitud', label: 'Nivel', sortable: true, visible: false },
+  { id: 'release_date', label: 'Fecha', sortable: true, visible: false },
+  { id: 'updated_at', label: 'Actualizado', sortable: true, visible: false },
+];
+
+const EPISODE_SORT_OPTIONS: SortOption[] = [
+  { value: 'number', label: 'Número' },
+  { value: 'title', label: 'Título' },
+  { value: 'theme', label: 'Tema' },
+  { value: 'health_score', label: 'Salud' },
+  { value: 'status', label: 'Estado' },
+  { value: 'updated_at', label: 'Actualizado' },
+];
+
+const EPISODE_FILTER_DEFS: FilterDef[] = [
+  {
+    field: 'status',
+    label: 'Estado',
+    type: 'select',
+    options: [
+      { value: 'draft', label: 'Borrador' },
+      { value: 'recording', label: 'Grabando' },
+      { value: 'editing', label: 'En edición' },
+      { value: 'published', label: 'Publicado' },
+    ],
+  },
+  {
+    field: 'nivel_completitud',
+    label: 'Nivel de completitud',
+    type: 'select',
+    options: [
+      { value: 'A', label: 'A — Completo' },
+      { value: 'B', label: 'B' },
+      { value: 'C', label: 'C' },
+      { value: 'D', label: 'D — Básico' },
+    ],
+  },
+  {
+    field: 'health_score',
+    label: 'Salud (%)',
+    type: 'number_range',
+    min: 0,
+    max: 100,
+  },
+];
+
+const EPISODE_DEFAULT_VIEWS: SavedView[] = [];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,11 +141,9 @@ function OptionCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Episodes() {
-  // ── Draft persistence (DB-backed wizard state) ─────────────────────────────
   const { draft, saveDraft, loadActiveDraft, markConverted } = useEpisodeDraft();
   const draftLoaded = useRef(false);
 
-  // ── UI-only state (not persisted) ──────────────────────────────────────────
   const [open, setOpen] = useState(false);
   const [generatingOptions, setGeneratingOptions] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -88,14 +152,23 @@ export default function Episodes() {
   const [manualIntencion, setManualIntencion] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // ── List state ─────────────────────────────────────────────────────────────
-  const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: episodes = [], isLoading } = useEpisodes();
 
-  // ── On dialog open: load active draft from DB ──────────────────────────────
+  const table = useSmartTable({
+    data: episodes as any[],
+    columns: EPISODE_COLUMNS,
+    searchFields: ['title', 'number', 'theme', 'working_title'],
+    defaultSort: [{ field: 'number', direction: 'desc' }],
+    defaultViews: EPISODE_DEFAULT_VIEWS,
+    persistKey: 'amtme:list:episodes:v1',
+    pageSize: 50,
+    defaultViewType: 'table',
+  });
+
   useEffect(() => {
     if (!open) return;
     if (draftLoaded.current) return;
@@ -113,7 +186,6 @@ export default function Episodes() {
         } else if (hasContent) {
           setHasDraftToRestore(true);
         }
-        // Restore manual fields if draft is in step 2 manually
         if (loaded.selected_conflicto) {
           setManualConflicto(loaded.selected_conflicto.texto ?? "");
         }
@@ -124,7 +196,6 @@ export default function Episodes() {
     });
   }, [open, loadActiveDraft]);
 
-  // Reset draftLoaded when dialog closes so next open re-checks
   useEffect(() => {
     if (!open) {
       draftLoaded.current = false;
@@ -132,12 +203,10 @@ export default function Episodes() {
     }
   }, [open]);
 
-  // ── Derived state ──────────────────────────────────────────────────────────
   const conflictOptions = draft.conflict_options_json as GeneratedOptions | null;
   const finalConflicto = manualMode ? manualConflicto : (draft.selected_conflicto?.texto ?? "");
   const finalIntencion = manualMode ? manualIntencion : (draft.selected_intencion?.texto ?? "");
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   const resetForm = async () => {
     draftLoaded.current = false;
     setAdvancedOpen(false);
@@ -158,7 +227,6 @@ export default function Episodes() {
     }, { immediate: true });
   };
 
-  // ── Generate 3+3 options ───────────────────────────────────────────────────
   const generateOptions = async () => {
     if (!draft.idea_principal.trim()) return;
     setGeneratingOptions(true);
@@ -168,7 +236,6 @@ export default function Episodes() {
         { idea_principal: draft.idea_principal, tono: draft.tono || "íntimo" },
       );
       if (data?.options) {
-        // Persist generated options to DB immediately
         await saveDraft(
           { conflict_options_json: data.options, selected_conflicto: null, selected_intencion: null, step: 2 },
           { immediate: true }
@@ -177,7 +244,6 @@ export default function Episodes() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error al generar opciones";
-      // If AI key is not configured, switch to manual mode without a harsh error
       if (msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("not configured")) {
         toast.warning("IA no disponible. Puedes escribir el conflicto manualmente.");
       } else {
@@ -190,7 +256,6 @@ export default function Episodes() {
     }
   };
 
-  // ── Create episode ─────────────────────────────────────────────────────────
   const createEpisode = useMutation({
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -202,7 +267,6 @@ export default function Episodes() {
         .eq("user_id", user.id);
       const nextNumber = String((count || 0) + 1).padStart(2, "0");
 
-      // ── 1. Insert episode with all known data ──────────────────────────────
       const { data: episode, error: insertError } = await supabase
         .from("episodes")
         .insert({
@@ -226,7 +290,6 @@ export default function Episodes() {
         .single();
       if (insertError) throw insertError;
 
-      // ── 2. Generate AI fields ──────────────────────────────────────────────
       setIsGenerating(true);
       try {
         const fnData = await invokeEdgeFunction<{ fields?: Record<string, string>; metadata?: unknown }>(
@@ -261,7 +324,6 @@ export default function Episodes() {
             .eq("id", episode.id);
           if (updateError) console.warn("AI fields update error:", updateError.message);
 
-          // ── 3. Log AI generation in change_history ─────────────────────────
           const session = await supabase.auth.getSession();
           const userId = session.data.session?.user?.id;
           if (userId) {
@@ -289,7 +351,6 @@ export default function Episodes() {
         setIsGenerating(false);
       }
 
-      // ── 4. Mark draft as converted ─────────────────────────────────────────
       await markConverted(episode.id);
 
       return episode;
@@ -318,15 +379,19 @@ export default function Episodes() {
   });
 
   const exportCSV = () => {
-    if (!episodes.length) return;
+    const selectedEpisodes = table.selectedIds.size > 0
+      ? (episodes as any[]).filter((ep: any) => table.selectedIds.has(ep.id))
+      : table.filtered;
+
+    if (!selectedEpisodes.length) return;
     const headers = ["number", "title", "theme", "status", "nivel_completitud", "release_date", "health_score"];
-    const rows = episodes.map((ep: any) =>
+    const rows = selectedEpisodes.map((ep: any) =>
       headers.map((h) => {
         const val = ep[h];
         return val === null || val === undefined ? "" : String(val).replace(/"/g, '""');
       })
     );
-    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r: string[]) => r.map((v) => `"${v}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -345,372 +410,400 @@ export default function Episodes() {
     }
   };
 
-  const filtered = episodes.filter((ep: any) =>
-    !search ||
-    ep.title?.toLowerCase().includes(search.toLowerCase()) ||
-    ep.number?.includes(search) ||
-    ep.theme?.toLowerCase().includes(search.toLowerCase())
-  );
-
   const isPending = createEpisode.isPending || isGenerating;
-  const canCreate = draft.step === 2 && (manualMode ? true : (!!draft.selected_conflicto && !!draft.selected_intencion));
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 lg:p-8 h-full flex flex-col animate-fade-in">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-6 lg:p-8 h-full flex flex-col animate-fade-in gap-4">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="page-title">Episodios</h1>
           <p className="page-subtitle">Fuente de verdad. Haz click en un episodio para abrir su Workspace.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportCSV} disabled={!episodes.length}>
-            <Download className="h-4 w-4 mr-2" />CSV
-          </Button>
+      </div>
 
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Nuevo Episodio</Button>
-            </DialogTrigger>
+      <BulkActionsBar
+        selectedCount={table.selectedIds.size}
+        totalCount={table.filteredCount}
+        onSelectAll={table.selectAll}
+        onClearSelection={table.clearSelection}
+        isAllSelected={table.isAllSelected}
+        isIndeterminate={table.isIndeterminate}
+        actions={[
+          {
+            label: 'Exportar CSV',
+            icon: <Download className="h-3.5 w-3.5" />,
+            onClick: exportCSV,
+          },
+          {
+            label: 'Archivar',
+            onClick: () => toast.info('Próximamente'),
+          },
+        ]}
+      />
 
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  {draft.step === 2 && (
-                    <button
-                      onClick={() => saveDraft({ step: 1 }, { immediate: true })}
-                      className="p-1 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </button>
-                  )}
-                  <div>
-                    <DialogTitle>
-                      {draft.step === 1 ? "Nuevo episodio" : "Elige el enfoque"}
-                    </DialogTitle>
-                    {draft.step === 2 && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                        "{draft.idea_principal}"
-                      </p>
-                    )}
-                  </div>
-                  {/* Step indicator */}
-                  <div className="flex items-center gap-1.5 ml-auto">
-                    <div className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 1 ? "bg-primary" : "bg-border"}`} />
-                    <div className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 2 ? "bg-primary" : "bg-border"}`} />
-                  </div>
-                </div>
-              </DialogHeader>
+      <ListingToolbar
+        searchQuery={table.searchQuery}
+        onSearchChange={table.setSearchQuery}
+        searchPlaceholder="Buscar por título, número o tema..."
+        sortOptions={EPISODE_SORT_OPTIONS}
+        currentSort={table.currentSort}
+        onSortChange={table.setSortRule}
+        filters={table.filters}
+        onClearFilters={table.clearFilters}
+        onRemoveFilter={table.removeFilter}
+        totalCount={table.totalCount}
+        filteredCount={table.filteredCount}
+        filtersOpen={filtersOpen}
+        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        showViewToggle={false}
+      >
+        <Button variant="outline" onClick={exportCSV} disabled={!(episodes as any[]).length} size="sm">
+          <Download className="h-4 w-4 mr-2" />CSV
+        </Button>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nuevo Episodio</Button>
+          </DialogTrigger>
 
-              {/* ── STEP 1 ── */}
-              {draft.step === 1 && (
-                <div className="space-y-5 pt-1">
-
-                  {/* Draft restore banner */}
-                  {hasDraftToRestore && (
-                    <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                      <History className="w-3.5 h-3.5 shrink-0" />
-                      <span>Borrador en progreso restaurado automáticamente.</span>
-                      <button
-                        className="ml-auto underline hover:text-amber-400"
-                        onClick={resetForm}
-                      >
-                        Empezar de nuevo
-                      </button>
-                    </div>
-                  )}
-
-                  <div>
-                    <Label className="text-sm font-medium">
-                      Idea principal <span className="text-destructive">*</span>
-                    </Label>
-                    <Textarea
-                      value={draft.idea_principal}
-                      onChange={(e) => saveDraft({ idea_principal: e.target.value })}
-                      placeholder="Ej: la diferencia entre soltar y rendirse"
-                      rows={3}
-                      className="mt-1.5"
-                      disabled={generatingOptions}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      A partir de esta idea se generarán 3 opciones de conflicto y 3 de intención.
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm">Tono del episodio</Label>
-                    <Select
-                      value={draft.tono || "íntimo"}
-                      onValueChange={(v) => saveDraft({ tono: v })}
-                      disabled={generatingOptions}
-                    >
-                      <SelectTrigger className="mt-1.5">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="íntimo">Íntimo — como un amigo honesto</SelectItem>
-                        <SelectItem value="confrontador">Confrontador — verdad directa e incómoda</SelectItem>
-                        <SelectItem value="reflexivo">Reflexivo — espacio para pensar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
-                        Opciones adicionales
-                        <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-4 pt-3">
-                      <div>
-                        <Label className="text-sm">Fecha estimada de lanzamiento</Label>
-                        <Input
-                          type="date"
-                          value={draft.release_date}
-                          onChange={(e) => saveDraft({ release_date: e.target.value })}
-                          className="mt-1.5"
-                          disabled={generatingOptions}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-sm">Restricciones del episodio</Label>
-                        <Textarea
-                          value={draft.restricciones}
-                          onChange={(e) => saveDraft({ restricciones: e.target.value })}
-                          placeholder="Ej: no mencionar religión organizada, enfocarse en relaciones de pareja"
-                          rows={2}
-                          className="mt-1.5"
-                          disabled={generatingOptions}
-                        />
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-
-                  <Button
-                    onClick={generateOptions}
-                    className="w-full"
-                    disabled={!draft.idea_principal.trim() || generatingOptions}
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                {draft.step === 2 && (
+                  <button
+                    onClick={() => saveDraft({ step: 1 }, { immediate: true })}
+                    className="p-1 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
                   >
-                    {generatingOptions ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generando opciones...</>
-                    ) : (
-                      <><Sparkles className="h-4 w-4 mr-2" />Generar 3 opciones de conflicto e intención</>
-                    )}
-                  </Button>
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                )}
+                <div>
+                  <DialogTitle>
+                    {draft.step === 1 ? "Nuevo episodio" : "Elige el enfoque"}
+                  </DialogTitle>
+                  {draft.step === 2 && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                      "{draft.idea_principal}"
+                    </p>
+                  )}
                 </div>
-              )}
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <div className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 1 ? "bg-primary" : "bg-border"}`} />
+                  <div className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 2 ? "bg-primary" : "bg-border"}`} />
+                </div>
+              </div>
+            </DialogHeader>
 
-              {/* ── STEP 2 ── */}
-              {draft.step === 2 && (
-                <div className="space-y-6 pt-1">
+            {draft.step === 1 && (
+              <div className="space-y-5 pt-1">
+                {hasDraftToRestore && (
+                  <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                    <History className="w-3.5 h-3.5 shrink-0" />
+                    <span>Borrador en progreso restaurado automáticamente.</span>
+                    <button className="ml-auto underline hover:text-amber-400" onClick={resetForm}>
+                      Empezar de nuevo
+                    </button>
+                  </div>
+                )}
 
-                  {conflictOptions && !manualMode ? (
-                    <>
-                      {/* ── Conflicto central ── */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-foreground">
-                            ⚡ Conflicto central
-                            <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
-                          </h3>
-                          {draft.selected_conflicto && (
-                            <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
-                              <Check className="w-3 h-3" /> Seleccionado
-                            </span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {conflictOptions.conflicto_central.map((opt) => (
-                            <OptionCard
-                              key={opt.tipo}
-                              option={opt}
-                              selected={draft.selected_conflicto?.tipo === opt.tipo}
-                              onSelect={() => saveDraft({ selected_conflicto: opt }, { immediate: true })}
-                            />
-                          ))}
-                        </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Idea principal <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    value={draft.idea_principal}
+                    onChange={(e) => saveDraft({ idea_principal: e.target.value })}
+                    placeholder="Ej: la diferencia entre soltar y rendirse"
+                    rows={3}
+                    className="mt-1.5"
+                    disabled={generatingOptions}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    A partir de esta idea se generarán 3 opciones de conflicto y 3 de intención.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm">Tono del episodio</Label>
+                  <Select
+                    value={draft.tono || "íntimo"}
+                    onValueChange={(v) => saveDraft({ tono: v })}
+                    disabled={generatingOptions}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="íntimo">Íntimo — como un amigo honesto</SelectItem>
+                      <SelectItem value="confrontador">Confrontador — verdad directa e incómoda</SelectItem>
+                      <SelectItem value="reflexivo">Reflexivo — espacio para pensar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                      Opciones adicionales
+                      <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-3">
+                    <div>
+                      <Label className="text-sm">Fecha estimada de lanzamiento</Label>
+                      <Input
+                        type="date"
+                        value={draft.release_date}
+                        onChange={(e) => saveDraft({ release_date: e.target.value })}
+                        className="mt-1.5"
+                        disabled={generatingOptions}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Restricciones del episodio</Label>
+                      <Textarea
+                        value={draft.restricciones}
+                        onChange={(e) => saveDraft({ restricciones: e.target.value })}
+                        placeholder="Ej: no mencionar religión organizada, enfocarse en relaciones de pareja"
+                        rows={2}
+                        className="mt-1.5"
+                        disabled={generatingOptions}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Button
+                  onClick={generateOptions}
+                  className="w-full"
+                  disabled={!draft.idea_principal.trim() || generatingOptions}
+                >
+                  {generatingOptions ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generando opciones...</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-2" />Generar 3 opciones de conflicto e intención</>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {draft.step === 2 && (
+              <div className="space-y-6 pt-1">
+                {conflictOptions && !manualMode ? (
+                  <>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-foreground">
+                          ⚡ Conflicto central
+                          <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
+                        </h3>
+                        {draft.selected_conflicto && (
+                          <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Seleccionado
+                          </span>
+                        )}
                       </div>
-
-                      {/* ── Intención del episodio ── */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-foreground">
-                            🎯 Intención del episodio
-                            <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
-                          </h3>
-                          {draft.selected_intencion && (
-                            <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
-                              <Check className="w-3 h-3" /> Seleccionada
-                            </span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {conflictOptions.intencion.map((opt) => (
-                            <OptionCard
-                              key={opt.tipo}
-                              option={opt}
-                              selected={draft.selected_intencion?.tipo === opt.tipo}
-                              onSelect={() => saveDraft({ selected_intencion: opt }, { immediate: true })}
-                            />
-                          ))}
-                        </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {conflictOptions.conflicto_central.map((opt) => (
+                          <OptionCard
+                            key={opt.tipo}
+                            option={opt}
+                            selected={draft.selected_conflicto?.tipo === opt.tipo}
+                            onSelect={() => saveDraft({ selected_conflicto: opt }, { immediate: true })}
+                          />
+                        ))}
                       </div>
+                    </div>
 
-                      {/* ── Actions row ── */}
-                      <div className="flex items-center gap-3 flex-wrap">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-foreground">
+                          🎯 Intención del episodio
+                          <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
+                        </h3>
+                        {draft.selected_intencion && (
+                          <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Seleccionada
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {conflictOptions.intencion.map((opt) => (
+                          <OptionCard
+                            key={opt.tipo}
+                            option={opt}
+                            selected={draft.selected_intencion?.tipo === opt.tipo}
+                            onSelect={() => saveDraft({ selected_intencion: opt }, { immediate: true })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={generateOptions}
+                        disabled={generatingOptions || isPending}
+                      >
+                        {generatingOptions
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <RefreshCw className="h-3.5 w-3.5" />}
+                        Regenerar opciones
+                      </Button>
+                      <button
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors flex items-center gap-1"
+                        onClick={() => {
+                          setManualMode(true);
+                          setManualConflicto(draft.selected_conflicto?.texto ?? "");
+                          setManualIntencion(draft.selected_intencion?.texto ?? "");
+                        }}
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Escribir manualmente
+                      </button>
+                      <div className="flex-1" />
+                      <Button
+                        onClick={() => createEpisode.mutate()}
+                        disabled={!draft.selected_conflicto || !draft.selected_intencion || isPending}
+                        className="gap-1.5"
+                      >
+                        {isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {isGenerating ? "Generando episodio..." : "Creando..."}
+                          </>
+                        ) : (
+                          <><Sparkles className="h-4 w-4" />Crear episodio</>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {manualMode && conflictOptions && (
+                      <button
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                        onClick={() => setManualMode(false)}
+                      >
+                        ← Volver a las opciones generadas
+                      </button>
+                    )}
+
+                    <div>
+                      <Label className="text-sm font-medium">Conflicto central</Label>
+                      <Textarea
+                        value={manualConflicto}
+                        onChange={(e) => setManualConflicto(e.target.value)}
+                        placeholder="Ej: quieres intimidad pero cuando alguien realmente se acerca, te cierras"
+                        rows={3}
+                        className="mt-1.5 text-sm"
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Intención del episodio</Label>
+                      <Textarea
+                        value={manualIntencion}
+                        onChange={(e) => setManualIntencion(e.target.value)}
+                        placeholder="Ej: que el oyente entienda que no siempre se aferra por amor"
+                        rows={3}
+                        className="mt-1.5 text-sm"
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-1">
+                      {!conflictOptions && (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1.5 text-xs"
                           onClick={generateOptions}
                           disabled={generatingOptions || isPending}
+                          className="gap-1.5 text-xs"
                         >
                           {generatingOptions
                             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <RefreshCw className="h-3.5 w-3.5" />}
-                          Regenerar opciones
+                            : <Sparkles className="h-3.5 w-3.5" />}
+                          Generar opciones de IA
                         </Button>
-                        <button
-                          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors flex items-center gap-1"
-                          onClick={() => {
-                            setManualMode(true);
-                            setManualConflicto(draft.selected_conflicto?.texto ?? "");
-                            setManualIntencion(draft.selected_intencion?.texto ?? "");
-                          }}
-                        >
-                          <Pencil className="w-3 h-3" />
-                          Escribir manualmente
-                        </button>
-                        <div className="flex-1" />
-                        <Button
-                          onClick={() => createEpisode.mutate()}
-                          disabled={!draft.selected_conflicto || !draft.selected_intencion || isPending}
-                          className="gap-1.5"
-                        >
-                          {isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              {isGenerating ? "Generando episodio..." : "Creando..."}
-                            </>
-                          ) : (
-                            <><Sparkles className="h-4 w-4" />Crear episodio</>
-                          )}
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    /* ── Manual mode ── */
-                    <div className="space-y-4">
-                      {manualMode && conflictOptions && (
-                        <button
-                          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                          onClick={() => setManualMode(false)}
-                        >
-                          ← Volver a las opciones generadas
-                        </button>
                       )}
-
-                      <div>
-                        <Label className="text-sm font-medium">Conflicto central</Label>
-                        <Textarea
-                          value={manualConflicto}
-                          onChange={(e) => setManualConflicto(e.target.value)}
-                          placeholder="Ej: quieres intimidad pero cuando alguien realmente se acerca, te cierras para no sentirte expuesto"
-                          rows={3}
-                          className="mt-1.5 text-sm"
-                          disabled={isPending}
-                        />
-                        <p className="text-[11px] text-muted-foreground mt-1">La tensión emocional o situacional central del episodio.</p>
-                      </div>
-
-                      <div>
-                        <Label className="text-sm font-medium">Intención del episodio</Label>
-                        <Textarea
-                          value={manualIntencion}
-                          onChange={(e) => setManualIntencion(e.target.value)}
-                          placeholder="Ej: que el oyente entienda que no siempre se aferra por amor, sino por miedo a no volver a sentirse elegido"
-                          rows={3}
-                          className="mt-1.5 text-sm"
-                          disabled={isPending}
-                        />
-                        <p className="text-[11px] text-muted-foreground mt-1">Qué transformación busca provocar el episodio en el oyente.</p>
-                      </div>
-
-                      <div className="flex gap-3 pt-1">
-                        {!conflictOptions && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={generateOptions}
-                            disabled={generatingOptions || isPending}
-                            className="gap-1.5 text-xs"
-                          >
-                            {generatingOptions
-                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              : <Sparkles className="h-3.5 w-3.5" />}
-                            Generar opciones de IA
-                          </Button>
+                      <Button
+                        onClick={() => createEpisode.mutate()}
+                        disabled={isPending}
+                        className="gap-1.5 flex-1"
+                      >
+                        {isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {isGenerating ? "Generando episodio..." : "Creando..."}
+                          </>
+                        ) : (
+                          <><Sparkles className="h-4 w-4" />Crear episodio</>
                         )}
-                        <Button
-                          onClick={() => createEpisode.mutate()}
-                          disabled={isPending}
-                          className="gap-1.5 flex-1"
-                        >
-                          {isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              {isGenerating ? "Generando episodio..." : "Creando..."}
-                            </>
-                          ) : (
-                            <><Sparkles className="h-4 w-4" />Crear episodio</>
-                          )}
-                        </Button>
-                      </div>
+                      </Button>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {isGenerating && (
-                    <p className="text-xs text-muted-foreground text-center animate-pulse">
-                      La IA está generando título, hook, resumen, CTA, quote y descripción Spotify...
-                    </p>
-                  )}
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+                {isGenerating && (
+                  <p className="text-xs text-muted-foreground text-center animate-pulse">
+                    La IA está generando título, hook, resumen, CTA, quote y descripción Spotify...
+                  </p>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </ListingToolbar>
 
-      {/* ── Search ── */}
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, número o tema..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
+      <FiltersPanel
+        open={filtersOpen}
+        filterDefs={EPISODE_FILTER_DEFS}
+        activeFilters={table.filters}
+        onAddFilter={table.addFilter}
+        onRemoveFilter={table.removeFilter}
+        onClearAll={table.clearFilters}
+      />
 
-      {/* ── Episode list ── */}
+      <ViewsTabs
+        views={table.views}
+        activeViewId={table.activeViewId}
+        onApplyView={table.applyView}
+        onSaveView={table.saveView}
+        onDeleteView={table.deleteView}
+        onReset={table.resetToDefault}
+      />
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse bg-muted rounded-lg" />)}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state flex-1">
-          <Mic className="h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">{search ? "Sin resultados" : "No hay episodios aún"}</p>
-        </div>
+      ) : table.filteredCount === 0 ? (
+        <SmartEmptyState
+          filtered={table.filters.length > 0 || !!table.searchQuery}
+          onClearFilters={table.clearFilters}
+          title="No hay episodios aún"
+          description="Crea tu primer episodio para empezar"
+          action={
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />Nuevo Episodio
+            </Button>
+          }
+        />
       ) : (
         <div className="surface flex-1 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-secondary/50 text-muted-foreground border-b border-border">
                 <tr>
+                  <th className="px-3 py-3 w-10">
+                    <Checkbox
+                      checked={table.isAllSelected}
+                      onCheckedChange={() => table.isAllSelected ? table.clearSelection() : table.selectAll()}
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">Episodio</th>
                   <th className="px-4 py-3 font-medium">Tema</th>
                   <th className="px-4 py-3 font-medium">Salud</th>
@@ -720,15 +813,21 @@ export default function Episodes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((ep: any) => {
+                {table.paginated.map((ep: any) => {
                   const audit = auditEpisode(ep);
                   const level = getCompletenessLevel(audit.healthScore);
                   return (
                     <tr
                       key={ep.id}
-                      className="surface-hover cursor-pointer group"
+                      className={`surface-hover cursor-pointer group ${table.selectedIds.has(ep.id) ? 'bg-primary/5' : ''}`}
                       onClick={() => navigate(`/episodes/${ep.id}`)}
                     >
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={table.selectedIds.has(ep.id)}
+                          onCheckedChange={() => table.toggleSelection(ep.id)}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
                           <span className="font-medium text-foreground hover:text-primary transition-colors">
@@ -788,6 +887,31 @@ export default function Episodes() {
               </tbody>
             </table>
           </div>
+          {table.totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <span className="text-xs text-muted-foreground">
+                Página {table.currentPage + 1} de {table.totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.setCurrentPage(table.currentPage - 1)}
+                  disabled={!table.hasPrevPage}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.setCurrentPage(table.currentPage + 1)}
+                  disabled={!table.hasNextPage}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
