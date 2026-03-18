@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Search, Trash2, Pin, PinOff, ChevronLeft, FileText } from "lucide-react";
+import { TruncatedText } from "@/components/ui/text-clamp";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,19 +78,19 @@ function NoteItem({
     >
       <div className="flex items-center gap-1.5 min-w-0">
         {note.pinned && <Pin className="h-3 w-3 shrink-0 text-primary/60" />}
-        <p className={[
-          "text-sm font-medium tracking-tight truncate flex-1",
+        <TruncatedText className={[
+          "text-sm font-medium tracking-tight flex-1",
           active ? "text-primary" : "text-foreground",
         ].join(" ")}>
           {note.title || "Sin título"}
-        </p>
+        </TruncatedText>
         <span className="text-xs text-muted-foreground shrink-0 ml-1">
           {timeAgo(note.updated_at)}
         </span>
       </div>
-      <p className="text-xs text-muted-foreground truncate mt-0.5 pl-0.5">
+      <TruncatedText className="text-xs text-muted-foreground mt-0.5 pl-0.5">
         {snippet(note.body)}
-      </p>
+      </TruncatedText>
     </button>
   );
 }

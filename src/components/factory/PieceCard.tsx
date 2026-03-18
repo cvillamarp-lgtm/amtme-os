@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Image, Loader2, RefreshCw, CheckCircle2, Copy, Check, Download } from "lucide-react";
+import { TruncatedText } from "@/components/ui/text-clamp";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
@@ -81,7 +82,7 @@ export function PieceCard({
             <span className="font-mono text-xs text-muted-foreground">
               {String(piece.id).padStart(2, "0")}
             </span>
-            <span className="text-sm font-medium truncate">{piece.shortName}</span>
+            <TruncatedText className="text-sm font-medium">{piece.shortName}</TruncatedText>
             <Badge variant="outline" className="text-xs">{piece.format}</Badge>
           </div>
           <Badge variant="secondary" className={`text-xs ${statusColor}`}>

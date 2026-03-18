@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Lightbulb, Plus, Search } from "lucide-react";
+import { TitleClamp, TruncatedText } from "@/components/ui/text-clamp";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,15 +86,15 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-medium text-sm leading-snug line-clamp-2 flex-1">{idea.title}</h3>
+          <TitleClamp className="text-sm flex-1" lines={2}>{idea.title}</TitleClamp>
           <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
             {sc.label}
           </span>
         </div>
         {(idea.theme || idea.emotional_theme) && (
-          <p className="text-xs text-muted-foreground line-clamp-1">
+          <TruncatedText className="text-xs text-muted-foreground">
             {[idea.theme, idea.emotional_theme].filter(Boolean).join(" · ")}
-          </p>
+          </TruncatedText>
         )}
       </CardHeader>
 
