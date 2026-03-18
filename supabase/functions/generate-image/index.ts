@@ -275,9 +275,25 @@ serve(async (req) => {
       console.error("Bucket error:", bucketError);
     }
 
-    const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, "");
-    const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
     const fileName = `img_${Date.now()}.png`;
+
+    // Handle both base64 data URLs and plain https:// URLs
+    let binaryData: Uint8Array;
+    if (imageDataUrl.startsWith("data:")) {
+      const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, "");
+      binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+    } else {
+      // Fetch the image from the URL and convert to binary
+      const imgRes = await fetch(imageDataUrl);
+      if (!imgRes.ok) {
+        console.error("Failed to fetch image URL:", imgRes.status);
+        return new Response(JSON.stringify({ error: "No se pudo descargar la imagen generada" }), {
+          status: 500, headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      const imgBuffer = await imgRes.arrayBuffer();
+      binaryData = new Uint8Array(imgBuffer);
+    }
 
     const { error: uploadError } = await supabase.storage
       .from("generated-images")
