@@ -1,9 +1,14 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Pencil, Check, AlertTriangle, Lock, RefreshCw, X, History, ChevronDown } from "lucide-react";
+import { Sparkles, Pencil, Check, AlertTriangle, Lock, RefreshCw, X, History } from "lucide-react";
 import { BlockStatus, BlockState, STATUS_VISUALS, FIELD_LABELS, VersionEntry } from "@/lib/block-states";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+export interface BlockOption {
+  value: string;
+  rationale?: string;
+}
 
 interface BlockWrapperProps {
   fieldName: string;
@@ -15,6 +20,11 @@ interface BlockWrapperProps {
   onRestoreVersion?: (entry: VersionEntry) => void;
   isRegenerating?: boolean;
   versionHistory?: VersionEntry[];
+  options?: BlockOption[];
+  onGenerateOptions?: () => void;
+  onApplyOption?: (value: string) => void;
+  onDismissOptions?: () => void;
+  isGeneratingOptions?: boolean;
 }
 
 const StatusIcon = ({ status }: { status: BlockStatus }) => {
@@ -39,6 +49,11 @@ export function BlockWrapper({
   onRestoreVersion,
   isRegenerating,
   versionHistory = [],
+  options,
+  onGenerateOptions,
+  onApplyOption,
+  onDismissOptions,
+  isGeneratingOptions,
 }: BlockWrapperProps) {
   const status: BlockStatus = state?.status || "empty";
   const visual = STATUS_VISUALS[status];
@@ -111,6 +126,20 @@ export function BlockWrapper({
               {isRegenerating ? "Regenerando..." : "Regenerar"}
             </Button>
           )}
+
+          {/* Generate options button */}
+          {onGenerateOptions && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-1.5 text-xs text-violet-500 hover:text-violet-600"
+              onClick={onGenerateOptions}
+              disabled={isGeneratingOptions || isRegenerating}
+            >
+              <Sparkles className={`h-3 w-3 mr-1 ${isGeneratingOptions ? "animate-spin" : ""}`} />
+              {isGeneratingOptions ? "Generando..." : options?.length ? `Opciones (${options.length})` : "Opciones"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -147,6 +176,38 @@ export function BlockWrapper({
 
       {/* Field content */}
       {children}
+
+      {/* AI options panel */}
+      {options && options.length > 0 && (
+        <div className="mt-2 border border-violet-500/20 rounded-md bg-violet-500/5 p-2.5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-violet-600 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              {options.length} opciones generadas — elige una
+            </span>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={onDismissOptions}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          {options.map((opt, i) => (
+            <div key={i} className="bg-background rounded border border-border p-2.5 space-y-1.5">
+              <p className="text-sm leading-relaxed">{opt.value}</p>
+              {opt.rationale && (
+                <p className="text-xs text-muted-foreground italic">{opt.rationale}</p>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-violet-500/30 text-violet-600 hover:bg-violet-500/10"
+                onClick={() => onApplyOption?.(opt.value)}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Aplicar
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

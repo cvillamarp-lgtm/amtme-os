@@ -5,9 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Loader2, Check, AlertTriangle, RefreshCw } from "lucide-react";
+import { Save, Loader2, Check, AlertTriangle, RefreshCw, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { BlockWrapper } from "./BlockWrapper";
+import { BlockWrapper, BlockOption } from "./BlockWrapper";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import {
@@ -86,6 +86,9 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const [versionHistory, setVersionHistory] = useState<VersionHistoryMap>({});
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [regeneratingField, setRegeneratingField] = useState<string | null>(null);
+  const [fieldOptions, setFieldOptions] = useState<Record<string, BlockOption[]>>({});
+  const [generatingOptionsFor, setGeneratingOptionsFor] = useState<string | null>(null);
+  const [generatingAll, setGeneratingAll] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>("");
 
@@ -277,6 +280,104 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
     toast.success(`${FIELD_LABELS[fieldName] || fieldName} restaurado`);
   };
 
+  // ─── Generate options (3) for a single field ─────────────────
+  const generateOptions = async (fieldName: string) => {
+    setGeneratingOptionsFor(fieldName);
+    try {
+      const data = await invokeEdgeFunction<{ options: BlockOption[] }>("generate-episode-fields", {
+        mode: "generate_options",
+        field_name: fieldName,
+        idea_principal: episode.idea_principal,
+        episode_number: episode.number,
+        count: 3,
+        current_fields: {
+          working_title: form.working_title,
+          theme: form.theme,
+          core_thesis: form.core_thesis,
+          summary: form.summary,
+          hook: form.hook,
+          cta: form.cta,
+          quote: form.quote,
+          descripcion_spotify: form.descripcion_spotify,
+        },
+      });
+      if (!data?.options?.length) throw new Error("No options returned");
+      setFieldOptions((prev) => ({ ...prev, [fieldName]: data.options }));
+    } catch (e: unknown) {
+      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setGeneratingOptionsFor(null);
+    }
+  };
+
+  // ─── Apply a chosen option ────────────────────────────────────
+  const applyOption = (fieldName: string, value: string) => {
+    let newHistory = { ...versionHistory };
+    const currentValue = form[fieldName as keyof FormFields];
+    if (currentValue && typeof currentValue === "string") {
+      newHistory = addVersionEntry(newHistory, fieldName, currentValue, blockStates[fieldName]?.source_type || "initial");
+    }
+    const newForm = { ...form, [fieldName]: value };
+    const newStates = { ...blockStates };
+    newStates[fieldName] = { status: "generated", updated_at: new Date().toISOString(), source_type: "ai_regenerated" };
+    setForm(newForm);
+    setBlockStates(newStates);
+    setVersionHistory(newHistory);
+    setFieldOptions((prev) => ({ ...prev, [fieldName]: [] }));
+    scheduleAutoSave(newForm, newStates, newHistory);
+    toast.success(`${FIELD_LABELS[fieldName] || fieldName} aplicado`);
+  };
+
+  // ─── Dismiss options panel ────────────────────────────────────
+  const dismissOptions = (fieldName: string) => {
+    setFieldOptions((prev) => ({ ...prev, [fieldName]: [] }));
+  };
+
+  // ─── Generate ALL 8 base fields at once ──────────────────────
+  const generateAll = async () => {
+    if (!episode.idea_principal) {
+      toast.error("Agrega una idea principal al episodio antes de generar todos los campos");
+      return;
+    }
+    setGeneratingAll(true);
+    try {
+      const data = await invokeEdgeFunction<{ fields: Record<string, string> }>("generate-episode-fields", {
+        idea_principal: episode.idea_principal,
+        episode_number: episode.number,
+        conflicto_central: (episode as Record<string, unknown>).conflicto_central,
+        intencion_del_episodio: (episode as Record<string, unknown>).intencion_del_episodio,
+      });
+      if (!data?.fields) throw new Error("No fields returned");
+
+      let newHistory = { ...versionHistory };
+      const newForm = { ...form };
+      const newStates = { ...blockStates };
+      const now = new Date().toISOString();
+
+      for (const fieldName of BASE_FIELDS) {
+        const value = data.fields[fieldName];
+        if (value) {
+          const currentValue = newForm[fieldName as keyof FormFields];
+          if (currentValue && typeof currentValue === "string") {
+            newHistory = addVersionEntry(newHistory, fieldName, currentValue, newStates[fieldName]?.source_type || "initial");
+          }
+          (newForm as Record<string, unknown>)[fieldName] = value;
+          newStates[fieldName] = { status: "generated", updated_at: now, source_type: "ai_generated" };
+        }
+      }
+
+      setForm(newForm);
+      setBlockStates(newStates);
+      setVersionHistory(newHistory);
+      scheduleAutoSave(newForm, newStates, newHistory);
+      toast.success("Todos los campos generados");
+    } catch (e: unknown) {
+      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setGeneratingAll(false);
+    }
+  };
+
   // ─── Manual save ──────────────────────────────────────────────────
   const handleSave = async () => {
     try {
@@ -306,6 +407,11 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       onRestoreVersion={(entry) => restoreVersion(fieldName, entry)}
       isRegenerating={regeneratingField === fieldName}
       versionHistory={versionHistory[fieldName] || []}
+      options={fieldOptions[fieldName] || []}
+      onGenerateOptions={() => generateOptions(fieldName)}
+      onApplyOption={(value) => applyOption(fieldName, value)}
+      onDismissOptions={() => dismissOptions(fieldName)}
+      isGeneratingOptions={generatingOptionsFor === fieldName}
     >
       {children}
     </BlockWrapper>
@@ -332,10 +438,22 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
             </span>
           )}
         </div>
-        <Button onClick={handleSave} disabled={isSaving} size="sm">
-          {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Guardar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={generateAll}
+            disabled={generatingAll || !!regeneratingField}
+            className="text-violet-600 border-violet-500/30 hover:bg-violet-500/10"
+          >
+            {generatingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+            Regenerar TODO
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving} size="sm">
+            {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Guardar
+          </Button>
+        </div>
       </div>
 
       {/* Stale banner with global regen */}

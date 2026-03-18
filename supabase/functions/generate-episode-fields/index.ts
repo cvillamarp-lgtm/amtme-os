@@ -63,6 +63,8 @@ const FIELD_INSTRUCTIONS: Record<string, string> = {
   cta: 'llamada a la acción. Una línea con razón emocional real. Menciona @yosoyvillamar y @amtmepodcast. Cierra con: Nos escuchamos. — A Mí Tampoco Me Explicaron',
   quote: 'frase más poderosa del episodio. Máximo 12 palabras. Funciona sola sin contexto. Afirmación, no consejo.',
   descripcion_spotify: 'máximo 150 palabras. Estructura: 1) Hook emocional (1-2 oraciones que nombran algo que el oyente siente pero no pudo decir) → 2) Desarrollo del tema sin spoilear (2-3 oraciones) → 3) Lista de 3-4 puntos con "—" → 4) Cierre: una oración que describe al oyente ideal de este episodio → Termina con: "Aquí no juzgamos. Acompañamos." y "@yosoyvillamar". Incluir hashtags: #AMíTampocoMeExplicaron #christianvillamar + 2-3 del tema + 2-3 generales (#amorpropio #autoconocimiento #podcastenespañol). NUNCA frases de autoayuda.',
+  conflicto_central: 'el conflicto central del episodio en una oración. Qué tensión o contradicción emocional lo sostiene. No es el tema — es la grieta que lo hace interesante.',
+  intencion_del_episodio: 'la intención del episodio en una oración. Qué quiere que el oyente sienta, piense o se permita al terminar de escuchar.',
 };
 
 serve(async (req) => {
@@ -155,6 +157,84 @@ Responde ÚNICAMENTE con el texto del campo, sin JSON, sin comillas, sin explica
           source_module: field_name,
           generated_at: new Date().toISOString(),
         },
+      }), {
+        status: 200,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Mode: Generate 3–5 options for a single field ───────────
+    if (mode === "generate_options") {
+      const { field_name, idea_principal, current_fields, episode_number, count = 3 } = body;
+      if (!field_name || !FIELD_INSTRUCTIONS[field_name]) {
+        return new Response(JSON.stringify({ error: `Invalid field_name: ${field_name}` }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+
+      const contextLines = Object.entries(current_fields || {})
+        .filter(([k, v]) => v && k !== field_name)
+        .map(([k, v]) => `- ${k}: "${v}"`)
+        .join("\n");
+
+      const numOptions = Math.min(Math.max(Number(count) || 3, 2), 5);
+      const userPrompt = `Genera ${numOptions} opciones DISTINTAS para el campo "${field_name}" de un episodio de AMTME.
+
+Idea principal: "${idea_principal || ''}"
+${episode_number ? `Número de episodio: ${episode_number}` : ""}
+
+Contexto del episodio:
+${contextLines || "(sin contexto adicional)"}
+
+Instrucción para "${field_name}": ${FIELD_INSTRUCTIONS[field_name]}
+
+IMPORTANTE: Las opciones deben tener enfoques, ángulos y tonos REALMENTE diferentes entre sí — no variaciones menores de la misma idea, sino alternativas editoriales genuinas.
+
+Responde ÚNICAMENTE con un array JSON válido, sin markdown, sin backticks, sin texto adicional:
+[
+  {"value": "texto de la opción", "rationale": "por qué este enfoque funciona"},
+  ...
+]`;
+
+      const response = await fetch(ai.url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: ai.model,
+          messages: [
+            { role: "system", content: AMTME_SYSTEM_PROMPT },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.9,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
+        throw new Error(`AI gateway error: ${response.status}`);
+      }
+
+      const aiData = await response.json();
+      const content = aiData.choices?.[0]?.message?.content?.trim();
+      if (!content) throw new Error("No content in AI response");
+
+      let options: { value: string; rationale: string }[];
+      try {
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error("No JSON array found");
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (!Array.isArray(parsed)) throw new Error("Response is not an array");
+        options = parsed.filter((o: unknown) => o && typeof (o as Record<string, unknown>).value === "string").slice(0, 5);
+      } catch {
+        console.error("Failed to parse options response:", content);
+        throw new Error("Failed to parse options from AI response");
+      }
+
+      return new Response(JSON.stringify({
+        options,
+        metadata: { source_type: "ai_options", field_name, generated_at: new Date().toISOString() },
       }), {
         status: 200,
         headers: { ...cors, "Content-Type": "application/json" },
