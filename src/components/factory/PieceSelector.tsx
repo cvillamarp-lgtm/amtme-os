@@ -17,10 +17,10 @@ export function PieceSelector({ pieces, selected, onToggle, onSelectAll, onSelec
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Seleccionar piezas a producir</p>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onSelectAll}>
+          <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={onSelectAll}>
             Todas
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onSelectNone}>
+          <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={onSelectNone}>
             Ninguna
           </Button>
           <Badge variant="secondary">{selected.size}/{pieces.length}</Badge>
@@ -38,7 +38,7 @@ export function PieceSelector({ pieces, selected, onToggle, onSelectAll, onSelec
             />
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-medium truncate">{piece.shortName}</span>
-              <span className="text-[10px] text-muted-foreground">{piece.format}</span>
+              <span className="text-xs text-muted-foreground">{piece.format}</span>
             </div>
           </label>
         ))}

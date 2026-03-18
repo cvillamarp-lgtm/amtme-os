@@ -31,7 +31,7 @@ export function CaptionEditor({ piece, imageUrl, captionData, onCaptionChange }:
                 {String(piece.id).padStart(2, "0")}
               </span>
               <span className="text-sm font-medium">{piece.shortName}</span>
-              <Badge variant="outline" className="text-[10px]">{piece.format}</Badge>
+              <Badge variant="outline" className="text-xs">{piece.format}</Badge>
             </div>
             <div className="rounded-md overflow-hidden border border-border bg-secondary/30 max-w-[200px]">
               <AspectRatio ratio={piece.width / piece.height}>

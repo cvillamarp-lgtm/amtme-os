@@ -68,16 +68,16 @@ function StageControl({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{stage.label}</span>
+      <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{stage.label}</span>
       <div className="flex items-center gap-1.5">
-        <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full border", current.cls)}>
+        <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full border", current.cls)}>
           {current.label}
         </span>
         {next && (
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground gap-0.5"
+            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground gap-0.5"
             onClick={() => onAdvance(next.value)}
           >
             <ChevronRight className="h-3 w-3" />
@@ -123,7 +123,7 @@ export function WorkspaceSummary({ episode, assetCount, taskCount, onUpdate }: P
             />
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">Haz click en la flecha para avanzar al siguiente estado</p>
+        <p className="text-xs text-muted-foreground">Haz click en la flecha para avanzar al siguiente estado</p>
       </div>
 
       {/* Status Cards */}
@@ -220,7 +220,7 @@ export function WorkspaceSummary({ episode, assetCount, taskCount, onUpdate }: P
           <h3 className="text-sm font-medium text-foreground mb-2">Idea principal</h3>
           <p className="text-sm text-muted-foreground italic">"{episode.idea_principal}"</p>
           {episode.generation_metadata?.source_type === "ai_generated" && (
-            <p className="text-[10px] text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               Campos generados por IA · {new Date(episode.generation_metadata.generated_at).toLocaleDateString("es-MX")}
             </p>
           )}

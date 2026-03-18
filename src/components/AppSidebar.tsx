@@ -65,7 +65,7 @@ function NavGroup({
   return (
     <SidebarGroup className="px-2 py-1">
       {!collapsed && (
-        <SidebarGroupLabel className="text-[10px] uppercase tracking-[0.06em] font-semibold text-muted-foreground/50 px-2 mb-0.5 h-6">
+        <SidebarGroupLabel className="text-xs uppercase tracking-[0.06em] font-semibold text-muted-foreground px-2 mb-0.5 h-6">
           {label}
         </SidebarGroupLabel>
       )}
@@ -103,7 +103,7 @@ function NavGroup({
                       <span className="flex-1 flex items-center justify-between">
                         <span>{item.label}</span>
                         {badgeCount > 0 && (
-                          <span className="ml-auto text-[10px] font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+                          <span className="ml-auto text-xs font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
                             {badgeCount}
                           </span>
                         )}
@@ -190,7 +190,7 @@ export function AppSidebar() {
         </button>
 
         {!collapsed && (
-          <p className="text-[11px] text-muted-foreground/40 px-2.5 pt-1 tracking-tight">
+          <p className="text-xs text-muted-foreground px-2.5 pt-1 tracking-tight">
             energy / amtme
           </p>
         )}

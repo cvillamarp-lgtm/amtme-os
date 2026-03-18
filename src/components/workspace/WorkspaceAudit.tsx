@@ -125,9 +125,9 @@ export function WorkspaceAudit({ episode }: Props) {
               <span className="text-sm text-foreground">{v.label}</span>
               <div className="flex items-center gap-2">
                 {v.status === "ok" ? (
-                  <Badge variant="secondary" className="text-[10px] text-[hsl(var(--chart-2))]">Completo</Badge>
+                  <Badge variant="secondary" className="text-xs text-[hsl(var(--chart-2))]">Completo</Badge>
                 ) : (
-                  <Badge variant="secondary" className="text-[10px] text-destructive">Faltante</Badge>
+                  <Badge variant="secondary" className="text-xs text-destructive">Faltante</Badge>
                 )}
               </div>
             </div>
@@ -187,21 +187,21 @@ export function WorkspaceAudit({ episode }: Props) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-foreground">{entry.field_name}</span>
-                      <span className={`text-[10px] flex items-center gap-0.5 ${origin.color}`}>
+                      <span className={`text-xs flex items-center gap-0.5 ${origin.color}`}>
                         <OriginIcon className="w-3 h-3" />
                         {origin.label}
                       </span>
                     </div>
                     {entry.old_value && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 line-through">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-through">
                         {truncate(entry.old_value)}
                       </p>
                     )}
-                    <p className="text-[10px] text-foreground/80 mt-0.5">
+                    <p className="text-xs text-foreground/80 mt-0.5">
                       {truncate(entry.new_value)}
                     </p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0 text-right">
+                  <span className="text-xs text-muted-foreground shrink-0 text-right">
                     {formatChangedAt(entry.changed_at)}
                   </span>
                 </div>
