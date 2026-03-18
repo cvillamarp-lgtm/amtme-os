@@ -1,4 +1,52 @@
 // Instrucción Maestra de Imagen AMTME — Imagen 01 + Imagen 02
+// Sistema SB-01 — Paleta, Colorways y Banco de Hooks validados
+
+/** Sistema de color SB-01 para piezas de Canva/tipográficas */
+export const SB01_PALETTE = {
+  page:  "#030A0F", // Fondo de página. Negro más profundo.
+  navy:  "#083A4F", // Fondo CW-01. Color de identidad principal.
+  gold:  "#A58D66", // Etiquetas, handles, líneas separadoras. Handle @yosoyvillamar.
+  teal:  "#407E8C", // Fondo CW-04. Slides de pregunta reflexiva y CTA.
+  sand:  "#E5E1DD", // Fondo CW-02. Texto principal sobre navy/teal.
+  hl:    "#E8FF40", // Barra de resaltado. Exactamente 1 palabra por pieza. Texto encima: navy.
+} as const;
+
+/** Colorways del sistema SB-01 */
+export const SB01_COLORWAYS = {
+  CW01: { bg: SB01_PALETTE.navy, text: SB01_PALETTE.sand,  uso: "Slides de insight, tensión y quote firma. El más usado." },
+  CW02: { bg: SB01_PALETTE.sand, text: SB01_PALETTE.navy,  uso: "Slides de hook/cover y evergreen. Temperatura más cálida." },
+  CW04: { bg: SB01_PALETTE.teal, text: SB01_PALETTE.navy,  uso: "Slides de pregunta reflexiva y CTA final. Giro visual en carrusel." },
+} as const;
+
+/** Banco de 15 hooks validados — primeros 3 segundos del Reel */
+export const HOOKS_BANK = [
+  { id: 1,  text: "Hay personas que no te quieren. Solo no quieren perderte.",           hlWord: "perderte",      ep: 7  },
+  { id: 2,  text: "Hay algo que llamas amor. En realidad es miedo.",                     hlWord: "miedo",         ep: 4  },
+  { id: 3,  text: "El rechazo no es un veredicto sobre tu valor.",                       hlWord: "veredicto",     ep: 25 },
+  { id: 4,  text: "Nadie te explicó que un corazón roto tiene nombre clínico.",          hlWord: "nombre",        ep: 26 },
+  { id: 5,  text: "¿Y si el problema no era la otra persona?",                           hlWord: "problema",      ep: 17 },
+  { id: 6,  text: "Llevas años siendo útil. Pero útil no es lo mismo que amado.",        hlWord: "amado",         ep: 20 },
+  { id: 7,  text: "Tu cuerpo lo sabe antes que tu mente.",                               hlWord: "cuerpo",        ep: 16 },
+  { id: 8,  text: "¿Cuántas versiones de ti mismo creaste para que alguien te quisiera?",hlWord: "versiones",     ep: 2  },
+  { id: 9,  text: "La pasión y la dependencia se sienten igual. No son lo mismo.",       hlWord: "dependencia",   ep: 9  },
+  { id: 10, text: "Sigues cargando algo que ya terminó.",                                hlWord: "cargando",      ep: 11 },
+  { id: 11, text: "Hay personas que ya se fueron sin decírtelo.",                        hlWord: "sin decírtelo", ep: 19 },
+  { id: 12, text: "Te exiges tanto que ya olvidaste que puedes equivocarte.",            hlWord: "equivocarte",   ep: 22 },
+  { id: 13, text: "El hartazgo funciona distinto a la motivación. Y es más honesto.",   hlWord: "honesto",       ep: 3  },
+  { id: 14, text: "A veces no sabes si lo amas o si solo te aterra el vacío.",          hlWord: "vacío",         ep: 8  },
+  { id: 15, text: "No necesitas su permiso para cerrar.",                               hlWord: "permiso",       ep: 19 },
+] as const;
+
+/** Calendario de publicación semanal */
+export const WEEKLY_CALENDAR = [
+  { day: "Lunes",    hora: "19:00-20:00", tipo: "Lanzamiento", piezas: ["Reel portada (CW-01)", "Story 'Nuevo episodio' con link activo"] },
+  { day: "Martes",   hora: "12:00-13:00", tipo: "Quote tensión", piezas: ["Post frase estática (T1)", "Story '¿Te identificas?'"] },
+  { day: "Miércoles",hora: "18:00-19:00", tipo: "Carrusel",     piezas: ["Carrusel 6 láminas completo (T2-T5)"] },
+  { day: "Jueves",   hora: "20:00-21:00", tipo: "Insight",      piezas: ["Quote conceptual (CW-04)", "Story distinción en 2 líneas"] },
+  { day: "Viernes",  hora: "18:30-19:30", tipo: "Repesca",      piezas: ["Reel variación CW-02. Mismo ep., ángulo distinto."] },
+  { day: "Sábado",   hora: "10:00-11:00", tipo: "Evergreen",    piezas: ["Repostear quote de ep. anterior (T7)", "Story casual"] },
+  { day: "Domingo",  hora: "12:00-13:00", tipo: "Spotify",      piezas: ["Episodio sube a Spotify. Actualizar link en bio."] },
+] as const;
 
 export interface VisualPiece {
   id: number;

@@ -65,21 +65,37 @@ serve(async (req) => {
     }
 
     const systemPrompt = `Eres el director creativo del podcast A Mí Tampoco Me Explicaron (AMTME).
-Host: @yosoyvillamar. Paleta: Cobalt #1A1AE6 / Crema #F5F0E8 / Oscuro #0D0D1A.
-Audiencia: hombres hispanos 28-44 años, LATAM.
+Host: @yosoyvillamar · Christian Villamar. Audiencia: hombres hispanos 28-44 años, LATAM.
 FILOSOFÍA: "Aquí no juzgamos. Acompañamos."
 
-Tu tarea: generar el COPY TIPOGRÁFICO que aparece DENTRO de cada pieza visual de Instagram.
+Tu tarea: generar el COPY TIPOGRÁFICO para piezas visuales de Instagram del sistema SB-01.
+
+SISTEMA DE COLOR SB-01:
+- Navy #083A4F → fondo principal (CW-01). Texto encima: Sand.
+- Sand #E5E1DD → fondo cálido (CW-02). Texto encima: Navy.
+- Teal #407E8C → fondo de giro/pregunta (CW-04). Texto encima: Navy.
+- Gold #A58D66 → etiquetas, handles, líneas separadoras.
+- HL #E8FF40 → BARRA DE RESALTADO en exactamente 1 PALABRA por pieza. Texto en esa barra: Navy #083A4F. NUNCA más de 1 palabra. NUNCA como fondo completo.
+
+COLORWAY POR PIEZA:
+- T1 Post Frase: CW-01 (Navy). Banda Gold lateral.
+- T2 Carrusel Slide 1 Cover: CW-02 (Sand). Barra HL en verbo de dolor.
+- T3 Carrusel Slides 2-4: CW-01 (Navy). Barra HL en la palabra que más duele reconocer.
+- T4 Carrusel Slide 5 Reflexiva: CW-04 (Teal). Pregunta que invita a guardarlo.
+- T5 Carrusel Slide 6 CTA: CW-04 (Teal). Botón HL → Spotify.
+- T6 Story Lanzamiento: CW-01 (Navy). Zonas seguras 200px sup / 380px inf.
+- T7 Evergreen/Reel: CW-02 (Sand). Para republicar semanas después.
 
 REGLAS ABSOLUTAS:
 - TODO EN MAYÚSCULAS
 - Máximo 6-8 palabras por línea
 - Usa saltos de línea (\\n) para separar bloques visuales
-- Frases cortas, contundentes, psicológicas — generan tensión, identificación o urgencia emocional
-- Tono editorial, íntimo, sobrio — NUNCA motivacional ni marketero ni frases de autoayuda
+- Frases cortas, contundentes, psicológicas — tensión, identificación o urgencia emocional
+- Tono editorial, íntimo, sobrio — NUNCA motivacional ni marketero
 - Sin signos de exclamación ni emojis
 - NUNCA: "SANA", "FLUYE", "CRECE", "TU MEJOR VERSIÓN", "APRENDE A AMARTE"
-- Siempre incluir "EP. [número]" y "@yosoyvillamar" donde corresponda según las instrucciones de cada pieza
+- Tipografía: Inter 800/900 (ExtraBold/Black). Letter-spacing negativo (-1 a -1.5).
+- Siempre incluir "EP. [número]" y "@yosoyvillamar" donde corresponda
 
 Devuelve ÚNICAMENTE un JSON válido sin markdown. Formato exacto:
 {
