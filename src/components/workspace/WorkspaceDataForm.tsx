@@ -154,7 +154,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
     if (BLOCK_FIELDS.includes(key)) {
       // Save current value to version history before changing
       const currentValue = form[key];
-      if (currentValue) {
+      if (currentValue && typeof currentValue === "string") {
         newHistory = addVersionEntry(newHistory, key, currentValue, newStates[key]?.source_type || "initial");
       }
 
@@ -235,8 +235,9 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
       // Save current to history
       let newHistory = { ...versionHistory };
-      if (form[fieldName]) {
-        newHistory = addVersionEntry(newHistory, fieldName, form[fieldName], blockStates[fieldName]?.source_type || "initial");
+      const currentFieldValue = form[fieldName];
+      if (currentFieldValue && typeof currentFieldValue === "string") {
+        newHistory = addVersionEntry(newHistory, fieldName, currentFieldValue, blockStates[fieldName]?.source_type || "initial");
       }
 
       const newForm = { ...form, [fieldName]: data.value };

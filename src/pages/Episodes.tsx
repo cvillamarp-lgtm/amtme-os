@@ -264,7 +264,8 @@ export default function Episodes() {
       const { data: numData, error: numError } = await supabase
         .rpc("next_episode_number", { p_user_id: user.id });
       if (numError) throw numError;
-      const nextNumber = numData as string;
+      if (typeof numData !== "string") throw new Error("next_episode_number returned unexpected type");
+      const nextNumber = numData;
 
       const { data: episode, error: insertError } = await supabase
         .from("episodes")
