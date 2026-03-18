@@ -445,13 +445,13 @@ export default function Tasks() {
                       {t.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{t.description}</p>}
                       {t.category && <p className="text-xs text-muted-foreground mt-0.5">{t.category}</p>}
                     </div>
-                    <Badge variant={priorityVariant(t.priority)} className="text-[10px] shrink-0">
+                    <Badge variant={priorityVariant(t.priority)} className="text-xs shrink-0">
                       {priorityLabel(t.priority)}
                     </Badge>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => setEditing(t)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -483,7 +483,7 @@ export default function Tasks() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-9 w-9 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-10 w-10 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => setEditing(t)}
                     >
                       <Pencil className="h-3.5 w-3.5" />

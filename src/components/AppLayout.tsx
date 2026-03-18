@@ -14,7 +14,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Topbar — macOS-style: thin, translucent, minimal */}
           <header className="h-11 flex items-center border-b border-border/50 sticky top-0 z-20 glass">
-            <SidebarTrigger className="ml-3 h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-[6px] transition-colors duration-150" />
+            <SidebarTrigger className="ml-3 h-11 w-11 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-[6px] transition-colors duration-150" />
           </header>
 
           {/* Main content area */}

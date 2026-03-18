@@ -239,8 +239,8 @@ function ChecklistEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Checklist</p>
-        <span className="text-[10px] text-muted-foreground/50 tabular-nums">{done}/{items.length}</span>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Checklist</p>
+        <span className="text-xs text-muted-foreground tabular-nums">{done}/{items.length}</span>
       </div>
       <div className="h-1 bg-muted rounded-full overflow-hidden">
         <div
@@ -303,11 +303,11 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
                 />
               </div>
             )}
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
               {pc.emoji} {pc.label}
             </span>
           </div>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
+          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
             {sc.label}
           </span>
         </div>
@@ -328,7 +328,7 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
         )}
 
         {pub.scheduled_at && (
-          <div className="flex items-center gap-1.5 text-[10px] text-blue-400">
+          <div className="flex items-center gap-1.5 text-xs text-blue-400">
             <Calendar className="h-3 w-3" />
             {formatScheduled(pub.scheduled_at)}
           </div>
@@ -353,7 +353,7 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
           <span className="text-xs text-muted-foreground">{timeAgo(pub.created_at)}</span>
           {pub.status === "draft" && (
             <button
-              className="text-[10px] text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"
+              className="text-xs text-muted-foreground hover:text-emerald-400 transition-colors px-1.5 py-0.5 rounded"
               onClick={() => onStatusChange("approved")}
             >
               Aprobar
@@ -361,7 +361,7 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
           )}
           {pub.status === "approved" && (
             <button
-              className="text-[10px] text-muted-foreground hover:text-blue-400 transition-colors px-1.5 py-0.5 rounded"
+              className="text-xs text-muted-foreground hover:text-blue-400 transition-colors px-1.5 py-0.5 rounded"
               onClick={() => onStatusChange("scheduled")}
             >
               Programar
@@ -444,7 +444,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
                   {pc.emoji} {pc.label}
                 </span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${sc.cls}`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
                   {sc.label}
                 </span>
               </div>
@@ -530,7 +530,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
             <div className="space-y-5">
               {pub.copy_final ? (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Copy</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Copy</p>
                   <div className="bg-muted/40 rounded-lg p-3">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{pub.copy_final}</p>
                   </div>
@@ -544,16 +544,16 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
               <div className="grid grid-cols-1 gap-4">
                 {pub.cta_text && (
                   <div>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">CTA</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">CTA</p>
                     <p className="text-sm">{pub.cta_text}</p>
                   </div>
                 )}
                 {pub.hashtags && pub.hashtags.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">Hashtags</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Hashtags</p>
                     <div className="flex flex-wrap gap-1.5">
                       {pub.hashtags.map((h) => (
-                        <span key={h} className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">{h}</span>
+                        <span key={h} className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">{h}</span>
                       ))}
                     </div>
                   </div>
@@ -569,7 +569,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
 
               {pub.objective && (
                 <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Objetivo</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Objetivo</p>
                   <p className="text-sm text-muted-foreground">{pub.objective}</p>
                 </div>
               )}
@@ -598,7 +598,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
               )}
 
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
                 <div className="grid grid-cols-2 gap-2">
                   {pub.status === "draft" && (
                     <Button variant="outline" size="sm" onClick={() => { onStatusChange(pub.id, "approved"); onClose(); }}>
@@ -621,7 +621,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 </div>
               </div>
 
-              <p className="text-[10px] text-muted-foreground/30">
+              <p className="text-xs text-muted-foreground">
                 Creada {timeAgo(pub.created_at)} · Actualizada {timeAgo(pub.updated_at)}
               </p>
             </div>

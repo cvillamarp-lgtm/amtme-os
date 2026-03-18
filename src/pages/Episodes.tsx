@@ -123,7 +123,7 @@ function OptionCard({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${styles.badge}`}>
+        <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${styles.badge}`}>
           {option.label}
         </span>
         {selected && (
@@ -133,7 +133,7 @@ function OptionCard({
         )}
       </div>
       <p className="text-sm font-medium text-foreground leading-snug">{option.texto}</p>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">{option.ayuda}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">{option.ayuda}</p>
     </button>
   );
 }
@@ -597,7 +597,7 @@ export default function Episodes() {
                           <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
                         </h3>
                         {draft.selected_conflicto && (
-                          <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                          <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
                             <Check className="w-3 h-3" /> Seleccionado
                           </span>
                         )}
@@ -621,7 +621,7 @@ export default function Episodes() {
                           <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
                         </h3>
                         {draft.selected_intencion && (
-                          <span className="text-[10px] text-emerald-500 font-medium flex items-center gap-1">
+                          <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
                             <Check className="w-3 h-3" /> Seleccionada
                           </span>
                         )}
@@ -842,14 +842,14 @@ export default function Episodes() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Progress value={audit.healthScore} className="h-1.5 w-16" />
-                          <span className={`text-[10px] font-medium ${level.color}`}>{audit.healthScore}%</span>
+                          <span className={`text-xs font-medium ${level.color}`}>{audit.healthScore}%</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs text-muted-foreground">{statusLabel(ep.status)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={`text-[10px] font-bold ${level.color}`}>
+                        <Badge variant="outline" className={`text-xs font-bold ${level.color}`}>
                           {level.nivel}
                         </Badge>
                       </td>

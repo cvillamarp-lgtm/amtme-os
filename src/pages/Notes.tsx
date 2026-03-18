@@ -36,7 +36,7 @@ function SaveIndicator({ status }: { status: "idle" | "saving" | "saved" | "erro
   return (
     <span
       className={[
-        "text-[11px] tracking-tight transition-opacity duration-300",
+        "text-xs tracking-tight transition-opacity duration-300",
         status === "saving" ? "text-muted-foreground" : "",
         status === "saved"  ? "text-emerald-500"      : "",
         status === "error"  ? "text-destructive"       : "",

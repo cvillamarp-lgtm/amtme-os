@@ -201,8 +201,8 @@ function PipelineStage({
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
         <div className="text-xl font-display font-bold text-foreground">{value}</div>
-        <div className="text-[11px] font-medium text-foreground/80">{label}</div>
-        <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>
+        <div className="text-xs font-medium text-foreground/80">{label}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
       </Link>
       {!isLast && <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0 hidden sm:block" />}
     </div>
@@ -367,17 +367,17 @@ const Dashboard = () => {
             <div className="flex gap-4">
               <div>
                 <div className="text-2xl font-display font-bold text-yellow-500">{counts?.insightsExperimenting ?? 0}</div>
-                <div className="text-[11px] text-muted-foreground">Experimentando</div>
+                <div className="text-xs text-muted-foreground">Experimentando</div>
               </div>
               <div className="w-px bg-border" />
               <div>
                 <div className="text-2xl font-display font-bold text-green-500">{counts?.insightsAccepted ?? 0}</div>
-                <div className="text-[11px] text-muted-foreground">Aceptados</div>
+                <div className="text-xs text-muted-foreground">Aceptados</div>
               </div>
               <div className="w-px bg-border" />
               <div>
                 <div className="text-2xl font-display font-bold text-foreground">{(counts?.insightsExperimenting ?? 0) + (counts?.insightsAccepted ?? 0)}</div>
-                <div className="text-[11px] text-muted-foreground">Activos</div>
+                <div className="text-xs text-muted-foreground">Activos</div>
               </div>
             </div>
           </Link>
@@ -394,17 +394,17 @@ const Dashboard = () => {
             <div className="flex gap-4">
               <div>
                 <div className="text-2xl font-display font-bold text-foreground">{counts?.quotesTotal ?? 0}</div>
-                <div className="text-[11px] text-muted-foreground">Capturadas</div>
+                <div className="text-xs text-muted-foreground">Capturadas</div>
               </div>
               <div className="w-px bg-border" />
               <div>
                 <div className="text-2xl font-display font-bold text-green-500">{counts?.quotesApproved ?? 0}</div>
-                <div className="text-[11px] text-muted-foreground">Aprobadas</div>
+                <div className="text-xs text-muted-foreground">Aprobadas</div>
               </div>
               <div className="w-px bg-border" />
               <div>
                 <div className="text-2xl font-display font-bold text-purple-500">{counts?.pubsPublished ?? 0}</div>
-                <div className="text-[11px] text-muted-foreground">Pubs. publicadas</div>
+                <div className="text-xs text-muted-foreground">Pubs. publicadas</div>
               </div>
             </div>
           </Link>
@@ -418,11 +418,11 @@ const Dashboard = () => {
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Bell className="h-4 w-4 text-amber-500" />
               Alertas operacionales
-              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500/20 text-amber-600 text-[11px] font-bold">
+              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500/20 text-amber-600 text-xs font-bold">
                 {smartAlerts.length}
               </span>
             </h2>
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" /> Actualizado hace un momento
             </span>
           </div>
@@ -446,7 +446,7 @@ const Dashboard = () => {
                   </div>
                   <Badge
                     variant="outline"
-                    className={`shrink-0 text-[10px] ${alert.severity === "high" ? "border-destructive/40 text-destructive" : "border-amber-500/40 text-amber-600"}`}
+                    className={`shrink-0 text-xs ${alert.severity === "high" ? "border-destructive/40 text-destructive" : "border-amber-500/40 text-amber-600"}`}
                   >
                     {alert.severity === "high" ? "Urgente" : "Atención"}
                   </Badge>
@@ -518,13 +518,13 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <Progress value={audit.healthScore} className="h-1.5 flex-1 max-w-[120px]" />
-                      <span className={`text-[10px] font-medium ${level.color}`}>{level.nivel} · {audit.healthScore}%</span>
+                      <span className={`text-xs font-medium ${level.color}`}>{level.nivel} · {audit.healthScore}%</span>
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {!audit.canProduce && <Badge variant="destructive" className="text-xs">Bloqueado</Badge>}
                     <Button
-                      size="sm" variant="outline" className="h-9 text-xs"
+                      size="sm" variant="outline" className="h-11 text-xs"
                       onClick={(e) => { e.stopPropagation(); navigate(`/factory?episode_id=${ep.id}`); }}
                     >
                       <Zap className="h-3 w-3 mr-1" />Producir
@@ -585,7 +585,7 @@ const Dashboard = () => {
                     </div>
                   )}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/80 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-[10px] text-foreground truncate">{a.piece_name}</p>
+                    <p className="text-xs text-foreground truncate">{a.piece_name}</p>
                   </div>
                 </div>
               ))}
