@@ -1,6 +1,6 @@
 /**
  * Shared AI provider resolution for AMTME Edge Functions.
- * Prefers OpenAI (OPENAI_API_KEY), falls back to Lovable gateway (LOVABLE_API_KEY).
+ * Priority: Groq (free) → OpenAI → Lovable gateway.
  */
 export interface AIConfig {
   url: string;
@@ -9,6 +9,14 @@ export interface AIConfig {
 }
 
 export function resolveAI(): AIConfig {
+  const groqKey = Deno.env.get("GROQ_API_KEY");
+  if (groqKey) {
+    return {
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      key: groqKey,
+      model: "llama-3.1-8b-instant",
+    };
+  }
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (openaiKey) {
     return {
@@ -26,6 +34,6 @@ export function resolveAI(): AIConfig {
     };
   }
   throw new Error(
-    "No AI API key configured. Set OPENAI_API_KEY or LOVABLE_API_KEY in Supabase Edge Function secrets."
+    "No AI API key configured. Set GROQ_API_KEY, OPENAI_API_KEY or LOVABLE_API_KEY in Supabase Edge Function secrets."
   );
 }
