@@ -28,6 +28,18 @@
 | E1 | P0 | Modelos Gemini inexistentes (PR #31 corregido) | `gemini-2.0-flash-preview-image-generation` | Generar imagen en /factory |
 | E2 | P0 | Imágenes de referencia no enviadas a Gemini (PR #31 corregido) | inlineData base64 en Gemini body | Imagen generada con rasgos del host |
 | E3 | P1 | generate-image timeout 30s insuficiente en algunos callers | PromptBuilder y ContentPipeline usan `{ timeoutMs: 90_000 }` | Generar sin timeout error |
+| E4 | P1 | extract-content, generate-captions, generate-episode-fields usando timeout default 30s | Todos los callers actualizados a `{ timeoutMs: 60_000 }` | Confirmar que operaciones largas no hagan timeout |
+| E5 | P2 | generate-script usa fetch nativo (SSE streaming) — no aplica invokeEdgeFunction | Sin cambios requeridos — streaming maneja la duración sin timeout fijo | Verificar que el stream no se corte en guiones largos |
+
+### TABLA DE REFERENCIA — TIMEOUTS POR EDGE FUNCTION
+
+| Edge Function | Timeout (frontend) | Caller(s) | Notas |
+|---------------|--------------------|-----------|-------|
+| `generate-script` | N/A (streaming SSE) | `ContentPipeline.tsx`, `ScriptGenerator.tsx`, `WorkspaceScript.tsx` | Usa `fetch()` directo con SSE; el timeout del navegador aplica |
+| `generate-image` | 90s (PromptBuilder, ContentPipeline) / 120s (batch en useContentProduction, PieceCard) | `PromptBuilder.tsx`, `ContentPipeline.tsx`, `useContentProduction.ts`, `PieceCard.tsx` | Timeout elevado pre-existente (Issue #32) |
+| `extract-content` | 60s | `useContentProduction.ts` (×2), `useContentExtraction.ts` | Procesa guión completo + 15 piezas; 30s insuficiente |
+| `generate-captions` | 60s | `useContentProduction.ts` (×2) | Genera 15 captions en una sola llamada AI |
+| `generate-episode-fields` | 60s | `WorkspaceDataForm.tsx` (×3: regenerate, options, all), `Episodes.tsx` | El modo `generate_all` genera 8 campos simultáneamente |
 
 ### BASE DE DATOS
 
@@ -82,4 +94,5 @@ OPENAI_API_KEY=<openai-key>             # si se usa GPT fallback
 | D — Toast sesión expirada | ✅ Mensaje y dedupe key corregidos |
 | E — Guardado episodio no bloqueado | ✅ Confirmado (ya correcto) |
 | F — Audit Report | ✅ Este documento |
+| G — Timeouts otras edge functions | ✅ extract-content, generate-captions, generate-episode-fields actualizados a 60s (Issue #35) |
 

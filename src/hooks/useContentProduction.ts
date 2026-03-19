@@ -104,7 +104,7 @@ export function useContentProduction(episodeId?: string | null) {
     }
     setLoading(true);
     try {
-      const rawData = await invokeEdgeFunction("extract-content", { script, title, theme });
+      const rawData = await invokeEdgeFunction("extract-content", { script, title, theme }, { timeoutMs: 60_000 });
       const parsed = parseExtraction(rawData as Record<string, unknown>);
       if (parsed) {
         setExtraction(parsed);
@@ -199,7 +199,8 @@ export function useContentProduction(episodeId?: string | null) {
 
       const data = await invokeEdgeFunction<{ captions?: Array<{ pieceId: number; caption: string; hashtags: string }> }>(
         "generate-captions",
-        { pieces, episodeTitle: title, episodeNumber: epNumber, thesis: extraction.thesis }
+        { pieces, episodeTitle: title, episodeNumber: epNumber, thesis: extraction.thesis },
+        { timeoutMs: 60_000 }
       );
       if (data?.captions && Array.isArray(data.captions)) {
         setAssets((prev) => {
@@ -296,7 +297,7 @@ export function useContentProduction(episodeId?: string | null) {
       setProdStep("Extrayendo contenido...");
       setProdCurrent(1);
 
-      const rawData = await invokeEdgeFunction("extract-content", { script, title, theme });
+      const rawData = await invokeEdgeFunction("extract-content", { script, title, theme }, { timeoutMs: 60_000 });
       const parsed = parseExtraction(rawData as Record<string, unknown>);
       if (!parsed) throw new Error("Respuesta incompleta de IA");
 
@@ -332,7 +333,7 @@ export function useContentProduction(episodeId?: string | null) {
           episodeTitle: title,
           episodeNumber: epNumber,
           thesis: parsed.thesis,
-        });
+        }, { timeoutMs: 60_000 });
 
         if (captionData?.captions && Array.isArray(captionData.captions)) {
           setAssets((prev) => {

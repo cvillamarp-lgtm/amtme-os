@@ -234,7 +234,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
           quote: form.quote,
           descripcion_spotify: form.descripcion_spotify,
         },
-      });
+      }, { timeoutMs: 60_000 });
 
       if (!data?.value) throw new Error("No value returned");
 
@@ -300,7 +300,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
           quote: form.quote,
           descripcion_spotify: form.descripcion_spotify,
         },
-      });
+      }, { timeoutMs: 60_000 });
       if (!data?.options?.length) throw new Error("No options returned");
       setFieldOptions((prev) => ({ ...prev, [fieldName]: data.options }));
     } catch (e: unknown) {
@@ -346,7 +346,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         episode_number: episode.number,
         conflicto_central: (episode as Record<string, unknown>).conflicto_central,
         intencion_del_episodio: (episode as Record<string, unknown>).intencion_del_episodio,
-      });
+      }, { timeoutMs: 60_000 });
       if (!data?.fields) throw new Error("No fields returned");
 
       let newHistory = { ...versionHistory };
