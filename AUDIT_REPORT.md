@@ -40,7 +40,7 @@
 
 | # | Severidad | Hallazgo | Fix | Verificación |
 |---|-----------|----------|-----|--------------|
-| C1 | P1 | `.env.example` incompleto — falta `GEMINI_API_KEY` | Actualizado `.env.example` | Ver variables requeridas documentadas |
+| C1 | P1 | `.env.example` incompleto — falta `GEMINI_API_KEY` y sección Vercel | Actualizado `.env.example` con sección "Vercel Secrets"; `README.md` con tabla completa; checklist en `AUDIT_REPORT.md` | Ver variables requeridas documentadas |
 | C2 | P2 | No hay gate de `tsc --noEmit` en CI | Documentado en READY-TO-RUN | Correr localmente antes de deploy |
 
 ---
@@ -57,18 +57,50 @@ El flujo de creación en `src/pages/Episodes.tsx` ya sigue el patrón correcto:
 
 ## VARIABLES DE ENTORNO REQUERIDAS
 
-### Vercel (Frontend)
+### Frontend — Desarrollo local (`.env.local`)
 ```
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon-key>
-VITE_APP_BUILD_ID=<git-sha-or-semver>   # opcional, para RecoveryAgent
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon-key>
+VITE_SUPABASE_PROJECT_ID=<project-id>
+```
+
+### Vercel (Producción)
+Configurar en Vercel Dashboard → Project → Settings → Environment Variables:
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon-key>
+VITE_SUPABASE_PROJECT_ID=<project-id>
 ```
 
 ### Supabase Edge Functions (Secrets)
+Auto-inyectadas por Supabase — NO configurar manualmente:
 ```
-GEMINI_API_KEY=<google-ai-studio-key>
-OPENAI_API_KEY=<openai-key>             # si se usa GPT fallback
+SUPABASE_URL           ← auto
+SUPABASE_ANON_KEY      ← auto
+SUPABASE_SERVICE_ROLE_KEY ← auto
 ```
+
+Configurar en Supabase Dashboard → Settings → Edge Functions → Secrets (**al menos UNA requerida**):
+```
+GEMINI_API_KEY=<google-ai-studio-key>   # GRATIS ⭐ — requerido para generate-image
+OPENAI_API_KEY=<openai-key>             # PAGO — fallback DALL-E 3 + texto
+GROQ_API_KEY=<groq-key>                 # texto rápido (guiones, captions)
+```
+
+### Checklist de configuración
+
+#### Desarrollo local
+- [ ] `VITE_SUPABASE_URL` — URL del proyecto Supabase
+- [ ] `VITE_SUPABASE_PUBLISHABLE_KEY` — Anon key del proyecto
+- [ ] `VITE_SUPABASE_PROJECT_ID` — ID del proyecto
+- [ ] Al menos una API key de IA en Supabase Secrets (`GEMINI_API_KEY` recomendado)
+
+#### Producción (Vercel + Supabase)
+- [ ] `VITE_SUPABASE_URL` configurada en Vercel
+- [ ] `VITE_SUPABASE_PUBLISHABLE_KEY` configurada en Vercel
+- [ ] `VITE_SUPABASE_PROJECT_ID` configurada en Vercel
+- [ ] `GEMINI_API_KEY` en Supabase Edge Function Secrets (**recomendado**)
+- [ ] `OPENAI_API_KEY` o `GROQ_API_KEY` opcionales como fallback
 
 ---
 
@@ -82,4 +114,5 @@ OPENAI_API_KEY=<openai-key>             # si se usa GPT fallback
 | D — Toast sesión expirada | ✅ Mensaje y dedupe key corregidos |
 | E — Guardado episodio no bloqueado | ✅ Confirmado (ya correcto) |
 | F — Audit Report | ✅ Este documento |
+| G — Variables de entorno | ✅ `.env.example`, `README.md` y checklist actualizados (Issue #36) |
 
