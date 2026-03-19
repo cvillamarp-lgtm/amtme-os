@@ -64,26 +64,47 @@ export function useContentProduction(episodeId?: string | null) {
   const [pieceCopy, setPieceCopy] = useState<PieceCopyMap>({});
   const [assets, setAssets] = useState<Record<number, AssetState>>({});
 
-  // Load saved assets from DB on mount
+  // On mount: restore assets + copy from content_assets (single source of truth)
   useEffect(() => {
     if (!episodeId) return;
     supabase
       .from("content_assets")
-      .select("piece_id, image_url, caption, hashtags, prompt_used, status")
+      .select("piece_id, image_url, caption, hashtags, prompt_used, status, copy_json")
       .eq("episode_id", episodeId)
+      .order("piece_id", { ascending: true })
       .then(({ data }) => {
         if (!data || data.length === 0) return;
-        const loaded: Record<number, AssetState> = {};
+        const loadedAssets: Record<number, AssetState> = {};
+        const loadedCopy: PieceCopyMap = {};
+        let hasData = false;
+
         for (const row of data) {
-          loaded[row.piece_id] = {
-            imageUrl: row.image_url ?? undefined,
-            caption: row.caption ?? "",
-            hashtags: row.hashtags ?? "",
-            status: row.status ?? "done",
-            promptUsed: row.prompt_used ?? undefined,
-          };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const copyLines = (row as any).copy_json;
+          if (row.image_url || row.caption || (Array.isArray(copyLines) && copyLines.length > 0)) {
+            hasData = true;
+          }
+          if (row.image_url || row.caption) {
+            loadedAssets[row.piece_id] = {
+              imageUrl: row.image_url ?? undefined,
+              caption: row.caption ?? "",
+              hashtags: row.hashtags ?? "",
+              status: row.status ?? "pending",
+              promptUsed: row.prompt_used ?? undefined,
+            };
+          }
+          if (Array.isArray(copyLines) && copyLines.length > 0) {
+            loadedCopy[String(row.piece_id)] = copyLines as string[];
+          }
         }
-        setAssets(loaded);
+
+        if (!hasData) return;
+        if (Object.keys(loadedAssets).length > 0) setAssets(loadedAssets);
+        if (Object.keys(loadedCopy).length > 0) {
+          setPieceCopy(loadedCopy);
+          setExtraction({ thesis: "", keyPhrases: [], pieceCopy: loadedCopy });
+          toast.info("Piezas restauradas — continúa sin volver a extraer");
+        }
       });
   }, [episodeId]);
   const [loading, setLoading] = useState(false);
@@ -92,99 +113,38 @@ export function useContentProduction(episodeId?: string | null) {
   const [prodCurrent, setProdCurrent] = useState(0);
   const [prodTotal, setProdTotal] = useState(0);
 
-  // Auto-save extraction copy + piece placeholders so user doesn't re-pay on refresh
+  // Auto-save extraction — copy_json per piece in content_assets (single source of truth)
   const autoSaveExtraction = useCallback(async (
     parsed: ExtractionResult,
     mergedCopy: PieceCopyMap,
-    episodeId: string | null,
+    epId: string | null,
   ) => {
+    if (!epId) return; // only persist when linked to an episode
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Persist copy + thesis on the episode row for later restoration
-      if (episodeId) {
-        await supabase
-          .from("episodes")
-          .update({
-            core_thesis: parsed.thesis,
-            derived_copies_json: mergedCopy,
-          } as Parameters<typeof supabase.from<"episodes">>[0] extends never ? never : object)
-          .eq("id", episodeId);
-      }
+      // Save thesis to episode (lightweight — just one field)
+      await supabase
+        .from("episodes")
+        .update({ core_thesis: parsed.thesis } as object)
+        .eq("id", epId);
 
-      // Insert placeholder rows for all 15 pieces — skip if row already exists
+      // Upsert all 15 pieces with copy_json — existing images/captions preserved via merge
       const rows = VISUAL_PIECES.map((p) => ({
         user_id: session.user.id,
         piece_id: p.id,
         piece_name: p.shortName,
+        copy_json: mergedCopy[String(p.id)] ?? p.copyTemplate,
         status: "pending",
-        episode_id: episodeId || null,
+        episode_id: epId,
       }));
 
       await supabase
         .from("content_assets")
-        .upsert(rows, { onConflict: "user_id,piece_id,episode_id", ignoreDuplicates: true });
+        .upsert(rows, { onConflict: "user_id,piece_id,episode_id" });
     } catch (e) {
-      // Non-fatal: log but don't surface to user
       console.error("[autoSaveExtraction]", e);
-    }
-  }, []);
-
-  // Restore extraction + assets from DB so user can continue without re-extracting
-  const loadEpisodeAssets = useCallback(async (episodeId: string): Promise<boolean> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return false;
-
-      const [{ data: ep }, { data: existingAssets }] = await Promise.all([
-        supabase
-          .from("episodes")
-          .select("core_thesis, derived_copies_json")
-          .eq("id", episodeId)
-          .single(),
-        supabase
-          .from("content_assets")
-          .select("*")
-          .eq("episode_id", episodeId)
-          .eq("user_id", session.user.id)
-          .order("piece_id", { ascending: true }),
-      ]);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const savedCopy = (ep as any)?.derived_copies_json as PieceCopyMap | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const savedThesis = (ep as any)?.core_thesis as string | null;
-      const hasCopy = savedCopy && Object.keys(savedCopy).length > 0;
-      const hasAssets = existingAssets && existingAssets.some((a) => a.image_url || a.caption);
-
-      if (!hasCopy && !hasAssets) return false;
-
-      if (hasCopy && savedCopy) {
-        setExtraction({ thesis: savedThesis || "", keyPhrases: [], pieceCopy: savedCopy });
-        setPieceCopy(savedCopy);
-      }
-
-      if (hasAssets && existingAssets) {
-        const restoredAssets: Record<number, AssetState> = {};
-        for (const asset of existingAssets) {
-          if (asset.image_url || asset.caption) {
-            restoredAssets[asset.piece_id] = {
-              imageUrl: asset.image_url ?? undefined,
-              caption: asset.caption ?? "",
-              hashtags: asset.hashtags ?? "",
-              status: asset.status ?? "pending",
-              promptUsed: asset.prompt_used ?? undefined,
-            };
-          }
-        }
-        if (Object.keys(restoredAssets).length > 0) setAssets(restoredAssets);
-      }
-
-      return true;
-    } catch (e) {
-      console.error("[loadEpisodeAssets]", e);
-      return false;
     }
   }, []);
 
@@ -568,7 +528,6 @@ export function useContentProduction(episodeId?: string | null) {
     prodCurrent,
     prodTotal,
     extractContent,
-    loadEpisodeAssets,
     handleImageGenerated,
     updatePieceCopy,
     handleCaptionChange,

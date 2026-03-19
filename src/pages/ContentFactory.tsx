@@ -186,7 +186,7 @@ export default function ContentFactory() {
     setSelectedPieces(new Set());
   }, []);
 
-  // Production hook — pass episodeId so saved assets are loaded on mount
+  // Production hook — pass episodeId so saved assets are loaded on mount automatically
   const {
     extraction,
     pieceCopy,
@@ -197,7 +197,6 @@ export default function ContentFactory() {
     prodCurrent,
     prodTotal,
     extractContent,
-    loadEpisodeAssets,
     handleImageGenerated,
     updatePieceCopy,
     handleCaptionChange,
@@ -210,21 +209,11 @@ export default function ContentFactory() {
 
   // UI state
   const [tab, setTab] = useState("input");
-  const [resumedFromDB, setResumedFromDB] = useState(false);
 
-  // On episode load, try to restore previously saved extraction + assets
+  // Jump to pieces tab when data is restored from DB
   useEffect(() => {
-    if (!episodeId || episodeLoading) return;
-    loadEpisodeAssets(episodeId).then((restored) => {
-      if (restored) {
-        setResumedFromDB(true);
-        setTab("pieces");
-        toast.info("Piezas restauradas — continúa generando imágenes sin volver a extraer");
-      }
-    });
-    // Only run when episode changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episodeId, episodeLoading]);
+    if (extraction) setTab("pieces");
+  }, [extraction]);
 
   const episodeInput: EpisodeInput = useMemo(
     () => ({
@@ -317,14 +306,6 @@ export default function ContentFactory() {
         <EpisodeContextPanel episode={episode} onChangeEpisode={handleChangeEpisode} />
       ) : (
         <EpisodeSelectorPanel onSelect={handleSelectEpisode} />
-      )}
-
-      {/* Resume banner */}
-      {resumedFromDB && extraction && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
-          <Sparkles className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-primary font-medium">Piezas restauradas desde tu sesión anterior — genera las imágenes que faltan sin pagar de nuevo.</span>
-        </div>
       )}
 
       {/* Piece selector */}

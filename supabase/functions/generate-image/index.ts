@@ -316,7 +316,13 @@ serve(async (req) => {
       console.error("Bucket error:", bucketError);
     }
 
-    const fileName = `img_${Date.now()}.png`;
+    // Organized path: episodes/{id}/piece_{n}.png (overwritable) or standalone/piece_{n}_{ts}.png
+    const pieceId = body.pieceId as number | undefined;
+    const fileName = episodeId && pieceId
+      ? `episodes/${episodeId}/piece_${pieceId}.png`
+      : episodeId
+      ? `episodes/${episodeId}/img_${Date.now()}.png`
+      : `standalone/piece_${pieceId ?? "x"}_${Date.now()}.png`;
 
     // Handle both base64 data URLs and plain https:// URLs
     let binaryData: Uint8Array;
