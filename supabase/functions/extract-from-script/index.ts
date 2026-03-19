@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, resolveAI } from "../_shared/extract-helpers.ts";
+import { getCorsHeaders } from "../_shared/extract-helpers.ts";
+import { callAI } from "../_shared/ai.ts";
 
 const AMTME_CONTEXT = `Podcast: "A Mi Tampoco Me Explicaron" (AMTME). Host: Christian Villamar.
 Audiencia: hombres hispanos 28-44 años, LATAM.
@@ -32,8 +33,6 @@ serve(async (req) => {
         status: 401, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-    const ai = resolveAI();
-
     const body = await req.json();
     const { script, mode, episode_title, episode_number } = body;
 
@@ -124,84 +123,25 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks):
 
     // Fetch quotes if needed
     if (mode === "quotes" || mode === "both") {
-      const response = await fetch(ai.url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${ai.key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [
-            { role: "system", content: quotesPrompt },
-            {
-              role: "user",
-              content: `${episodeContext ? episodeContext + "\n\n" : ""}GUIÓN:\n${scriptTruncated}`,
-            },
-          ],
-          temperature: 0.6,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-        throw new Error(`AI error (quotes): ${response.status}`);
-      }
-
-      const aiData = await response.json();
-      const content = aiData.choices?.[0]?.message?.content?.trim();
-      if (!content) throw new Error("No content from AI (quotes)");
-
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("No JSON in quotes response");
-        const parsed = JSON.parse(jsonMatch[0]);
-        results.quotes = parsed.quotes || [];
-      } catch {
-        throw new Error("Failed to parse quotes JSON");
-      }
+      const content = await callAI([
+        { role: "system", content: quotesPrompt },
+        { role: "user", content: `${episodeContext ? episodeContext + "\n\n" : ""}GUIÓN:\n${scriptTruncated}` },
+      ], 0.6);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON in quotes response");
+      const parsed = JSON.parse(jsonMatch[0]);
+      results.quotes = parsed.quotes || [];
     }
 
-    // Fetch insights if needed
     if (mode === "insights" || mode === "both") {
-      const response = await fetch(ai.url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${ai.key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [
-            { role: "system", content: insightsPrompt },
-            {
-              role: "user",
-              content: `${episodeContext ? episodeContext + "\n\n" : ""}GUIÓN:\n${scriptTruncated}`,
-            },
-          ],
-          temperature: 0.7,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-        throw new Error(`AI error (insights): ${response.status}`);
-      }
-
-      const aiData = await response.json();
-      const content = aiData.choices?.[0]?.message?.content?.trim();
-      if (!content) throw new Error("No content from AI (insights)");
-
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("No JSON in insights response");
-        const parsed = JSON.parse(jsonMatch[0]);
-        results.insights = parsed.insights || [];
-      } catch {
-        throw new Error("Failed to parse insights JSON");
-      }
+      const content = await callAI([
+        { role: "system", content: insightsPrompt },
+        { role: "user", content: `${episodeContext ? episodeContext + "\n\n" : ""}GUIÓN:\n${scriptTruncated}` },
+      ], 0.7);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON in insights response");
+      const parsed = JSON.parse(jsonMatch[0]);
+      results.insights = parsed.insights || [];
     }
 
     return new Response(JSON.stringify(results), {
