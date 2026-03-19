@@ -104,11 +104,31 @@ GROQ_API_KEY=<groq-key>                 # texto rápido (guiones, captions)
 
 ---
 
+## VERIFICACIÓN DE RUTAS DEL SIDEBAR (Issue #34)
+
+Verificación manual de `src/App.tsx` vs `src/components/AppSidebar.tsx`. Todas las rutas del sidebar están correctamente mapeadas — **no existen rutas fantasma**.
+
+| Ruta | Componente | Presente en App.tsx |
+|------|------------|---------------------|
+| `/calendar` | `EditorialCalendar` | ✅ |
+| `/accounts` | `PlatformAccounts` | ✅ |
+| `/guests` | `Guests` | ✅ |
+| `/sponsors` | `Sponsors` | ✅ |
+| `/notes` | `Notes` | ✅ |
+| `/seasons` | `Seasons` | ✅ |
+| `/knowledge` | `KnowledgeBase` | ✅ |
+| `/design` | `DesignStudio` | ✅ |
+| `/brand` | `BrandStudio` | ✅ |
+
+Todas las rutas utilizan `lazyWithRecovery` para carga diferida con recuperación automática de errores de chunk. Ninguna ruta produce 404. Cierra Issue #34. Referencia: PR #32.
+
+---
+
 ## ESTADO FINAL
 
 | Bloque | Estado |
 |--------|--------|
-| A — Rutas fantasma | ✅ Confirmadas (sin cambios) |
+| A — Rutas fantasma | ✅ Confirmadas — sin rutas fantasma (Issue #34 cerrado) |
 | B — Storage buckets + RLS | ✅ Migración creada |
 | C — Timeout generate-image | ✅ Callers actualizados |
 | D — Toast sesión expirada | ✅ Mensaje y dedupe key corregidos |
