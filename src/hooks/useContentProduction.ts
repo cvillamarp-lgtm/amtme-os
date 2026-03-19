@@ -92,11 +92,108 @@ export function useContentProduction(episodeId?: string | null) {
   const [prodCurrent, setProdCurrent] = useState(0);
   const [prodTotal, setProdTotal] = useState(0);
 
+  // Auto-save extraction copy + piece placeholders so user doesn't re-pay on refresh
+  const autoSaveExtraction = useCallback(async (
+    parsed: ExtractionResult,
+    mergedCopy: PieceCopyMap,
+    episodeId: string | null,
+  ) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Persist copy + thesis on the episode row for later restoration
+      if (episodeId) {
+        await supabase
+          .from("episodes")
+          .update({
+            core_thesis: parsed.thesis,
+            derived_copies_json: mergedCopy,
+          } as Parameters<typeof supabase.from<"episodes">>[0] extends never ? never : object)
+          .eq("id", episodeId);
+      }
+
+      // Insert placeholder rows for all 15 pieces — skip if row already exists
+      const rows = VISUAL_PIECES.map((p) => ({
+        user_id: session.user.id,
+        piece_id: p.id,
+        piece_name: p.shortName,
+        status: "pending",
+        episode_id: episodeId || null,
+      }));
+
+      await supabase
+        .from("content_assets")
+        .upsert(rows, { onConflict: "user_id,piece_id,episode_id", ignoreDuplicates: true });
+    } catch (e) {
+      // Non-fatal: log but don't surface to user
+      console.error("[autoSaveExtraction]", e);
+    }
+  }, []);
+
+  // Restore extraction + assets from DB so user can continue without re-extracting
+  const loadEpisodeAssets = useCallback(async (episodeId: string): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+
+      const [{ data: ep }, { data: existingAssets }] = await Promise.all([
+        supabase
+          .from("episodes")
+          .select("core_thesis, derived_copies_json")
+          .eq("id", episodeId)
+          .single(),
+        supabase
+          .from("content_assets")
+          .select("*")
+          .eq("episode_id", episodeId)
+          .eq("user_id", session.user.id)
+          .order("piece_id", { ascending: true }),
+      ]);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const savedCopy = (ep as any)?.derived_copies_json as PieceCopyMap | null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const savedThesis = (ep as any)?.core_thesis as string | null;
+      const hasCopy = savedCopy && Object.keys(savedCopy).length > 0;
+      const hasAssets = existingAssets && existingAssets.some((a) => a.image_url || a.caption);
+
+      if (!hasCopy && !hasAssets) return false;
+
+      if (hasCopy && savedCopy) {
+        setExtraction({ thesis: savedThesis || "", keyPhrases: [], pieceCopy: savedCopy });
+        setPieceCopy(savedCopy);
+      }
+
+      if (hasAssets && existingAssets) {
+        const restoredAssets: Record<number, AssetState> = {};
+        for (const asset of existingAssets) {
+          if (asset.image_url || asset.caption) {
+            restoredAssets[asset.piece_id] = {
+              imageUrl: asset.image_url ?? undefined,
+              caption: asset.caption ?? "",
+              hashtags: asset.hashtags ?? "",
+              status: asset.status ?? "pending",
+              promptUsed: asset.prompt_used ?? undefined,
+            };
+          }
+        }
+        if (Object.keys(restoredAssets).length > 0) setAssets(restoredAssets);
+      }
+
+      return true;
+    } catch (e) {
+      console.error("[loadEpisodeAssets]", e);
+      return false;
+    }
+  }, []);
+
   const extractContent = useCallback(async (
     script: string,
     title: string,
     theme: string,
-    epNumber: string
+    epNumber: string,
+    episodeId?: string | null,
   ) => {
     if (!script && !title && !theme) {
       toast.error("Ingresa al menos un guión, título o tema");
@@ -115,7 +212,9 @@ export function useContentProduction(episodeId?: string | null) {
           );
         }
         setPieceCopy(merged);
-        toast.success("Contenido extraído — revisa las 15 piezas");
+        // Auto-save so the user can resume without re-paying
+        await autoSaveExtraction(parsed, merged, episodeId ?? null);
+        toast.success("Contenido extraído y guardado — revisa las 15 piezas");
         return parsed;
       } else {
         throw new Error("Respuesta incompleta de IA");
@@ -126,9 +225,15 @@ export function useContentProduction(episodeId?: string | null) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [autoSaveExtraction]);
 
-  const handleImageGenerated = useCallback((pieceId: number, imageUrl: string, prompt: string) => {
+  const handleImageGenerated = useCallback(async (
+    pieceId: number,
+    imageUrl: string,
+    prompt: string,
+    episodeId?: string | null,
+  ) => {
+    // Update local state immediately
     setAssets((prev) => ({
       ...prev,
       [pieceId]: {
@@ -140,6 +245,29 @@ export function useContentProduction(episodeId?: string | null) {
         hashtags: prev[pieceId]?.hashtags || "",
       },
     }));
+
+    // Auto-persist to DB so the image survives page refreshes
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const piece = VISUAL_PIECES.find((p) => p.id === pieceId);
+      if (!piece) return;
+
+      await supabase.from("content_assets").upsert(
+        {
+          user_id: session.user.id,
+          piece_id: pieceId,
+          piece_name: piece.shortName,
+          image_url: imageUrl,
+          prompt_used: prompt,
+          status: "generated",
+          episode_id: episodeId ?? null,
+        },
+        { onConflict: "user_id,piece_id,episode_id" },
+      );
+    } catch (e) {
+      console.error("[handleImageGenerated] auto-save failed:", e);
+    }
   }, []);
 
   const updatePieceCopy = useCallback((pieceId: number, lineIndex: number, value: string) => {
@@ -371,7 +499,7 @@ export function useContentProduction(episodeId?: string | null) {
             { timeoutMs: 120_000, maxRetries: 0 }
           );
           if (imgData?.imageUrl) {
-            handleImageGenerated(piece.id, imgData.imageUrl, prompt);
+            handleImageGenerated(piece.id, imgData.imageUrl, prompt, episodeId);
           } else {
             failedPieces.push(piece);
           }
@@ -401,7 +529,7 @@ export function useContentProduction(episodeId?: string | null) {
                 { timeoutMs: 120_000, maxRetries: 0 }
               );
               if (imgData?.imageUrl) {
-                handleImageGenerated(piece.id, imgData.imageUrl, prompt);
+                handleImageGenerated(piece.id, imgData.imageUrl, prompt, episodeId);
                 continue;
               }
               stillFailing.push(piece);
@@ -440,6 +568,7 @@ export function useContentProduction(episodeId?: string | null) {
     prodCurrent,
     prodTotal,
     extractContent,
+    loadEpisodeAssets,
     handleImageGenerated,
     updatePieceCopy,
     handleCaptionChange,

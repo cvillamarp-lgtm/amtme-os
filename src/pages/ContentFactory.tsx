@@ -197,6 +197,7 @@ export default function ContentFactory() {
     prodCurrent,
     prodTotal,
     extractContent,
+    loadEpisodeAssets,
     handleImageGenerated,
     updatePieceCopy,
     handleCaptionChange,
@@ -209,6 +210,21 @@ export default function ContentFactory() {
 
   // UI state
   const [tab, setTab] = useState("input");
+  const [resumedFromDB, setResumedFromDB] = useState(false);
+
+  // On episode load, try to restore previously saved extraction + assets
+  useEffect(() => {
+    if (!episodeId || episodeLoading) return;
+    loadEpisodeAssets(episodeId).then((restored) => {
+      if (restored) {
+        setResumedFromDB(true);
+        setTab("pieces");
+        toast.info("Piezas restauradas — continúa generando imágenes sin volver a extraer");
+      }
+    });
+    // Only run when episode changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [episodeId, episodeLoading]);
 
   const episodeInput: EpisodeInput = useMemo(
     () => ({
@@ -220,8 +236,8 @@ export default function ContentFactory() {
   );
 
   const handleExtract = () =>
-    extractContent(script, title, theme, epNumber).then((r) => {
-      if (r) setTab("pieces");
+    extractContent(script, title, theme, epNumber, episodeId).then((r) => {
+      if (r) { setResumedFromDB(false); setTab("pieces"); }
     });
 
   const handleGenerateCaptions = () => {
@@ -245,6 +261,13 @@ export default function ContentFactory() {
     setScript("");
     setScriptInitialized(false);
   };
+
+  // Wrap handleImageGenerated to always pass the current episodeId
+  const handleImageGeneratedWithEpisode = useCallback(
+    (pieceId: number, imageUrl: string, prompt: string) =>
+      handleImageGenerated(pieceId, imageUrl, prompt, episodeId ?? null),
+    [handleImageGenerated, episodeId],
+  );
 
   const generatedCount = Object.values(assets).filter((a) => a.imageUrl).length;
   const captionCount = Object.values(assets).filter((a) => a.caption).length;
@@ -294,6 +317,14 @@ export default function ContentFactory() {
         <EpisodeContextPanel episode={episode} onChangeEpisode={handleChangeEpisode} />
       ) : (
         <EpisodeSelectorPanel onSelect={handleSelectEpisode} />
+      )}
+
+      {/* Resume banner */}
+      {resumedFromDB && extraction && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-primary font-medium">Piezas restauradas desde tu sesión anterior — genera las imágenes que faltan sin pagar de nuevo.</span>
+        </div>
       )}
 
       {/* Piece selector */}
@@ -437,7 +468,7 @@ export default function ContentFactory() {
                     episodeInput={episodeInput}
                     imageUrl={assets[piece.id]?.imageUrl}
                     status={assets[piece.id]?.status || "pending"}
-                    onImageGenerated={handleImageGenerated}
+                    onImageGenerated={handleImageGeneratedWithEpisode}
                     onCopyChange={updatePieceCopy}
                   />
                 ))}
