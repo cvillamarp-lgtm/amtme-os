@@ -1,11 +1,13 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  useInactivityLogout();
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">

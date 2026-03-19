@@ -44,7 +44,8 @@ async function ensureFreshToken(): Promise<string | null> {
   if (!session) return null;
 
   const now = Math.floor(Date.now() / 1000);
-  if (session.expires_at && session.expires_at - now < 60) {
+  // Refresh if: expires_at is unknown (undefined) OR token expires within 60s
+  if (!session.expires_at || session.expires_at - now < 60) {
     const { data } = await supabase.auth.refreshSession();
     return data.session?.access_token ?? null;
   }

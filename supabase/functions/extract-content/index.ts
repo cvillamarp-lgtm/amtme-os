@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, resolveAI } from "../_shared/extract-helpers.ts";
+import { getCorsHeaders } from "../_shared/extract-helpers.ts";
+import { callAI } from "../_shared/ai.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -37,8 +38,6 @@ serve(async (req) => {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-    const ai = resolveAI();
-
     const systemPrompt = `Eres un estratega de contenido del podcast "A Mi Tampoco Me Explicaron" (AMTME).
 Tu tarea: analizar un guión/tema de podcast y extraer los datos necesarios para producir 15 piezas visuales.
 Devuelve ÚNICAMENTE un objeto JSON válido. Sin explicaciones, sin markdown, sin bloques de código.
@@ -77,42 +76,10 @@ Genera copy real basado en el contenido, no uses placeholders.`;
 
     const userPrompt = `Analiza este contenido de podcast y genera el copy para las 15 piezas visuales:\n\n${combinedInput.substring(0, 8000)}`;
 
-    const response = await fetch(ai.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ai.key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo más tarde." }), {
-          status: 429, headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos agotados." }), {
-          status: 402, headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Error del servicio de IA" }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
-
-    const data = await response.json();
-    const rawContent: string = data.choices?.[0]?.message?.content ?? "";
+    const rawContent = await callAI([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
 
     const cleaned = rawContent
       .replace(/^```json?\s*/i, "")

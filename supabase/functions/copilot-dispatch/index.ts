@@ -1,15 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
-
-// ── AI resolver (same priority chain as generate-episode-fields) ─────────────
-function resolveAI() {
-  const groqKey = Deno.env.get("GROQ_API_KEY");
-  if (groqKey) return { url: "https://api.groq.com/openai/v1/chat/completions", key: groqKey, model: "llama-3.1-8b-instant" };
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) return { url: "https://api.openai.com/v1/chat/completions", key: openaiKey, model: "gpt-4o-mini" };
-  throw new Error("No AI API key configured");
-}
+import { callAI } from "../_shared/ai.ts";
 
 const SYSTEM_PROMPT = `Eres el Copiloto Operativo del podcast A Mí Tampoco Me Explicaron (AMTME).
 Host: Christian Villamar. Base: Playa del Carmen, México.
@@ -95,8 +87,6 @@ serve(async (req) => {
       });
     }
 
-    const ai = resolveAI();
-
     // ── Step 1: Detect intent ─────────────────────────────────────────────────
     const intentPrompt = `Detecta la intención del comando y responde con JSON:
 {
@@ -112,26 +102,11 @@ Episodio actual:
 
 Comando del usuario: "${command}"`;
 
-    const intentRes = await fetch(ai.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: intentPrompt },
-        ],
-        temperature: 0.3,
-      }),
-    });
+    const intentContent = await callAI([
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: intentPrompt },
+    ], 0.3);
 
-    if (!intentRes.ok) {
-      if (intentRes.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-      throw new Error(`AI error: ${intentRes.status}`);
-    }
-
-    const intentData = await intentRes.json();
-    const intentContent = intentData.choices?.[0]?.message?.content?.trim();
     let intentPlan: { intent: string; field: string | null; description: string };
     try {
       const m = intentContent.match(/\{[\s\S]*\}/);
@@ -163,17 +138,11 @@ Responde ÚNICAMENTE con JSON válido:
 ${fieldInstructions}
 }`;
 
-      const fillRes = await fetch(ai.url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: fillPrompt }],
-          temperature: 0.7,
-        }),
-      });
-      const fillData = await fillRes.json();
-      const fillContent = fillData.choices?.[0]?.message?.content?.trim();
+      const fillContent = await callAI([
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: fillPrompt },
+      ], 0.7);
+
       const m = fillContent.match(/\{[\s\S]*\}/);
       const fields = JSON.parse(m?.[0] ?? fillContent);
       patch = fields;
@@ -199,17 +168,11 @@ Responde ÚNICAMENTE con JSON:
   {"value": "opción 3", "rationale": "por qué este enfoque"}
 ]`;
 
-      const optRes = await fetch(ai.url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: optPrompt }],
-          temperature: 0.9,
-        }),
-      });
-      const optData = await optRes.json();
-      const optContent = optData.choices?.[0]?.message?.content?.trim();
+      const optContent = await callAI([
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: optPrompt },
+      ], 0.9);
+
       const mArr = optContent.match(/\[[\s\S]*\]/);
       const options = JSON.parse(mArr?.[0] ?? optContent);
       const candidates = { ...(episode.copilot_candidates as Record<string, unknown> || {}), [targetField]: options };
@@ -234,17 +197,11 @@ ${rawScript}
 
 Devuelve SOLO el guión limpio, sin comentarios.`;
 
-      const cleanRes = await fetch(ai.url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [{ role: "system", content: "Eres un editor de guiones de podcast. Limpia formato sin cambiar contenido." }, { role: "user", content: cleanPrompt }],
-          temperature: 0.1,
-        }),
-      });
-      const cleanData = await cleanRes.json();
-      const cleaned = cleanData.choices?.[0]?.message?.content?.trim();
+      const cleaned = await callAI([
+        { role: "system", content: "Eres un editor de guiones de podcast. Limpia formato sin cambiar contenido." },
+        { role: "user", content: cleanPrompt },
+      ], 0.1);
+
       patch = { script_clean: cleaned };
       fieldsUpdated = ["script_clean"];
     }
@@ -267,17 +224,11 @@ Responde con JSON:
   "hashtags": "#AMíTampocoMeExplicaron #christianvillamar + 6-8 hashtags del tema"
 }`;
 
-      const distRes = await fetch(ai.url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: distPrompt }],
-          temperature: 0.7,
-        }),
-      });
-      const distData = await distRes.json();
-      const distContent = distData.choices?.[0]?.message?.content?.trim();
+      const distContent = await callAI([
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: distPrompt },
+      ], 0.7);
+
       const mDist = distContent.match(/\{[\s\S]*\}/);
       const distFields = JSON.parse(mDist?.[0] ?? distContent);
       patch = { descripcion_spotify: distFields.descripcion_spotify };
@@ -301,7 +252,7 @@ Responde con JSON:
       const passed = checks.filter((c) => c.ok).length;
       const score = Math.round((passed / checks.length) * 100);
       extraResult = { checks, score, passed, total: checks.length };
-      patch = {}; // QA doesn't patch episode fields
+      patch = {};
       fieldsUpdated = [];
       intentPlan.description = `Auditoría completada: ${score}% (${passed}/${checks.length} checks)`;
     }
@@ -309,7 +260,6 @@ Responde con JSON:
     // ── Apply patch to DB ────────────────────────────────────────────────────
     let diff: Record<string, { before: unknown; after: unknown }> = {};
     if (Object.keys(patch).length > 0) {
-      // Build diff
       for (const key of Object.keys(patch)) {
         diff[key] = {
           before: (episode as Record<string, unknown>)[key] ?? null,
@@ -354,8 +304,10 @@ Responde con JSON:
     });
   } catch (error) {
     console.error("copilot-dispatch error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const status = message.includes("Créditos") ? 402 : 500;
+    return new Response(JSON.stringify({ error: message }), {
+      status,
       headers: { ...cors, "Content-Type": "application/json" },
     });
   }

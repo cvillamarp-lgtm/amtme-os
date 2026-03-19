@@ -2,37 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
-
-/** Resolves AI endpoint + key. Priority: Groq → OpenAI → Lovable gateway. */
-function resolveAI(): { url: string; key: string; model: string } {
-  const groqKey = Deno.env.get("GROQ_API_KEY");
-  if (groqKey) {
-    return {
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      key: groqKey,
-      model: "llama-3.1-8b-instant",
-    };
-  }
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return {
-      url: "https://api.openai.com/v1/chat/completions",
-      key: openaiKey,
-      model: "gpt-4o-mini",
-    };
-  }
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return {
-      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      key: lovableKey,
-      model: "openai/gpt-4o-mini",
-    };
-  }
-  throw new Error(
-    "No AI API key configured. Set GROQ_API_KEY, OPENAI_API_KEY or LOVABLE_API_KEY in Supabase Edge Function secrets."
-  );
-}
+import { callAI } from "../_shared/ai.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -63,8 +33,6 @@ serve(async (req) => {
         status: 400, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-    const ai = resolveAI();
-
     const pieceNames = pieces.map((p: { id: number; name: string; copy: string }) =>
       `Pieza ${p.id} (${p.name}): Copy → "${p.copy}"`
     ).join("\n");
@@ -95,42 +63,10 @@ Tesis: ${thesis || "No especificada"}
 Genera captions y hashtags para estas piezas:
 ${pieceNames}`;
 
-    const response = await fetch(ai.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ai.key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo más tarde." }), {
-          status: 429, headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos agotados." }), {
-          status: 402, headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Error del servicio de IA" }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
-
-    const data = await response.json();
-    const rawContent: string = data.choices?.[0]?.message?.content ?? "";
+    const rawContent = await callAI([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
 
     const cleaned = rawContent
       .replace(/^```json?\s*/i, "")

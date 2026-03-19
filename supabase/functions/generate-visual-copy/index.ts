@@ -1,37 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
-
-/** Resolves AI endpoint + key. Priority: Groq → OpenAI → Lovable gateway. */
-function resolveAI(): { url: string; key: string; model: string } {
-  const groqKey = Deno.env.get("GROQ_API_KEY");
-  if (groqKey) {
-    return {
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      key: groqKey,
-      model: "llama-3.1-8b-instant",
-    };
-  }
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return {
-      url: "https://api.openai.com/v1/chat/completions",
-      key: openaiKey,
-      model: "gpt-4o-mini",
-    };
-  }
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return {
-      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      key: lovableKey,
-      model: "openai/gpt-4o-mini",
-    };
-  }
-  throw new Error(
-    "No AI API key configured. Set GROQ_API_KEY, OPENAI_API_KEY or LOVABLE_API_KEY in Supabase Edge Function secrets."
-  );
-}
+import { callAI } from "../_shared/ai.ts";
 
 // ── Copy variable types (must mirror visual-templates.ts) ──────────────────
 type CopyGoal      = "AWARENESS" | "SAVE" | "SHARE" | "LISTEN" | "COMMENT" | "CONVERT";
@@ -83,8 +53,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const ai = resolveAI();
-
     const body = await req.json();
     const { episodio, tesis } = body as { episodio?: string; tesis?: string };
 
@@ -250,37 +218,10 @@ CTA directo + invitación a escuchar + @yosoyvillamar + número de episodio + "0
 copy_highlight (1:1 circular):
 Solo el número del episodio en formato corto: "14" o "EP.14". Máximo 2 caracteres/palabras.`;
 
-    const response = await fetch(ai.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ai.key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo." }), {
-          status: 429, headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Error del servicio de IA" }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
-
-    const aiData = await response.json();
-    const rawContent: string = aiData.choices?.[0]?.message?.content ?? "";
+    const rawContent = await callAI([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
 
     const cleaned = rawContent
       .replace(/^```json?\s*/i, "")
