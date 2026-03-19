@@ -64,48 +64,81 @@ export function useContentProduction(episodeId?: string | null) {
   const [pieceCopy, setPieceCopy] = useState<PieceCopyMap>({});
   const [assets, setAssets] = useState<Record<number, AssetState>>({});
 
-  // On mount: restore assets + copy from content_assets (single source of truth)
+  // On mount: restore assets + copy from content_assets.
+  // Falls back to episodes.derived_copies_json (legacy) and migrates automatically.
   useEffect(() => {
     if (!episodeId) return;
-    supabase
-      .from("content_assets")
-      .select("piece_id, image_url, caption, hashtags, prompt_used, status, copy_json")
-      .eq("episode_id", episodeId)
-      .order("piece_id", { ascending: true })
-      .then(({ data }) => {
-        if (!data || data.length === 0) return;
-        const loadedAssets: Record<number, AssetState> = {};
-        const loadedCopy: PieceCopyMap = {};
-        let hasData = false;
 
-        for (const row of data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const copyLines = (row as any).copy_json;
-          if (row.image_url || row.caption || (Array.isArray(copyLines) && copyLines.length > 0)) {
-            hasData = true;
-          }
-          if (row.image_url || row.caption) {
-            loadedAssets[row.piece_id] = {
-              imageUrl: row.image_url ?? undefined,
-              caption: row.caption ?? "",
-              hashtags: row.hashtags ?? "",
-              status: row.status ?? "pending",
-              promptUsed: row.prompt_used ?? undefined,
-            };
-          }
-          if (Array.isArray(copyLines) && copyLines.length > 0) {
-            loadedCopy[String(row.piece_id)] = copyLines as string[];
-          }
-        }
+    const restore = async () => {
+      const [{ data: rows }, { data: ep }] = await Promise.all([
+        supabase
+          .from("content_assets")
+          .select("piece_id, image_url, caption, hashtags, prompt_used, status, copy_json")
+          .eq("episode_id", episodeId)
+          .order("piece_id", { ascending: true }),
+        supabase
+          .from("episodes")
+          .select("core_thesis, derived_copies_json")
+          .eq("id", episodeId)
+          .single(),
+      ]);
 
-        if (!hasData) return;
-        if (Object.keys(loadedAssets).length > 0) setAssets(loadedAssets);
-        if (Object.keys(loadedCopy).length > 0) {
-          setPieceCopy(loadedCopy);
-          setExtraction({ thesis: "", keyPhrases: [], pieceCopy: loadedCopy });
-          toast.info("Piezas restauradas — continúa sin volver a extraer");
+      const loadedAssets: Record<number, AssetState> = {};
+      const loadedCopy: PieceCopyMap = {};
+
+      // 1 — Try new system: content_assets.copy_json
+      for (const row of rows ?? []) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const copyLines = (row as any).copy_json;
+        if (row.image_url || row.caption) {
+          loadedAssets[row.piece_id] = {
+            imageUrl: row.image_url ?? undefined,
+            caption: row.caption ?? "",
+            hashtags: row.hashtags ?? "",
+            status: row.status ?? "pending",
+            promptUsed: row.prompt_used ?? undefined,
+          };
         }
-      });
+        if (Array.isArray(copyLines) && copyLines.length > 0) {
+          loadedCopy[String(row.piece_id)] = copyLines as string[];
+        }
+      }
+
+      // 2 — Fallback: episodes.derived_copies_json (legacy format — migrate automatically)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const legacyCopy = (ep as any)?.derived_copies_json as PieceCopyMap | null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const thesis = (ep as any)?.core_thesis as string ?? "";
+
+      if (Object.keys(loadedCopy).length === 0 && legacyCopy && Object.keys(legacyCopy).length > 0) {
+        // Migrate legacy copy into content_assets.copy_json silently
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const migrateRows = VISUAL_PIECES.map((p) => ({
+            user_id: session.user.id,
+            piece_id: p.id,
+            piece_name: p.shortName,
+            copy_json: legacyCopy[String(p.id)] ?? p.copyTemplate,
+            status: "pending",
+            episode_id: episodeId,
+          }));
+          await supabase
+            .from("content_assets")
+            .upsert(migrateRows, { onConflict: "user_id,piece_id,episode_id" });
+        }
+        Object.assign(loadedCopy, legacyCopy);
+      }
+
+      // Apply restored state
+      if (Object.keys(loadedAssets).length > 0) setAssets(loadedAssets);
+      if (Object.keys(loadedCopy).length > 0) {
+        setPieceCopy(loadedCopy);
+        setExtraction({ thesis, keyPhrases: [], pieceCopy: loadedCopy });
+        toast.info("Piezas restauradas — continúa sin volver a extraer");
+      }
+    };
+
+    restore().catch((e) => console.error("[restore]", e));
   }, [episodeId]);
   const [loading, setLoading] = useState(false);
   const [producing, setProducing] = useState(false);
