@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
@@ -57,11 +57,34 @@ function parseExtraction(data: Record<string, unknown>): ExtractionResult | null
   return null;
 }
 
-export function useContentProduction() {
+export function useContentProduction(episodeId?: string | null) {
   const qc = useQueryClient();
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
   const [pieceCopy, setPieceCopy] = useState<PieceCopyMap>({});
   const [assets, setAssets] = useState<Record<number, AssetState>>({});
+
+  // Load saved assets from DB on mount
+  useEffect(() => {
+    if (!episodeId) return;
+    supabase
+      .from("content_assets")
+      .select("piece_id, image_url, caption, hashtags, prompt_used, status")
+      .eq("episode_id", episodeId)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return;
+        const loaded: Record<number, AssetState> = {};
+        for (const row of data) {
+          loaded[row.piece_id] = {
+            imageUrl: row.image_url ?? undefined,
+            caption: row.caption ?? "",
+            hashtags: row.hashtags ?? "",
+            status: row.status ?? "done",
+            promptUsed: row.prompt_used ?? undefined,
+          };
+        }
+        setAssets(loaded);
+      });
+  }, [episodeId]);
   const [loading, setLoading] = useState(false);
   const [producing, setProducing] = useState(false);
   const [prodStep, setProdStep] = useState("");

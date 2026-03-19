@@ -186,7 +186,7 @@ export default function ContentFactory() {
     setSelectedPieces(new Set());
   }, []);
 
-  // Production hook
+  // Production hook — pass episodeId so saved assets are loaded on mount
   const {
     extraction,
     pieceCopy,
@@ -205,7 +205,7 @@ export default function ContentFactory() {
     generateCaptions,
     saveToDatabase,
     produceAll,
-  } = useContentProduction();
+  } = useContentProduction(episodeId);
 
   // UI state
   const [tab, setTab] = useState("input");
