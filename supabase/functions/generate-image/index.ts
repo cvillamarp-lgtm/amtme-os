@@ -134,9 +134,6 @@ serve(async (req) => {
       });
     }
 
-    // Extract authenticated user ID for ownership validation
-    const userId = user.id;
-
     const body = await req.json();
     const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference } = body;
 
@@ -190,13 +187,39 @@ serve(async (req) => {
       // Google Gemini API — free tier ~1500 req/day
       // Model fallback chain: try each until one produces an image (not 404 and has inlineData)
       const GEMINI_MODELS = [
-        "gemini-3.1-flash-image-preview",  // Newest — confirmed 2026-03
-        "gemini-2.5-flash-image",           // Stable GA fallback
-        "gemini-3-pro-image",               // Pro quality fallback
+        "gemini-2.0-flash-preview-image-generation", // Único modelo oficial GA para imagen
+      ];
+
+      // Fetch host reference images and convert to base64 for Gemini inline data
+      const hostImageParts: Array<{ inlineData: { mimeType: string; data: string } }> = [];
+      for (const url of allReferenceImages) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) {
+            console.warn("Could not fetch reference image:", url, res.status);
+            continue;
+          }
+          const buf = await res.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let binary = "";
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const b64 = btoa(binary);
+          const mimeType = res.headers.get("content-type") ?? "image/png";
+          hostImageParts.push({ inlineData: { mimeType, data: b64 } });
+        } catch (err) {
+          console.warn("Failed to fetch reference image:", url, err);
+        }
+      }
+
+      const geminiParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+        { text: textPrompt.slice(0, 8000) },
+        ...hostImageParts,
       ];
 
       const geminiBody = JSON.stringify({
-        contents: [{ parts: [{ text: textPrompt.slice(0, 8000) }] }],
+        contents: [{ parts: geminiParts }],
         generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
       });
 
