@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
+import { setProductionLock } from "./useProductionLock";
 import { VISUAL_PIECES, buildPiecePrompt, type EpisodeInput, type VisualPiece } from "@/lib/visual-templates";
 import { toast } from "sonner";
 
@@ -285,6 +286,7 @@ export function useContentProduction(episodeId?: string | null) {
       return;
     }
     setProducing(true);
+    setProductionLock(true);
     const piecesToProduce = VISUAL_PIECES.filter((p) => selectedPieces.has(p.id));
     setProdTotal(2 + piecesToProduce.length);
     setProdCurrent(0);
@@ -423,6 +425,7 @@ export function useContentProduction(episodeId?: string | null) {
       showEdgeFunctionError(e);
     } finally {
       setProducing(false);
+      setProductionLock(false);
     }
   }, [handleImageGenerated]);
 

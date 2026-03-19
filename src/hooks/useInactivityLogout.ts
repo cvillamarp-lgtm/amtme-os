@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { isProductionLocked } from "./useProductionLock";
 
 const TIMEOUT_MS = 2 * 60 * 1000;       // 2 min → sign out
 const WARNING_MS = TIMEOUT_MS - 20_000; // 1:40 → warn user
@@ -42,6 +43,11 @@ export function useInactivityLogout() {
       }, WARNING_MS);
 
       logoutTimer.current = setTimeout(async () => {
+        if (isProductionLocked()) {
+          // Production in progress — reschedule instead of signing out
+          scheduleLogout();
+          return;
+        }
         dismissWarning();
         await supabase.auth.signOut();
         navigate("/auth", { replace: true });
