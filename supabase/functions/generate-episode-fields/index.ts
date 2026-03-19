@@ -2,37 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
-
-/** Resolves AI endpoint + key. Priority: Groq → OpenAI → Lovable gateway. */
-function resolveAI(): { url: string; key: string; model: string } {
-  const groqKey = Deno.env.get("GROQ_API_KEY");
-  if (groqKey) {
-    return {
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      key: groqKey,
-      model: "llama-3.1-8b-instant",
-    };
-  }
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return {
-      url: "https://api.openai.com/v1/chat/completions",
-      key: openaiKey,
-      model: "gpt-4o-mini",
-    };
-  }
-  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) {
-    return {
-      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-      key: lovableKey,
-      model: "openai/gpt-4o-mini",
-    };
-  }
-  throw new Error(
-    "No AI API key configured. Set GROQ_API_KEY, OPENAI_API_KEY or LOVABLE_API_KEY in Supabase Edge Function secrets."
-  );
-}
+import { callAI } from "../_shared/ai.ts";
 
 const AMTME_SYSTEM_PROMPT = `Eres el sistema de producción del podcast A Mí Tampoco Me Explicaron (AMTME).
 Host: Christian Villamar (@yosoyvillamar). Base: Playa del Carmen, México.
@@ -92,8 +62,6 @@ serve(async (req) => {
       });
     }
 
-    const ai = resolveAI();
-
     const body = await req.json();
     const { mode } = body;
 
@@ -124,31 +92,10 @@ Instrucción para "${field_name}": ${FIELD_INSTRUCTIONS[field_name]}
 
 Responde ÚNICAMENTE con el texto del campo, sin JSON, sin comillas, sin explicaciones.`;
 
-      const response = await fetch(ai.url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${ai.key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [
-            { role: "system", content: AMTME_SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.7,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-        throw new Error(`AI gateway error: ${response.status}`);
-      }
-
-      const aiData = await response.json();
-      const value = aiData.choices?.[0]?.message?.content?.trim();
-      if (!value) throw new Error("No content in AI response");
+      const value = await callAI([
+        { role: "system", content: AMTME_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ], 0.7);
 
       return new Response(JSON.stringify({
         value,
@@ -197,28 +144,10 @@ Responde ÚNICAMENTE con un array JSON válido, sin markdown, sin backticks, sin
   ...
 ]`;
 
-      const response = await fetch(ai.url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: ai.model,
-          messages: [
-            { role: "system", content: AMTME_SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.9,
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-        throw new Error(`AI gateway error: ${response.status}`);
-      }
-
-      const aiData = await response.json();
-      const content = aiData.choices?.[0]?.message?.content?.trim();
-      if (!content) throw new Error("No content in AI response");
+      const content = await callAI([
+        { role: "system", content: AMTME_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ], 0.9);
 
       let options: { value: string; rationale: string }[];
       try {
@@ -273,40 +202,17 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura exacta, sin markdow
 ${fieldInstructions}
 }`;
 
-    const response = await fetch(ai.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ai.key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: "system", content: AMTME_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de solicitudes excedido. Intenta en unos minutos." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), { status: 402, headers: { ...cors, "Content-Type": "application/json" } });
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const aiData = await response.json();
-    const content = aiData.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No content in AI response");
+    const content = await callAI([
+      { role: "system", content: AMTME_SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+    ], 0.7);
 
     let parsed;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON found in response");
       parsed = JSON.parse(jsonMatch[0]);
-    } catch (parseErr) {
+    } catch {
       console.error("Failed to parse AI response:", content);
       throw new Error("Failed to parse AI response as JSON");
     }
@@ -319,22 +225,23 @@ ${fieldInstructions}
       }
     }
 
-    const now = new Date().toISOString();
-    const metadata = {
-      source_type: "ai_generated",
-      source_module: "episode_creation",
-      generated_at: now,
-    };
-
-    return new Response(JSON.stringify({ fields: parsed, metadata }), {
+    return new Response(JSON.stringify({
+      fields: parsed,
+      metadata: {
+        source_type: "ai_generated",
+        source_module: "episode_creation",
+        generated_at: new Date().toISOString(),
+      },
+    }), {
       status: 200,
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("generate-episode-fields error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    const status = message.includes("Créditos") ? 402 : 500;
     return new Response(JSON.stringify({ error: message }), {
-      status: 500,
+      status,
       headers: { ...cors, "Content-Type": "application/json" },
     });
   }
