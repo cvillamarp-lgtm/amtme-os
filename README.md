@@ -53,24 +53,46 @@ bun run dev
 
 ## Variables de entorno
 
-### Frontend (`.env`)
+### Frontend — Desarrollo local (`.env.local`)
 
 | Variable | Descripción | Requerido |
 |----------|-------------|-----------|
 | `VITE_SUPABASE_URL` | URL del proyecto Supabase | Sí |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon key del proyecto | Sí |
-| `VITE_SUPABASE_PROJECT_ID` | ID del proyecto | Sí |
+| `VITE_SUPABASE_PROJECT_ID` | ID del proyecto Supabase | Sí |
 
-### Edge Functions (inyectados automáticamente)
+### Vercel (Producción)
+
+Configurar en **Vercel Dashboard → Project → Settings → Environment Variables**:
+
+| Variable | Descripción | Requerido |
+|----------|-------------|-----------|
+| `VITE_SUPABASE_URL` | URL del proyecto Supabase | Sí |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Anon key del proyecto | Sí |
+| `VITE_SUPABASE_PROJECT_ID` | ID del proyecto Supabase | Sí |
+
+### Edge Functions — Auto-inyectadas por Supabase
 
 | Variable | Descripción | Configuración |
 |----------|-------------|---------------|
 | `SUPABASE_URL` | URL del proyecto | Automático |
 | `SUPABASE_ANON_KEY` | Anon key | Automático |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key | Automático |
-| `LOVABLE_API_KEY` | API key para IA (Lovable Gateway) | Automático (inyectado por plataforma) |
+| `LOVABLE_API_KEY` | Gateway IA (Lovable Cloud) | Automático (Lovable Cloud) |
 
-> **Nota:** `LOVABLE_API_KEY` y `SUPABASE_SERVICE_ROLE_KEY` son secretos gestionados automáticamente por la plataforma. No necesitan configuración manual.
+> **Nota:** Las variables anteriores son gestionadas automáticamente por la plataforma y **no** requieren configuración manual.
+
+### APIs de IA (Supabase Edge Function Secrets)
+
+Configurar en **Supabase Dashboard → Settings → Edge Functions → Secrets**. Se requiere **al menos una**:
+
+| Variable | Proveedor | Uso | Costo | Prioridad |
+|----------|-----------|-----|-------|-----------|
+| `GEMINI_API_KEY` | Google AI Studio | Generación de imágenes (`generate-image`) | Gratuito ⭐ | **Recomendado** |
+| `OPENAI_API_KEY` | OpenAI | Imágenes (DALL-E 3) + texto (fallback) | Pago | Opcional |
+| `GROQ_API_KEY` | Groq | Texto rápido: guiones, captions | Gratuito (con límites) | Opcional |
+
+> **Nota:** `GEMINI_API_KEY` es el recomendado por ser gratuito y necesario para la generación de imágenes. Obtenerlo en [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 
 ## Edge Functions
 
