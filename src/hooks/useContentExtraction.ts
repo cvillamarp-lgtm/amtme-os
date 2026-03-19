@@ -20,7 +20,7 @@ export function useContentExtraction() {
     setEditableSeccionB(null);
 
     try {
-      const extraction = await invokeEdgeFunction<ExtractionResult>("extract-content", { script });
+      const extraction = await invokeEdgeFunction<ExtractionResult>("extract-content", { script }, { timeoutMs: 60_000 });
       setResult(extraction);
       setEditableSeccionB(JSON.parse(JSON.stringify(extraction.seccionB)));
     } catch (e) {

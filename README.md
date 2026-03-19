@@ -96,13 +96,13 @@ Configurar en **Supabase Dashboard → Settings → Edge Functions → Secrets**
 
 ## Edge Functions
 
-| Función | Propósito | Auth |
-|---------|-----------|------|
-| `generate-script` | Genera guiones con streaming SSE | JWT manual |
-| `generate-image` | Genera imágenes con IA + almacena en Storage | JWT manual |
-| `extract-content` | Extrae copy para 15 piezas desde guión | JWT manual |
-| `generate-captions` | Genera captions para redes sociales | JWT manual |
-| `generate-episode-fields` | Genera/regenera campos de episodio | JWT manual |
+| Función | Propósito | Auth | Timeout |
+|---------|-----------|------|---------|
+| `generate-script` | Genera guiones con streaming SSE | JWT manual | N/A (streaming) |
+| `generate-image` | Genera imágenes con IA + almacena en Storage | JWT manual | 90s (120s en batch) |
+| `extract-content` | Extrae copy para 15 piezas desde guión | JWT manual | 60s |
+| `generate-captions` | Genera captions para redes sociales | JWT manual | 60s |
+| `generate-episode-fields` | Genera/regenera campos de episodio | JWT manual | 60s |
 
 Todas las funciones validan JWT internamente via `getClaims()`. El flag `verify_jwt = false` en `config.toml` es intencional (patrón signing-keys de Lovable Cloud).
 
