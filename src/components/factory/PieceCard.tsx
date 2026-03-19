@@ -18,6 +18,7 @@ interface PieceCardProps {
   episodeInput: EpisodeInput;
   imageUrl?: string;
   status?: string;
+  includeHost?: boolean;
   onImageGenerated: (pieceId: number, imageUrl: string, prompt: string) => void;
   onCopyChange: (pieceId: number, lineIndex: number, value: string) => void;
 }
@@ -28,6 +29,7 @@ export function PieceCard({
   episodeInput,
   imageUrl,
   status = "pending",
+  includeHost = true,
   onImageGenerated,
   onCopyChange,
 }: PieceCardProps) {
@@ -40,7 +42,7 @@ export function PieceCard({
       const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
       const data = await invokeEdgeFunction<{ imageUrl?: string }>(
         "generate-image",
-        { prompt, hostReference: piece.hostReference, pieceId: piece.id },
+        { prompt, hostReference: piece.hostReference, pieceId: piece.id, includeHost },
         { timeoutMs: 120_000, maxRetries: 0 }
       );
       if (data?.imageUrl) {

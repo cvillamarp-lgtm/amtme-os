@@ -72,6 +72,20 @@ COMPOSICIÓN:
 — Espacio negativo activo. Mínimo 40px entre grupos.
 — Orden lectura: Dominante → Contexto → Complemento → Subtítulo → CTA → Firma/logos.
 
+GESTALT Y PSICOLOGÍA DEL DISEÑO (OBLIGATORIO — APLICAR EN CADA PIEZA):
+— PROXIMIDAD: agrupar elementos relacionados con máx. 16px entre ellos y mín. 40px entre grupos distintos.
+— SIMILITUD: mismo peso tipográfico y mismo color para elementos del mismo nivel jerárquico.
+— CONTINUIDAD: guiar la mirada del dominante hacia el CTA mediante eje visual implícito (vertical u oblicuo 30–45°).
+— FIGURA-FONDO: el host es la figura; el fondo genera contraste mínimo 4.5:1 WCAG con el texto.
+— PUNTO FOCAL ÚNICO: exactamente 1 elemento de máxima atención por pieza. Todo lo demás es soporte.
+— PRIMACÍA: el elemento más poderoso va en el tercio superior o esquina superior izquierda.
+— EFECTO VON RESTORFF: la barra HL (#E8FF40) aísla la palabra de mayor carga emocional — úsala solo para esa palabra.
+— PATRÓN F: el ojo escanea izquierda→derecha en líneas superiores, luego baja por margen izquierdo. Colocar dominante y CTA en ese recorrido.
+— CARGA COGNITIVA: máximo 3 ideas por pieza. Si hay más, la pieza falla.
+— RECIPROCIDAD VISUAL: el host orienta su mirada hacia el texto dominante (nunca hacia afuera del frame), guiando al espectador al mensaje.
+— VALENCIA EMOCIONAL: Navy/Teal → confianza y profundidad. Sand → calidez y accesibilidad. HL → urgencia y descubrimiento.
+— DOLOR DEL OYENTE: el dominante refleja una emoción o pregunta que el oyente ya tiene — no describe el episodio.
+
 FOTOGRAFÍA DEL HOST (OBLIGATORIO — PRESERVAR RASGOS EXACTOS):
 — Las fotos de referencia adjuntas son el host REAL. PRESERVAR rasgos faciales, complexión, barba, tatuaje brazo izquierdo.
 — Lente 85mm, f/4, ISO 100, 1/125s. Iluminación frontal suave + relleno lateral. Temp 5500-6000K.
@@ -135,16 +149,19 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference } = body;
+    const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference, includeHost } = body;
 
     if (!prompt && mode !== "edit") throw new Error("Prompt is required");
     const ai = resolveImageAI();
 
-    // G: Build host reference URLs dynamically
+    // Host images: included by default, skipped when includeHost === false
+    const useHost = includeHost !== false;
     const hostRef = hostReference as "imagen01" | "imagen02" | undefined;
-    const hostUrls = hostRef
-      ? [getHostReferenceUrl(hostRef)]
-      : [getHostReferenceUrl("imagen01"), getHostReferenceUrl("imagen02")];
+    const hostUrls = useHost
+      ? hostRef
+        ? [getHostReferenceUrl(hostRef)]
+        : [getHostReferenceUrl("imagen01"), getHostReferenceUrl("imagen02")]
+      : [];
 
     const allReferenceImages = [...hostUrls, ...(referenceImages || [])];
 
@@ -159,19 +176,21 @@ serve(async (req) => {
       return parts;
     };
 
-    const hostContextNote = hostRef === "imagen01"
-      ? "La foto de referencia muestra al host sentado al revés en silla de madera, camiseta blanca AMTME, cap verde, brazos cruzados. USAR ESTA PERSONA EXACTA."
+    const hostContextNote = !useHost
+      ? "PIEZA SIN FOTO DEL HOST — diseño tipográfico puro. No incluir ninguna persona. Aplicar todo el sistema de composición con espacio negativo donde iría el host."
+      : hostRef === "imagen01"
+      ? "La foto de referencia adjunta muestra al host REAL: hombre adulto, barba corta, cap verde, camiseta blanca AMTME, tatuaje brazo izquierdo, sentado al revés en silla de madera. PRESERVAR RASGOS EXACTOS — no modificar rostro, complexión ni tatuaje."
       : hostRef === "imagen02"
-      ? "La foto de referencia muestra al host sentado en el suelo, relajado, camiseta azul AMTME, cap verde. USAR ESTA PERSONA EXACTA."
-      : "Las fotos de referencia muestran al host en dos poses distintas. USAR ESTA PERSONA EXACTA preservando rasgos faciales, barba y tatuaje.";
+      ? "La foto de referencia adjunta muestra al host REAL: hombre adulto, barba corta, cap verde, camiseta azul AMTME, tatuaje brazo izquierdo, sentado relajado en el suelo. PRESERVAR RASGOS EXACTOS — no modificar rostro, complexión ni tatuaje."
+      : "Las dos fotos de referencia adjuntas muestran al host REAL en dos poses. PRESERVAR RASGOS EXACTOS — rostro, barba, cap verde, tatuaje brazo izquierdo. Elegir la pose que mejor sirva a la composición.";
 
     let messages: any[];
 
     if (mode === "edit" && editImageUrl) {
-      const editText = `${AMTME_BRAND_PROMPT}\n\n${hostContextNote} ${allReferenceImages.length > 2 ? "Las fotos adicionales muestran otras personas que también deben aparecer. " : ""}Edita esta imagen: ${prompt}`;
+      const editText = `${AMTME_BRAND_PROMPT}\n\n${hostContextNote}\n\nEdita esta imagen: ${prompt}`;
       messages = [{ role: "user", content: buildContent(editText, editImageUrl) }];
     } else {
-      const enhancedPrompt = `${AMTME_BRAND_PROMPT}\n\n${hostContextNote} ${allReferenceImages.length > 2 ? "Las fotos adicionales muestran otras personas que también deben aparecer. " : ""}Crear: ${prompt}`;
+      const enhancedPrompt = `${AMTME_BRAND_PROMPT}\n\n${hostContextNote}\n\nCrear: ${prompt}`;
       messages = [{ role: "user", content: buildContent(enhancedPrompt) }];
     }
 

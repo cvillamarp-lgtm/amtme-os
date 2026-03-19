@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import {
   Sparkles, Loader2, Layers, Download, MessageSquare, FolderOpen, Zap,
-  ExternalLink, Info, SwitchCamera,
+  ExternalLink, Info, SwitchCamera, User, UserX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -209,6 +209,7 @@ export default function ContentFactory() {
 
   // UI state
   const [tab, setTab] = useState("input");
+  const [includeHost, setIncludeHost] = useState(true);
 
   // Jump to pieces tab when data is restored from DB
   useEffect(() => {
@@ -271,7 +272,19 @@ export default function ContentFactory() {
             Guión → Piezas → Imágenes → Captions → Publicar
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {/* Host photo toggle */}
+          <Button
+            variant={includeHost ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setIncludeHost((v) => !v)}
+            title={includeHost ? "Click para generar sin foto del host" : "Click para incluir foto del host"}
+          >
+            {includeHost
+              ? <><User className="h-3.5 w-3.5 mr-1.5" />Con foto</>
+              : <><UserX className="h-3.5 w-3.5 mr-1.5" />Sin foto</>
+            }
+          </Button>
           {extraction && (
             <>
               <Button
@@ -450,6 +463,7 @@ export default function ContentFactory() {
                     imageUrl={assets[piece.id]?.imageUrl}
                     status={assets[piece.id]?.status || "pending"}
                     onImageGenerated={handleImageGeneratedWithEpisode}
+                    includeHost={includeHost}
                     onCopyChange={updatePieceCopy}
                   />
                 ))}
