@@ -27,7 +27,7 @@ export function getEdgeFunctionErrorMessage(e: unknown): string {
   const err = e as EdgeFunctionError;
   switch (err.statusCode) {
     case 401:
-      return "Sesión expirada, por favor inicie sesión nuevamente";
+      return "Sesión expirada — haz clic en 'Iniciar sesión'";
     case 404:
       return "Función no desplegada en Supabase";
     case 429:

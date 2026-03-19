@@ -148,7 +148,7 @@ export default function PromptBuilder() {
         prompt,
         episodeId: linkEpisodeId || undefined,
         referenceImages: allRefs,
-      });
+      }, { timeoutMs: 90_000 });
 
       const newImage: GeneratedImage = { url: data.imageUrl, prompt, timestamp: Date.now() };
       setGeneratedImages((prev) => [newImage, ...prev]);
