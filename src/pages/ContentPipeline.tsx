@@ -203,7 +203,7 @@ export default function ContentPipeline() {
     const result = await invokeEdgeFunction<{ imageUrl?: string }>("generate-image", {
       prompt,
       referenceImages,
-    });
+    }, { timeoutMs: 90_000 });
     return result?.imageUrl ?? null;
   };
 

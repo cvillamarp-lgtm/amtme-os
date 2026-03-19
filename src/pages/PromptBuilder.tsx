@@ -148,7 +148,7 @@ export default function PromptBuilder() {
         prompt,
         episodeId: linkEpisodeId || undefined,
         referenceImages: allRefs,
-      });
+      }, { timeoutMs: 90_000 });
 
       const newImage: GeneratedImage = { url: data.imageUrl, prompt, timestamp: Date.now() };
       setGeneratedImages((prev) => [newImage, ...prev]);
@@ -178,7 +178,7 @@ export default function PromptBuilder() {
         imageUrl: selectedImage.url,
         episodeId: linkEpisodeId || undefined,
         referenceImages: allRefs,
-      });
+      }, { timeoutMs: 90_000 });
 
       const editedImage: GeneratedImage = { url: data.imageUrl, prompt: `✏️ ${editPrompt} (sobre: ${selectedImage.prompt.substring(0, 50)}...)`, timestamp: Date.now() };
       setGeneratedImages((prev) => [editedImage, ...prev]);
