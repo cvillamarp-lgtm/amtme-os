@@ -379,7 +379,7 @@ export function useContentProduction(episodeId?: string | null) {
         }
 
         if (i < piecesToProduce.length - 1) {
-          await new Promise((r) => setTimeout(r, 2000));
+          await new Promise((r) => setTimeout(r, 4500)); // 15 RPM limit → 4s min
         }
       }
 
@@ -393,7 +393,7 @@ export function useContentProduction(episodeId?: string | null) {
             const copy = mergedCopy[String(piece.id)] || piece.copyTemplate;
             const prompt = buildPiecePrompt(piece, localEpisodeInput, copy);
             try {
-              await new Promise((r) => setTimeout(r, 3000));
+              await new Promise((r) => setTimeout(r, 5000)); // extra buffer on retries
               const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
                 "generate-image",
                 { prompt, hostReference: piece.hostReference },

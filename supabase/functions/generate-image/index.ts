@@ -188,11 +188,11 @@ serve(async (req) => {
 
     if (ai.provider === "gemini") {
       // Google Gemini API — free tier ~1500 req/day
-      // Model fallback chain: try each until one responds (not 404)
+      // Model fallback chain: try each until one produces an image (not 404 and has inlineData)
       const GEMINI_MODELS = [
-        "gemini-2.5-flash-image",          // GA stable (confirmed 2026-03)
-        "gemini-2.0-flash-exp",             // Standard flash with image modality
-        "gemini-2.0-flash",                 // Non-exp flash with image modality
+        "gemini-3.1-flash-image-preview",  // Newest — confirmed 2026-03
+        "gemini-2.5-flash-image",           // Stable GA fallback
+        "gemini-3-pro-image",               // Pro quality fallback
       ];
 
       const geminiBody = JSON.stringify({
@@ -200,7 +200,6 @@ serve(async (req) => {
         generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
       });
 
-      let geminiResponse: Response | null = null;
       let lastGeminiError = "";
 
       for (const model of GEMINI_MODELS) {
@@ -210,38 +209,46 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: geminiBody,
         });
-        // 404 = model doesn't exist, try next. Any other status = use this response.
-        if (res.status !== 404) {
-          geminiResponse = res;
-          console.log("Gemini model used:", model, "status:", res.status);
+
+        if (res.status === 404) {
+          console.warn("Gemini model not found:", model, "— trying next");
+          continue;
+        }
+
+        if (res.status === 429) {
+          return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo." }), {
+            status: 429, headers: { ...cors, "Content-Type": "application/json" },
+          });
+        }
+
+        if (!res.ok) {
+          const t = await res.text();
+          console.error("Gemini error:", model, res.status, t);
+          try { lastGeminiError = JSON.parse(t)?.error?.message ?? t; } catch { lastGeminiError = t; }
+          continue;
+        }
+
+        const data = await res.json();
+        const parts = data.candidates?.[0]?.content?.parts ?? [];
+        for (const part of parts) {
+          if (part.inlineData?.data) {
+            imageDataUrl = `data:${part.inlineData.mimeType ?? "image/png"};base64,${part.inlineData.data}`;
+          }
+          if (part.text) text = part.text;
+        }
+
+        if (imageDataUrl) {
+          console.log("Gemini model used:", model);
           break;
         }
-        console.warn("Gemini model not found:", model, "— trying next");
+
+        console.warn("Gemini model", model, "returned 200 but no image — trying next");
       }
 
-      if (!geminiResponse) {
-        return new Response(JSON.stringify({ error: "Ningún modelo de Gemini disponible. Contacta soporte." }), {
-          status: 500, headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
-
-      if (!geminiResponse.ok) {
-        if (geminiResponse.status === 429) return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
-        const t = await geminiResponse.text();
-        console.error("Gemini error:", geminiResponse.status, t);
-        try { lastGeminiError = JSON.parse(t)?.error?.message ?? t; } catch { lastGeminiError = t; }
-        return new Response(JSON.stringify({ error: lastGeminiError || `Error de Gemini (${geminiResponse.status})` }), {
+      if (!imageDataUrl && lastGeminiError) {
+        return new Response(JSON.stringify({ error: lastGeminiError }), {
           status: 400, headers: { ...cors, "Content-Type": "application/json" },
         });
-      }
-
-      const data = await geminiResponse.json();
-      const parts = data.candidates?.[0]?.content?.parts ?? [];
-      for (const part of parts) {
-        if (part.inlineData?.data) {
-          imageDataUrl = `data:${part.inlineData.mimeType ?? "image/png"};base64,${part.inlineData.data}`;
-        }
-        if (part.text) text = part.text;
       }
     } else {
       // OpenAI DALL-E 3 (paid fallback)
