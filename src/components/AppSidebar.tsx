@@ -2,7 +2,7 @@ import {
   Home, Mic, Factory, BarChart3, ListTodo, LogOut,
   Lightbulb, Send, FlaskConical, Users, Sun, Moon,
   AudioWaveform, BookOpen, StickyNote, Layers, DollarSign,
-  CalendarDays, FileText, Wand2, Palette, Brush,
+  CalendarDays, FileText, Wand2, Palette, Brush, ImagePlay,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -35,6 +35,7 @@ const mainNav: NavItem[] = [
   { label: "Episodios",   url: "/episodes", icon: Mic },
   { label: "Temporadas",  url: "/seasons",  icon: Layers },
   { label: "Fábrica",     url: "/factory",  icon: Factory },
+  { label: "Visual OS",   url: "/visual",   icon: ImagePlay },
 ];
 
 const distributeNav: NavItem[] = [

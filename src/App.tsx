@@ -57,6 +57,11 @@ const AudioStudio           = lazyWithRecovery(() => import("./pages/AudioStudio
 const Episode360            = lazyWithRecovery(() => import("./pages/Episode360"));
 const KnowledgeBase         = lazyWithRecovery(() => import("./pages/KnowledgeBase"));
 
+// ── Visual OS ─────────────────────────────────────────────────────────────────
+const VisualOS      = lazyWithRecovery(() => import("./pages/visual-os/VisualOS"));
+const VisualEpisode = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
+const VisualPiece   = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
+
 // ── QueryClient ───────────────────────────────────────────────────────────────
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -231,6 +236,11 @@ const App = () => (
                         <Route path="/audio" element={<R C={AudioStudio} />} />
                         <Route path="/episodes/:episodeId/360" element={<R C={Episode360} />} />
                         <Route path="/knowledge" element={<R C={KnowledgeBase} />} />
+
+                        {/* Visual OS */}
+                        <Route path="/visual"                                         element={<R C={VisualOS} />} />
+                        <Route path="/visual/episode/:episodeId"                      element={<R C={VisualEpisode} />} />
+                        <Route path="/visual/episode/:episodeId/piece/:pieceId"       element={<R C={VisualPiece} />} />
 
                         <Route path="*" element={<R C={NotFound} />} />
                       </Routes>
