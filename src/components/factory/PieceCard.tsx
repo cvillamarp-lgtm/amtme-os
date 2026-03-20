@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Image, Loader2, RefreshCw, CheckCircle2, Copy, Check, Download } from "lucide-react";
+import { Image, Loader2, RefreshCw, Copy, Check, Download } from "lucide-react";
 import { TruncatedText } from "@/components/ui/text-clamp";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
@@ -13,6 +13,8 @@ import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
 import { buildLocalComposite, buildCompositeImage } from "@/lib/canvas-text-overlay";
 import { env } from "@/lib/env";
+import { validatePiece } from "@/lib/piece-validator";
+import { ValidationPanel } from "@/components/factory/ValidationPanel";
 
 interface PieceCardProps {
   piece: VisualPiece;
@@ -41,6 +43,12 @@ export function PieceCard({
   // Falls back to raw imageUrl if the browser canvas composite fails.
   const [compositeUrl, setCompositeUrl] = useState<string | undefined>(undefined);
   const compositeRef = useRef<string | undefined>(undefined);
+
+  // Run validator on every relevant change so export button reflects current state.
+  const validation = useMemo(
+    () => validatePiece(piece, copyLines, episodeInput.number, imageUrl),
+    [piece, copyLines, episodeInput.number, imageUrl],
+  );
 
   useEffect(() => {
     if (!imageUrl) { setCompositeUrl(undefined); return; }
@@ -162,6 +170,9 @@ export function PieceCard({
           ))}
         </div>
 
+        {/* Validation */}
+        <ValidationPanel result={validation} />
+
         {/* Actions */}
         <div className="flex gap-1.5">
           <Button
@@ -188,7 +199,14 @@ export function PieceCard({
               size="sm"
               variant="ghost"
               className="h-8 w-8 p-0"
+              disabled={!validation.pass}
+              title={
+                validation.pass
+                  ? `Descargar AMTME_Ep${episodeInput.number.padStart(2,"0")}_Pieza${String(piece.id).padStart(2,"0")}_vF.png`
+                  : `${validation.criticalFails} error${validation.criticalFails !== 1 ? "es" : ""} crítico${validation.criticalFails !== 1 ? "s" : ""} — corrige antes de exportar`
+              }
               onClick={() => {
+                if (!validation.pass) return;
                 const url = compositeRef.current ?? imageUrl;
                 const a = document.createElement("a");
                 a.href = url;
