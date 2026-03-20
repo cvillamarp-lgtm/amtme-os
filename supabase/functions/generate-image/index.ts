@@ -27,101 +27,48 @@ function getHostReferenceUrl(key: "imagen01" | "imagen02"): string {
   return `${baseUrl}/storage/v1/object/public/generated-images/host-${key}.png`;
 }
 
-const AMTME_BRAND_PROMPT = `INSTRUCCIÓN MAESTRA DE IMAGEN — AMTME (A MÍ TAMPOCO ME EXPLICARON)
-Sistema visual SB-01 — Única paleta permitida en producción.
+const AMTME_BRAND_PROMPT = `You are generating a real Instagram post for the podcast "A Mí Tampoco Me Explicaron" (AMTME). This is a FINISHED social media graphic — not a brand guide, not a mockup, not a color palette chart.
 
-PALETA OFICIAL SB-01 (cualquier color fuera de esta lista = ERROR de producción):
-- Navy #083A4F · RGB 8, 58, 79 — fondo principal CW-01 (el más usado)
-- Sand #E5E1DD · RGB 229, 225, 221 — fondo cálido CW-02 · tipografía principal sobre Navy/Teal
-- Teal #407E8C · RGB 64, 126, 140 — fondo CW-04 (slides pregunta/CTA)
-- Gold #A58D66 · RGB 165, 141, 102 — etiquetas, handles, líneas separadoras
-- HL #E8FF40 · RGB 232, 255, 64 — barra de resaltado de 1 palabra. Texto encima: Navy.
-- Negro profundo #030A0F — fondo de página exterior
-- Blanco #FFFFFF — logos plataformas
+WHAT THE IMAGE LOOKS LIKE:
+- A dark, editorial Instagram post with black background (#0A0A0A)
+- Bold, uppercase sans-serif text (Inter or Helvetica Neue Black) on the LEFT half
+- The host's photo on the RIGHT half (when included)
+- Minimal design: maximum 3 text elements visible, abundant negative space
+- It looks like a premium editorial magazine cover or Apple-level product campaign
 
-REGLAS CROMÁTICAS OBLIGATORIAS:
-— Máximo 3 colores activos por pieza (fondo + Sand + Gold/HL).
-— La barra HL (#E8FF40) resalta EXACTAMENTE 1 PALABRA por pieza. Texto en esa barra: Navy #083A4F.
-— La barra HL NUNCA es fondo completo de la pieza.
-— Gold (#A58D66) solo en elementos secundarios: handles, etiquetas, separadores.
-— No usar glow ni sombra de color activo.
-— Fondo Navy: luminosidad −5% para mayor peso visual.
-— Fondo Sand: temperatura +3% cálida para evitar frialdad.
+COLOR PALETTE (these are the ONLY colors):
+- Background: #0A0A0A (deep black) — the canvas itself
+- Headline / dominant text: #F2C84B (warm yellow) — the most important phrase, large and bold
+- Body / secondary text: #F5F0E8 (cream/off-white) — supporting lines, episode number, show name
+- Tertiary / labels: #CCCCCC (light gray) — handles, small labels, timestamps
+- Accent line: thin horizontal rule in #F2C84B separating sections
+- Logos/icons: #FFFFFF pure white
 
-SISTEMA TIPOGRÁFICO (6 NIVELES OBLIGATORIOS):
-Color tipografía según el colorway de la pieza:
-  — Sobre Navy (CW-01): texto = Sand #E5E1DD · barra HL = #E8FF40 con texto Navy
-  — Sobre Sand (CW-02): texto = Navy #083A4F · barra HL = #E8FF40 con texto Navy
-  — Sobre Teal (CW-04): texto = Navy #083A4F · barra HL = #E8FF40 con texto Navy
-Nivel 1 — Dominante: 100% (72-88px), Black/ExtraBold, color-texto-del-colorway, tracking −10 a 0, interlineado −8% a −10%
-Nivel 2 — Secundario: 72% (52-64px), Bold/SemiBold, color-texto-del-colorway, tracking +10
-Nivel 3 — Terciario: 60% (44-52px), Medium/Regular, color-texto-del-colorway, tracking +10 a +15
-Nivel 4 — Subtítulo: 52% (36-44px), Regular/Light, color-texto-del-colorway opacidad 70%, tracking +15
-Nivel 5 — CTA: 45% (32-38px), Medium/Condensado, color-texto-del-colorway opacidad 90%, tracking +20 a +30
-Nivel 6 — Firma/Handle/Logos: 38% (24-28px), Light, Gold #A58D66 opacidad 85%, tracking +30 a +40
+TYPOGRAPHY ON THE IMAGE:
+- Dominant (largest): 1–3 words max, #F2C84B yellow, Extra Bold / Black weight, uppercase, very tight leading
+- Secondary: show name "A MÍ TAMPOCO ME EXPLICARON" in #F5F0E8, smaller, regular weight
+- Episode tag: "EP. XX" in #F2C84B or #CCCCCC, small caps
+- Handle: "@yosoyvillamar" in #CCCCCC, lightest weight, bottom area
+- NO cursives, NO gradients, NO drop shadows, NO decorative fonts
 
-REGLAS TIPOGRÁFICAS:
-— Sans serif editorial contemporánea (Inter, Neue Haas, Helvetica Neue).
-— No usar cursivas NUNCA. No duplicar dominantes. Máx. 2 pesos por bloque.
-— Mayúsculas siempre. Máx. 12-16 palabras por línea.
+LAYOUT:
+- LEFT ZONE (text): dominant headline stacked vertically, left-aligned, top-third to center
+- RIGHT ZONE (host): full-height photo, naturally cropped, slight vignette fade to black on left edge
+- Bottom strip: show name + episode number + platform logos (Spotify, Apple Podcasts) in white
 
-COMPOSICIÓN:
-— Retícula 12 columnas, márgenes 90px, gutter 24px.
-— Un solo dominante claro por pieza.
-— Tipografía NO puede tapar la cara del host.
-— Máximo 4 grupos visuales, sin elementos flotantes.
-— Espacio negativo activo. Mínimo 40px entre grupos.
-— Orden lectura: Dominante → Contexto → Complemento → Subtítulo → CTA → Firma/logos.
+HOST PHOTO (when included):
+- The reference photos show the REAL host: adult Hispanic male, short beard, green cap, AMTME t-shirt, tattoo on left arm
+- PRESERVE exact facial features — do NOT alter face, skin tone, beard, tattoo
+- Photo sits flush right, blending into black background with a subtle left-edge gradient
+- Expression: natural, intimate, not posed — contemplative or slightly serious
 
-GESTALT Y PSICOLOGÍA DEL DISEÑO (OBLIGATORIO — APLICAR EN CADA PIEZA):
-— PROXIMIDAD: agrupar elementos relacionados con máx. 16px entre ellos y mín. 40px entre grupos distintos.
-— SIMILITUD: mismo peso tipográfico y mismo color para elementos del mismo nivel jerárquico.
-— CONTINUIDAD: guiar la mirada del dominante hacia el CTA mediante eje visual implícito (vertical u oblicuo 30–45°).
-— FIGURA-FONDO: el host es la figura; el fondo genera contraste mínimo 4.5:1 WCAG con el texto.
-— PUNTO FOCAL ÚNICO: exactamente 1 elemento de máxima atención por pieza. Todo lo demás es soporte.
-— PRIMACÍA: el elemento más poderoso va en el tercio superior o esquina superior izquierda.
-— EFECTO VON RESTORFF: la barra HL (#E8FF40) aísla la palabra de mayor carga emocional — úsala solo para esa palabra.
-— PATRÓN F: el ojo escanea izquierda→derecha en líneas superiores, luego baja por margen izquierdo. Colocar dominante y CTA en ese recorrido.
-— CARGA COGNITIVA: máximo 3 ideas por pieza. Si hay más, la pieza falla.
-— RECIPROCIDAD VISUAL: el host orienta su mirada hacia el texto dominante (nunca hacia afuera del frame), guiando al espectador al mensaje.
-— VALENCIA EMOCIONAL: Navy/Teal → confianza y profundidad. Sand → calidez y accesibilidad. HL → urgencia y descubrimiento.
-— DOLOR DEL OYENTE: el dominante refleja una emoción o pregunta que el oyente ya tiene — no describe el episodio.
+WHAT THIS IS NOT:
+- NOT a brand guide or color palette chart
+- NOT a mockup with lorem ipsum
+- NOT a tutorial or infographic about design
+- NOT a template preview
+- This is a REAL, FINISHED Instagram post ready to publish`;
 
-FOTOGRAFÍA DEL HOST (OBLIGATORIO — PRESERVAR RASGOS EXACTOS):
-— Las fotos de referencia adjuntas son el host REAL. PRESERVAR rasgos faciales, complexión, barba, tatuaje brazo izquierdo.
-— Lente 85mm, f/4, ISO 100, 1/125s. Iluminación frontal suave + relleno lateral. Temp 5500-6000K.
-— Expresión natural, íntima, no posada. Piel realista sin retoque excesivo.
-— Contraste moderado. Saturación −5% a −10%. Color grading cinematográfico.
-— Acabado nivel revista editorial. Nitidez alta en ojos y rostro.
-
-ELEMENTOS FIJOS EN TODA PIEZA:
-— A MÍ TAMPOCO ME EXPLICARON (siempre mayúsculas, color Sand #E5E1DD sobre Navy)
-— Ep. XX — (formato número episodio, color Gold #A58D66)
-— @yosoyvillamar (handle, color Gold #A58D66, tracking +30)
-— Logos Spotify + Apple Podcasts (blanco #FFFFFF, escala 90%, alineados, separación 24px)
-— PODCAST (tag, tracking +40, mayúsculas, pequeño, color Gold #A58D66)
-
-SAFE ZONES:
-1080×1080: X 90–990 / Y 90–990 (zona activa 900×900px)
-1080×1350: X 90–990 / Y 120–1230 (zona activa 900×1110px)
-1080×1920: X 90–990 / Y 250–1670
-Ningún texto ni elemento visual puede salir de estas coordenadas.
-
-PROHIBIDO:
-— Cualquier color fuera de la paleta oficial
-— Distorsión gran angular, sombras duras, saturación excesiva, filtros artificiales
-— Glow, 3D, biseles, gradientes, stickers
-— Retoque plástico, estética de red social genérica, filtros IG, presets genéricos
-— Cursivas, micro-firmas tipo Barra de Navidad
-— Lentes menores a 50mm
-
-PSICOLOGÍA DE CONVERSIÓN:
-— Se entiende en <0.7s en scroll. Dominante activa en 0.5s. Identificación emocional en 1s. Intriga en 1.5s. CTA en 2s.
-— El dominante refleja dolor del oyente, no describe contenido.
-— CTA conversacional, no publicitario.
-— La pieza genera urgencia emocional sin agresividad.
-
-ESTÁNDAR: Editorial premium. Si hay duda sobre un elemento, ajustar. No "suficientemente bueno".`;
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
