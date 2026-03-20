@@ -512,67 +512,54 @@ export interface EpisodeInput {
 }
 
 /**
- * Build a full prompt for a single piece, replacing variables.
+ * Build a SHORT, scene-descriptive visual prompt for AI image generation.
+ *
+ * Rule: describe what the IMAGE LOOKS LIKE — not brand rules or typography specs.
+ * The AI should never see copy text, typography levels, or brand checklists.
+ * Text overlay is applied separately via canvas-text-overlay.ts.
  */
-export function buildPiecePrompt(piece: VisualPiece, input: EpisodeInput, copyLines: string[]): string {
+export function buildPiecePrompt(piece: VisualPiece, input: EpisodeInput, _copyLines: string[]): string {
   const epNum = input.number.padStart(2, "0");
-  const copy = copyLines.map((l) => l.replace(/XX/g, epNum)).join("\n");
-  const hostRef = piece.hostReference;
-  const hostDesc = BRAND_CONTEXT.hostDescription[hostRef];
-  const comp = piece.id <= 2
-    ? (piece.id === 1 ? BRAND_CONTEXT.composition.imagen01 : BRAND_CONTEXT.composition.imagen02)
-    : null;
 
-  return `Crear UNA SOLA pieza visual final. No crear variantes. No crear múltiples formatos. Solo producir la pieza especificada.
+  // Background color per piece
+  const bg =
+    piece.backgroundVersion === "cobalt"
+      ? "deep cobalt blue (#1A1AE6), flat and clean"
+      : piece.backgroundVersion === "negro" || !piece.backgroundVersion
+      ? "deep editorial black (#0A0A0A), flat and clean"
+      : "deep cobalt blue (#1A1AE6), flat and clean"; // "both" defaults to cobalt
 
-PIEZA OBJETIVO: ${String(piece.id).padStart(2, "0")} — ${piece.name} — ${piece.format}
-${piece.width} × ${piece.height} px  ·  Safe zones: ${piece.safeZones}
+  // Format label
+  const fmt =
+    piece.format === "1:1"  ? "square 1:1 (1080×1080 px) for Instagram feed and Spotify cover" :
+    piece.format === "4:5"  ? "portrait 4:5 (1080×1350 px) for Instagram portrait feed" :
+    piece.format === "9:16" ? "vertical 9:16 (1080×1920 px) for Reels, TikTok and Stories" :
+    `${piece.width}×${piece.height} px`;
 
-COPY:
-${copy}
+  // Host pose per reference
+  const hostPose =
+    piece.hostReference === "imagen01"
+      ? "The host sits backwards on a wooden chair — arms relaxed over the backrest, white AMTME t-shirt, green cap, blue jeans, white sneakers, tattoo on left forearm. He faces the camera with a calm, direct, intimate gaze. Full body visible."
+      : "The host sits on the floor with legs open in a relaxed V-shape — blue AMTME t-shirt, green cap, blue jeans, white sneakers, tattoo on left forearm. He faces the camera with a calm, reflective gaze. Full body visible.";
 
-COMPOSICIÓN
-${piece.compositionNotes}
-${BRAND_CONTEXT.composition.general.map((c) => `— ${c}`).join("\n")}
-${comp ? `\nCOORDENADAS ESPECÍFICAS:\n— Canvas: ${comp.canvas}\n— Safe zones: ${comp.safeZones}\n— Fondo: ${comp.background}\n— Zona texto: ${comp.textZone}\n— Zona host: ${comp.hostZone}\n— Host: ${comp.hostPosition}\n${comp.groups.map((g) => `— ${g}`).join("\n")}` : ""}
+  // Text zone side (always left)
+  const textZone =
+    piece.format === "9:16"
+      ? "The upper third of the image is intentionally clear — this is where text overlays will be added in post-production."
+      : "The LEFT half of the image is intentionally clear — this is where text overlays will be added in post-production. The host occupies the RIGHT half.";
 
-CONTEXTO DE MARCA FIJO
-Podcast: ${BRAND_CONTEXT.podcast}
-Host: ${BRAND_CONTEXT.host}
+  return `${fmt} photograph for the podcast "A Mí Tampoco Me Explicaron" — Episode ${epNum}.
 
-PALETA ÚNICA PERMITIDA (SOLO ESTOS COLORES)
-COBALT ${BRAND_CONTEXT.palette.cobalt} | COBALT DARK ${BRAND_CONTEXT.palette.cobaltDark} | CREAM ${BRAND_CONTEXT.palette.cream} | AMARILLO ${BRAND_CONTEXT.palette.yellow} | NEGRO ${BRAND_CONTEXT.palette.black} | BLANCO ${BRAND_CONTEXT.palette.white} | GRIS SECUNDARIO ${BRAND_CONTEXT.palette.graySecondary} | GRIS FIRMA ${BRAND_CONTEXT.palette.graySignature}
+BACKGROUND: Solid ${bg}. No texture, no gradients, no patterns.
 
-REGLAS DE COLOR
-${BRAND_CONTEXT.colorRules.map((r) => `— ${r}`).join("\n")}
+HOST: ${hostPose}
+The host's face blends softly into the background on his left edge — subtle, not a hard cutout.
 
-SISTEMA TIPOGRÁFICO (6 NIVELES)
-${BRAND_CONTEXT.typography.levels.map((l) => `— Nivel ${l.level} (${l.name}): ${l.scale} · ${l.sizePx} · ${l.weight} · Color: ${l.color} · Tracking: ${l.tracking} · ${l.style}`).join("\n")}
+COMPOSITION: ${textZone}
 
-${BRAND_CONTEXT.typography.rules.map((t) => `— ${t}`).join("\n")}
+MOOD: Premium editorial magazine cover. Minimal. Confident. Intimate. Like GQ or Monocle. One subject, one background color, abundant breathing room.
 
-HOST (OBLIGATORIO — usar foto de referencia adjunta: ${hostRef})
-— ${hostDesc}
-— FOTOGRAFÍA: ${BRAND_CONTEXT.hostDescription.photography}
-
-ELEMENTOS FIJOS
-${BRAND_CONTEXT.fixedElements.map((e) => `— ${e}`).join("\n")}
-
-ESTÉTICA OBLIGATORIA
-— ${BRAND_CONTEXT.aesthetic}
-
-EFECTOS PERMITIDOS
-— ${BRAND_CONTEXT.allowedEffects}
-
-EFECTOS PROHIBIDOS
-— ${BRAND_CONTEXT.prohibitedEffects}
-
-PSICOLOGÍA DE CONVERSIÓN
-${BRAND_CONTEXT.conversionPsychology.timeline.map((t) => `— ${t}`).join("\n")}
-${BRAND_CONTEXT.conversionPsychology.triggers.map((t) => `— ${t}`).join("\n")}
-
-DEFINICIÓN DE LISTO
-${BRAND_CONTEXT.readyChecklist.map((c) => `— ${c}`).join("\n")}`;
+CRITICAL — NO TEXT OF ANY KIND: Zero words, letters, numbers, captions, logos, icons, watermarks, or UI elements anywhere in the image. Text is composited in post-production. Any text in the generated image makes it unusable and it will be discarded.`;
 }
 
 // ─────────────────────────────────────────────────────────────────
