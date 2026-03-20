@@ -45,20 +45,22 @@ export function PieceCard({
   useEffect(() => {
     if (!imageUrl) { setCompositeUrl(undefined); return; }
 
-    // Data URLs are already full composites (built by buildLocalComposite) — display directly.
-    // Remote URLs are legacy AI-generated bases that still need text overlaid.
-    if (imageUrl.startsWith("data:")) {
-      compositeRef.current = imageUrl;
-      setCompositeUrl(imageUrl);
-      return;
-    }
-
-    buildCompositeImage(imageUrl, copyLines, piece, episodeInput.number)
+    // Always rebuild from the brand system (host photo + solid bg + text).
+    // This guarantees Gestalt, hierarchy and brand compliance on every render,
+    // regardless of what is stored in the DB.
+    buildLocalComposite(piece, copyLines, episodeInput.number, env.VITE_SUPABASE_URL)
       .then((url) => {
         compositeRef.current = url;
         setCompositeUrl(url);
+      })
+      .catch(() => {
+        // Fallback: overlay text on whatever is stored
+        buildCompositeImage(imageUrl, copyLines, piece, episodeInput.number).then((url) => {
+          compositeRef.current = url;
+          setCompositeUrl(url);
+        });
       });
-  }, [imageUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [imageUrl, piece.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generateImage = async () => {
     setGenerating(true);

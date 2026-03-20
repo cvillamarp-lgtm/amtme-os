@@ -1,440 +1,412 @@
 /**
- * AMTME Canvas Text Overlay
- * ─────────────────────────
- * Composites AMTME copy + fixed brand elements onto a base image.
+ * AMTME Canvas Text Overlay — Instrucción Maestra v1
+ * ────────────────────────────────────────────────────
+ * Renders every piece image entirely in-browser:
+ *   1. Solid background  (#1A1AE6 cobalt | #0A0A0A negro)
+ *   2. Host photo        (from Supabase Storage, right half)
+ *   3. Gradient blend    (background fades into host edge)
+ *   4. Variable content  (dominant L1 · secondary L2 · tertiary L3 · CTA L5)
+ *   5. Fixed brand block (§06 — PODCAST · Ep. · Spotify · Apple · host name)
  *
- * Every image ALWAYS receives the same fixed identity block at the bottom:
- *   • Episode number      "EP. 29"
- *   • Podcast name        "A MÍ TAMPOCO ME EXPLICARON"
- *   • Platforms           Spotify icon + Apple Podcasts icon (drawn)
- *   • Host signature      "CHRISTIAN VILLAMAR"
- *
- * Variable content (dominant, secondary, CTA) comes from copyLines.
+ * Text is NEVER rendered by AI — canvas guarantees 100% accuracy.
  */
 
 import type { VisualPiece } from "@/lib/visual-templates";
 
-// ─── Official AMTME Palette ───────────────────────────────────────────────────
+// ─── AMTME Official Palette §02 ──────────────────────────────────────────────
 const P = {
-  yellow:    "#F2C84B",
-  cream:     "#F5F0E8",
-  grayLight: "#CCCCCC",
-  signature: "#888888",
+  cobalt:    "#1A1AE6",   // Color dominante / fondo feed
+  negro:     "#0A0A0A",   // Fondo introspectivo / Cover
+  yellow:    "#F2C84B",   // L1 Dominante emocional
+  cream:     "#F5F0E8",   // L2 Secundario · L3 Terciario · L5 CTA
+  grayLight: "#CCCCCC",   // L4 Subtítulo
+  grayMid:   "#888888",   // L6 Firma · metadatos
   white:     "#FFFFFF",
-  spotify:   "#1DB954",  // Spotify green
-  apple:     "#FC3C44",  // Apple Podcasts red
+  spotify:   "#1DB954",
+  apple:     "#FC3C44",
 } as const;
 
-// ─── 6-Level Typographic Hierarchy (Instrucción Maestra §03-A) ────────────────
-const DOMINANT_RATIO = 0.074; // 80px dominant on 1080px canvas
+// ─── 6-Level Typographic Hierarchy §03-A ─────────────────────────────────────
+// Base (dominant) = 8.5% of canvas width → ~92px on 1080px
+const DOM_RATIO = 0.085;
 
 interface Level {
-  scaleFactor: number;
-  fontWeight:  number;
-  color:       string;
-  opacity:     number;
-  trackingPx:  number;
-  leadingMult: number;
+  scale:      number;   // relative to dominant base (1.0 = 100%)
+  weight:     number;   // CSS font-weight
+  color:      string;
+  opacity:    number;
+  tracking:   number;   // letter-spacing in px (at full resolution)
+  leading:    number;   // line-height multiplier
 }
 
 const LEVELS: Level[] = [
-  { scaleFactor: 1.00, fontWeight: 900, color: P.yellow,    opacity: 1.00, trackingPx: -0.5, leadingMult: 0.92 },
-  { scaleFactor: 0.72, fontWeight: 700, color: P.cream,     opacity: 1.00, trackingPx:  1.0, leadingMult: 1.05 },
-  { scaleFactor: 0.60, fontWeight: 500, color: P.cream,     opacity: 1.00, trackingPx:  1.2, leadingMult: 1.05 },
-  { scaleFactor: 0.52, fontWeight: 400, color: P.grayLight, opacity: 0.90, trackingPx:  1.5, leadingMult: 1.05 },
-  { scaleFactor: 0.45, fontWeight: 500, color: P.cream,     opacity: 0.90, trackingPx:  2.5, leadingMult: 1.05 },
-  { scaleFactor: 0.38, fontWeight: 300, color: P.signature, opacity: 0.85, trackingPx:  3.5, leadingMult: 1.10 },
+  // L1 — Dominante  100% · 900 · #F2C84B · tracking –0.5 · leading 0.90
+  { scale: 1.00, weight: 900, color: P.yellow,    opacity: 1.00, tracking: -0.5, leading: 0.90 },
+  // L2 — Secundario  72% · 700 · #F5F0E8 · tracking +1.0 · leading 1.05
+  { scale: 0.72, weight: 700, color: P.cream,     opacity: 1.00, tracking:  1.0, leading: 1.05 },
+  // L3 — Terciario   60% · 500 · #F5F0E8 · tracking +1.2 · leading 1.05
+  { scale: 0.60, weight: 500, color: P.cream,     opacity: 1.00, tracking:  1.2, leading: 1.05 },
+  // L4 — Subtítulo   52% · 400 · #CCCCCC · tracking +1.5 · op 0.90
+  { scale: 0.52, weight: 400, color: P.grayLight, opacity: 0.90, tracking:  1.5, leading: 1.05 },
+  // L5 — CTA         45% · 500 · #F5F0E8 · tracking +2.5 · op 0.90
+  { scale: 0.45, weight: 500, color: P.cream,     opacity: 0.90, tracking:  2.5, leading: 1.05 },
+  // L6 — Firma       38% · 400 · #888888 · tracking +3.5 · op 0.85
+  { scale: 0.38, weight: 400, color: P.grayMid,   opacity: 0.85, tracking:  3.5, leading: 1.10 },
 ];
 
-// ─── Y-Anchors per canvas height (§04-D) ─────────────────────────────────────
-interface YAnchors {
-  header: number; content: number; subtitle: number; footer: number;
-}
-
-function getAnchors(H: number): YAnchors {
-  const a1080 = { header: 140, content: 420, subtitle: 720,  footer: 940  };
-  const a1350 = { header: 170, content: 470, subtitle: 800,  footer: 1100 };
-  const a1920 = { header: 280, content: 680, subtitle: 1150, footer: 1600 };
-  const src   = H <= 1080 ? a1080 : H <= 1350 ? a1350 : a1920;
-  const ratio = H / (H <= 1080 ? 1080 : H <= 1350 ? 1350 : 1920);
+// ─── Y-Anchors §04-D ─────────────────────────────────────────────────────────
+// Absolute pixel values from the spec (1080×1350 reference).
+// Scaled proportionally for other canvas heights.
+function getAnchors(H: number) {
+  // Reference: 1080×1350 spec (all values in px)
+  const ref = { H: 1350, header: 170, secondary: 340, dominant: 480, cta: 820, footer: 1100 };
+  const r   = H / ref.H;
   return {
-    header:   Math.round(src.header   * ratio),
-    content:  Math.round(src.content  * ratio),
-    subtitle: Math.round(src.subtitle * ratio),
-    footer:   Math.round(src.footer   * ratio),
+    header:    Math.round(ref.header    * r),  // G1 metadatos
+    secondary: Math.round(ref.secondary * r),  // L2 above dominant (§04-D)
+    dominant:  Math.round(ref.dominant  * r),  // L1 titular
+    cta:       Math.round(ref.cta       * r),  // G3 CTA
+    footer:    Math.round(ref.footer    * r),  // G4 logos + firma
   };
 }
 
-// ─── Safe Zones (§01-C) ───────────────────────────────────────────────────────
-interface SafeZone {
-  xMin: number; xMax: number; yMin: number; yMax: number; textXMax: number;
-}
-
-function getSafeZone(W: number, H: number): SafeZone {
-  const xMin = Math.round(W * 0.083);
-  const yMin = H <= 1080 ? Math.round(H * 0.083) : H <= 1350 ? Math.round(H * 0.089) : Math.round(H * 0.130);
+// ─── Safe Zones §01-C ────────────────────────────────────────────────────────
+function getSafeZone(W: number, H: number) {
+  const xMargin = Math.round(W * 0.083);             // 90px on 1080px
+  const yMargin = H <= 1080 ? Math.round(H * 0.083)
+                : H <= 1350 ? Math.round(H * 0.089)
+                :             Math.round(H * 0.130);
   return {
-    xMin, xMax: W - xMin,
-    yMin, yMax: H - yMin,
-    textXMax: Math.round(W * 0.50),
+    x:        xMargin,
+    y:        yMargin,
+    maxX:     W - xMargin,
+    maxY:     H - yMargin,
+    textMaxX: Math.round(W * 0.50),               // text zone = left 50%
   };
 }
 
-// ─── Gestalt Spacing ──────────────────────────────────────────────────────────
-const GAP_GROUPS   = 40;
-const GAP_WITHIN   = 12;
-const BREATHING    = 24;
+// ─── Gestalt spacing §04-B ────────────────────────────────────────────────────
+const G = {
+  groupGap:    44,   // min px between groups (Gestalt Proximity)
+  intraGap:    10,   // px within a group
+  airBefore:   20,   // breathing before dominant
+  airAfterDom: 36,   // extra gap after dominant (dominant isolation)
+} as const;
 
-// ─── Line Classification ──────────────────────────────────────────────────────
+// ─── Line utilities ───────────────────────────────────────────────────────────
+/** Returns true if a line is a template placeholder like "[TERCIARIO — CREAM]". */
+const isPlaceholder = (l: string) => /^\[.+\]$/.test(l.trim());
+
+/** Returns true if a line is the fixed podcast name (used in footer, not header). */
+const isPodcastName = (l: string) =>
+  /^A\s+M[IÍ]\s+TAMPOCO\s+ME\s+EXPLICARON$/i.test(l.trim());
+
 type LineRole = "meta_top" | "content" | "cta" | "episode" | "handle" | "signature" | "empty";
 
 function classifyLine(raw: string): LineRole {
   const u = raw.trim().toUpperCase();
-  if (!u) return "empty";
-  if (u.startsWith("@")) return "handle";
+  if (!u || isPlaceholder(raw)) return "empty";
+  if (u.startsWith("@"))                                return "handle";
   if (/^(CHRISTIAN VILLAMAR|SPOTIFY|APPLE PODCAST)/.test(u)) return "signature";
   if (/^EP[\s.]/.test(u) || /^\d{1,2}\s*[—-]/.test(u) || /^\d{2}$/.test(u)) return "episode";
-  if (/^(NUEVO EPISODIO|EPISODIO NUEVO|A M[IÍ] TAMPOCO|A MI TAMPOCO|PODCAST)/.test(u)) return "meta_top";
-  if (/^(ESC[ÚU]CHALO|GU[ÁA]RDALO|COMP[ÁA]RTELO|ESCUCHA EL EP|S[IÍ]GUENOS|NUEVO EP)/.test(u)) return "cta";
+  if (/^(NUEVO EPISODIO|EPISODIO NUEVO|PODCAST)/.test(u))    return "meta_top";
+  if (/^(ESC[ÚU]CHALO|GU[ÁA]RDALO|COMP[ÁA]RTELO|ESCUCHA EL|S[IÍ]GUENOS|NUEVO EP)/.test(u)) return "cta";
+  // "A MÍ TAMPOCO ME EXPLICARON" is a signature/footer line, NOT a header trigger
+  if (isPodcastName(raw))                                    return "signature";
   return "content";
 }
 
 type GroupRole = "header" | "content" | "cta_block" | "footer";
-interface LineGroup { role: GroupRole; lines: string[] }
+interface Group { role: GroupRole; lines: string[] }
 
-function parseGroups(lines: string[]): LineGroup[] {
+function parseGroups(lines: string[]): Group[] {
+  // Split into non-empty blocks separated by blank/placeholder lines
   const blocks: string[][] = [];
   let cur: string[] = [];
   for (const l of lines) {
-    if (!l.trim()) { if (cur.length) { blocks.push(cur); cur = []; } }
-    else cur.push(l);
+    if (!l.trim() || isPlaceholder(l)) {
+      if (cur.length) { blocks.push(cur); cur = []; }
+    } else {
+      cur.push(l);
+    }
   }
   if (cur.length) blocks.push(cur);
 
-  return blocks.map((block): LineGroup => {
+  const FOOTER_ROLES: LineRole[] = ["episode", "handle", "signature", "empty", "meta_top"];
+  const CTA_ROLES:    LineRole[] = ["cta", "episode", "handle", "signature"];
+
+  return blocks.map((block): Group => {
     const roles = block.map(classifyLine);
-    const first = roles[0];
-    if (first === "meta_top") return { role: "header", lines: block };
-    if (roles.every(r => ["episode","handle","signature","empty"].includes(r))) return { role: "footer", lines: block };
-    if (roles.some(r => r === "cta") && !roles.some(r => r === "content")) return { role: "cta_block", lines: block };
+
+    // Header: first line is explicitly a meta_top trigger (NUEVO EPISODIO / PODCAST)
+    if (roles[0] === "meta_top") return { role: "header", lines: block };
+
+    // Footer: all lines are non-content (episode, handle, signature, podcast name)
+    if (roles.every(r => FOOTER_ROLES.includes(r))) return { role: "footer", lines: block };
+
+    // CTA block: has a CTA line but no raw content lines
+    if (roles.some(r => r === "cta") && !roles.some(r => r === "content"))
+      return { role: "cta_block", lines: block };
+
+    // Mixed CTA+footer (e.g. "ESCÚCHALO HOY · EP. 29 · @handle")
+    if (roles.every(r => CTA_ROLES.includes(r))) return { role: "cta_block", lines: block };
+
+    // Default: content block (dominant + secondary + tertiary)
     return { role: "content", lines: block };
   });
 }
 
-// ─── Canvas Helpers ───────────────────────────────────────────────────────────
-function applyLevel(ctx: CanvasRenderingContext2D, lv: Level, basePx: number): void {
-  const sizePx = Math.round(basePx * lv.scaleFactor);
-  ctx.font        = `${lv.fontWeight} ${sizePx}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = lv.opacity;
+// ─── Canvas helpers ───────────────────────────────────────────────────────────
+function setLevel(ctx: CanvasRenderingContext2D, lv: Level, basePx: number) {
+  const sz = Math.round(basePx * lv.scale);
+  ctx.font        = `${lv.weight} ${sz}px Inter,"Helvetica Neue",Arial,sans-serif`;
   ctx.fillStyle   = lv.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = `${lv.trackingPx}px`;
+  ctx.globalAlpha = lv.opacity;
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = `${lv.tracking}px`;
 }
 
-function fillWrapped(
+/** Word-wraps text, returns line count rendered. */
+function wrapText(
   ctx: CanvasRenderingContext2D,
-  text: string, x: number, y: number, maxWidth: number, lineH: number,
+  text: string, x: number, y: number, maxW: number, lineH: number,
 ): number {
   const words = text.split(" ");
   let line = ""; let rows = 0;
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (ctx.measureText(candidate).width > maxWidth && line) {
-      ctx.fillText(line, x, y + rows * lineH); line = word; rows++;
+  for (const w of words) {
+    const candidate = line ? `${line} ${w}` : w;
+    if (ctx.measureText(candidate).width > maxW && line) {
+      ctx.fillText(line, x, y + rows * lineH); line = w; rows++;
     } else { line = candidate; }
   }
   if (line) { ctx.fillText(line, x, y + rows * lineH); rows++; }
   return rows;
 }
 
-// ─── Platform Logos (drawn with canvas paths) ─────────────────────────────────
-/** Draws a simplified Spotify logo: green circle + 3 white wave arcs. */
-function drawSpotifyLogo(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-  ctx.save();
-  ctx.globalAlpha = 1;
+// ─── Font preloading ──────────────────────────────────────────────────────────
+async function preloadFonts(basePx: number) {
+  if (typeof document === "undefined") return;
+  try {
+    const sizes = [
+      Math.round(basePx * 1.00),  // L1
+      Math.round(basePx * 0.72),  // L2
+      Math.round(basePx * 0.45),  // L5
+      Math.round(basePx * 0.38),  // L6
+    ];
+    await Promise.allSettled([
+      ...sizes.map(s => document.fonts.load(`900 ${s}px Inter`)),
+      ...sizes.map(s => document.fonts.load(`700 ${s}px Inter`)),
+      ...sizes.map(s => document.fonts.load(`400 ${s}px Inter`)),
+    ]);
+  } catch { /* non-critical */ }
+}
 
-  // Green circle
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = P.spotify;
-  ctx.fill();
-
-  // 3 white wave arcs
-  ctx.strokeStyle = P.white;
-  ctx.lineCap = "round";
-  const waves = [
-    { yOff: -0.20, spread: 0.60 },
-    { yOff:  0.00, spread: 0.45 },
-    { yOff:  0.18, spread: 0.30 },
-  ];
-  for (const { yOff, spread } of waves) {
-    ctx.lineWidth = r * 0.16;
-    const wCx = cx;
-    const wCy = cy + r * yOff + r * spread * 0.4;
-    const wR  = r * spread;
+// ─── Platform logo drawers ────────────────────────────────────────────────────
+function drawSpotify(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.save(); ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = P.spotify; ctx.fill();
+  ctx.strokeStyle = P.white; ctx.lineCap = "round";
+  for (const [yOff, spread] of [[-0.20, 0.60], [0.00, 0.45], [0.18, 0.30]] as [number, number][]) {
+    ctx.lineWidth = r * 0.17;
     ctx.beginPath();
-    ctx.arc(wCx, wCy, wR, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.arc(cx, cy + r * yOff + r * spread * 0.4, r * spread, Math.PI * 1.15, Math.PI * 1.85);
     ctx.stroke();
   }
   ctx.restore();
 }
 
-/** Draws a simplified Apple Podcasts logo: rounded square + mic wave lines. */
-function drawApplePodcastsLogo(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
-  ctx.save();
-  ctx.globalAlpha = 1;
-
-  const side  = r * 2;
-  const left  = cx - r;
-  const top   = cy - r;
-  const curve = r * 0.40;
-
-  // Purple rounded square
+function drawApple(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.save(); ctx.globalAlpha = 1;
+  const [s, lft, top, cur] = [r * 2, cx - r, cy - r, r * 0.40];
   ctx.beginPath();
-  ctx.moveTo(left + curve, top);
-  ctx.lineTo(left + side - curve, top);
-  ctx.quadraticCurveTo(left + side, top, left + side, top + curve);
-  ctx.lineTo(left + side, top + side - curve);
-  ctx.quadraticCurveTo(left + side, top + side, left + side - curve, top + side);
-  ctx.lineTo(left + curve, top + side);
-  ctx.quadraticCurveTo(left, top + side, left, top + side - curve);
-  ctx.lineTo(left, top + curve);
-  ctx.quadraticCurveTo(left, top, left + curve, top);
-  ctx.closePath();
-  ctx.fillStyle = P.apple;
-  ctx.fill();
-
-  // White mic circle + stand
+  ctx.moveTo(lft + cur, top);
+  ctx.lineTo(lft + s - cur, top); ctx.quadraticCurveTo(lft + s, top, lft + s, top + cur);
+  ctx.lineTo(lft + s, top + s - cur); ctx.quadraticCurveTo(lft + s, top + s, lft + s - cur, top + s);
+  ctx.lineTo(lft + cur, top + s); ctx.quadraticCurveTo(lft, top + s, lft, top + s - cur);
+  ctx.lineTo(lft, top + cur); ctx.quadraticCurveTo(lft, top, lft + cur, top);
+  ctx.closePath(); ctx.fillStyle = P.apple; ctx.fill();
   ctx.fillStyle = P.white;
-  ctx.beginPath();
-  ctx.arc(cx, cy - r * 0.12, r * 0.28, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Stand line
-  ctx.strokeStyle = P.white;
-  ctx.lineWidth   = r * 0.14;
-  ctx.lineCap     = "round";
-  ctx.beginPath();
-  ctx.moveTo(cx, cy + r * 0.18);
-  ctx.lineTo(cx, cy + r * 0.50);
-  ctx.stroke();
-
-  // Wave arcs
+  ctx.beginPath(); ctx.arc(cx, cy - r * 0.12, r * 0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = P.white; ctx.lineWidth = r * 0.14; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx, cy + r * 0.18); ctx.lineTo(cx, cy + r * 0.50); ctx.stroke();
   ctx.lineWidth = r * 0.12;
-  for (const spread of [0.55, 0.40]) {
-    ctx.beginPath();
-    ctx.arc(cx, cy - r * 0.12, r * spread, Math.PI * 1.1, Math.PI * 1.9);
-    ctx.stroke();
+  for (const sp of [0.55, 0.40]) {
+    ctx.beginPath(); ctx.arc(cx, cy - r * 0.12, r * sp, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
   }
-
   ctx.restore();
 }
 
-// ─── Fixed Brand Identity Block — §06 Instrucción Maestra ────────────────────
-/**
- * Renders the PERMANENT brand identity block identically in ALL pieces.
- * Source: Instrucción Maestra §06-A "Elementos que aparecen en TODA pieza"
- *
- * Layout (anchored to G4, bottom of safe zone):
- *
- *   Row 1 — PODCAST tag             "PODCAST"  tracking +40 · L6 · pequeño
- *   Row 2 — Episode + show name     "Ep. 29 —  A MÍ TAMPOCO ME EXPLICARON"
- *   Row 3 — Platform logos          [● SPOTIFY]   [■ APPLE PODCASTS]
- *   Row 4 — Host signature          "CHRISTIAN VILLAMAR"  opacidad 85%
- */
-function renderFixedBrandBlock(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  epNum: string,
-): void {
-  const safe    = getSafeZone(W, H);
+// ─── Fixed brand block §06 ────────────────────────────────────────────────────
+function renderFixedBlock(
+  ctx: CanvasRenderingContext2D, W: number, H: number, epNum: string, basePx: number,
+) {
+  const safe   = getSafeZone(W, H);
   const anchors = getAnchors(H);
-  const baseDOM = Math.round(W * DOMINANT_RATIO);
-  const lv6     = LEVELS[5];                          // L6: 38% · w300 · #888888 · op 85%
-  const sz6     = Math.round(baseDOM * lv6.scaleFactor);
-  const lineH6  = Math.round(sz6 * lv6.leadingMult);
-  const logoR   = Math.round(sz6 * 0.50);             // logo radius proportional to L6
+  const lv6    = LEVELS[5];
+  const sz6    = Math.round(basePx * lv6.scale);
+  const lh6    = Math.round(sz6 * lv6.leading);
+  const logoR  = Math.round(sz6 * 0.52);
+  const gap    = Math.round(sz6 * 0.42);
 
-  // 4 rows + 3 gaps between them
-  const blockH = lineH6 * 4 + GAP_WITHIN * 3;
-  let y = Math.max(anchors.footer, safe.yMax - blockH);
+  const blockH = lh6 * 4 + G.intraGap * 3;
+  let y = Math.max(anchors.footer, safe.maxY - blockH);
 
   ctx.textAlign    = "left";
   ctx.textBaseline = "alphabetic";
 
-  // ── Row 1: "PODCAST" tag (tracking +40, §06-A) ───────────────────────────
-  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = lv6.opacity;
-  ctx.fillStyle   = lv6.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px"; // tracking +40
-  ctx.fillText("PODCAST", safe.xMin, y);
-  y += lineH6 + GAP_WITHIN;
-
-  // ── Row 2: "Ep. 29 —  A MÍ TAMPOCO ME EXPLICARON" (§06-A format) ─────────
-  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  // Row 1 — PODCAST tag
+  ctx.font        = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
   ctx.globalAlpha = lv6.opacity;
   ctx.fillStyle   = lv6.color;
   (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
-  ctx.fillText(`Ep. ${epNum} —  A MÍ TAMPOCO ME EXPLICARON`, safe.xMin, y);
-  y += lineH6 + GAP_WITHIN;
+  ctx.fillText("PODCAST", safe.x, y);
+  y += lh6 + G.intraGap;
 
-  // ── Row 3: Platform logos + labels (§06-A "Spotify + Apple Podcasts · alineados") ─
-  const labelY   = y;
-  const gap      = Math.round(sz6 * 0.40);
-
-  // Spotify logo + label
-  drawSpotifyLogo(ctx, safe.xMin + logoR, labelY - logoR * 0.75, logoR);
-  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = lv6.opacity;
-  ctx.fillStyle   = lv6.color;
+  // Row 2 — Ep. XX — A MÍ TAMPOCO ME EXPLICARON
+  ctx.font        = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  ctx.globalAlpha = lv6.opacity; ctx.fillStyle = lv6.color;
   (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
-  ctx.fillText("SPOTIFY", safe.xMin + logoR * 2 + gap, labelY);
+  ctx.fillText(`Ep. ${epNum}  —  A MÍ TAMPOCO ME EXPLICARON`, safe.x, y);
+  y += lh6 + G.intraGap;
 
-  // Apple Podcasts logo + label — 24px separation per §06-A
-  const spotifyW   = ctx.measureText("SPOTIFY").width;
-  const separation = Math.round(sz6 * 1.5);  // ~24px optical sep at scale
-  const appleX     = safe.xMin + logoR * 2 + gap + spotifyW + separation;
-  drawApplePodcastsLogo(ctx, appleX + logoR, labelY - logoR * 0.75, logoR);
-  ctx.globalAlpha = lv6.opacity;
-  ctx.fillStyle   = lv6.color;
+  // Row 3 — Platform logos
+  const labelY = y;
+  drawSpotify(ctx, safe.x + logoR, labelY - logoR * 0.75, logoR);
+  ctx.font = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  ctx.globalAlpha = lv6.opacity; ctx.fillStyle = lv6.color;
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
+  ctx.fillText("SPOTIFY", safe.x + logoR * 2 + gap, labelY);
+  const spotW = ctx.measureText("SPOTIFY").width;
+  const appleX = safe.x + logoR * 2 + gap + spotW + Math.round(sz6 * 1.4);
+  drawApple(ctx, appleX + logoR, labelY - logoR * 0.75, logoR);
+  ctx.globalAlpha = lv6.opacity; ctx.fillStyle = lv6.color;
   ctx.fillText("APPLE PODCASTS", appleX + logoR * 2 + gap, labelY);
-  y += lineH6 + GAP_WITHIN;
+  y += lh6 + G.intraGap;
 
-  // ── Row 4: "CHRISTIAN VILLAMAR" · opacidad 85% · tracking +30 (§06-A) ────
-  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = 0.85;   // §06-A: "opacidad 85%"
+  // Row 4 — CHRISTIAN VILLAMAR
+  ctx.font = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  ctx.globalAlpha = 0.85;
   ctx.fillStyle   = lv6.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3px";  // tracking +30
-  ctx.fillText("CHRISTIAN VILLAMAR", safe.xMin, y);
-
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3px";
+  ctx.fillText("CHRISTIAN VILLAMAR", safe.x, y);
   ctx.globalAlpha = 1;
 }
 
-// ─── Variable Content Renderer ────────────────────────────────────────────────
-function renderVariableContent(
-  ctx: CanvasRenderingContext2D,
-  copyLines: string[],
-  W: number,
-  H: number,
-  epNum: string,
-): void {
+// ─── Variable content renderer ────────────────────────────────────────────────
+function renderContent(
+  ctx: CanvasRenderingContext2D, copyLines: string[], W: number, H: number,
+  epNum: string, basePx: number,
+) {
   const safe    = getSafeZone(W, H);
   const anchors = getAnchors(H);
-  const baseDOM = Math.round(W * DOMINANT_RATIO);
+  const textW   = safe.textMaxX - safe.x;
 
-  const resolved = copyLines.map(l => l.replace(/XX/gi, epNum));
-  const groups   = parseGroups(resolved);
+  const resolved = copyLines.map(l =>
+    l.replace(/\bXX\b/gi, epNum).replace(/\bEP\.\s*XX\b/gi, `Ep. ${epNum}`)
+  );
+  const groups = parseGroups(resolved);
 
   ctx.textAlign    = "left";
   ctx.textBaseline = "alphabetic";
 
-  // G1 — Header (meta top, e.g. "NUEVO EPISODIO") ───────────────────────────
-  const headerGroup = groups.find(g => g.role === "header");
-  if (headerGroup) {
-    applyLevel(ctx, LEVELS[5], baseDOM);
-    let y = anchors.header;
-    for (const line of headerGroup.lines) {
-      ctx.fillText(line.toUpperCase(), safe.xMin, y);
-      y += Math.round(baseDOM * LEVELS[5].scaleFactor * LEVELS[5].leadingMult) + GAP_WITHIN;
+  // ── G1: Header (NUEVO EPISODIO / PODCAST tag from copy) ──────────────────
+  const header = groups.find(g => g.role === "header");
+  if (header) {
+    setLevel(ctx, LEVELS[5], basePx);
+    const sz = Math.round(basePx * LEVELS[5].scale);
+    let y    = anchors.header;
+    for (const line of header.lines) {
+      ctx.fillText(line.toUpperCase(), safe.x, y);
+      y += Math.round(sz * LEVELS[5].leading) + G.intraGap;
     }
   }
 
-  // G2 — Main content (dominant → secondary → tertiary) ─────────────────────
-  const contentGroup = groups.find(g => g.role === "content");
-  if (contentGroup) {
-    const contentLines = contentGroup.lines.filter(l => l.trim());
-    let y = anchors.content;
+  // ── G2: Content (L1 dominant → L2 secondary → L3 tertiary) ──────────────
+  const content = groups.find(g => g.role === "content");
+  if (content) {
+    const lines = content.lines.filter(l => l.trim() && !isPlaceholder(l));
+    let yDom = anchors.dominant;
 
-    contentLines.forEach((line, idx) => {
-      const levelIdx = Math.min(idx, 2);
-      const lv       = LEVELS[levelIdx];
-      const sizePx   = Math.round(baseDOM * lv.scaleFactor);
-      const lineH    = Math.round(sizePx * lv.leadingMult);
+    lines.forEach((line, idx) => {
+      const lvIdx = Math.min(idx, 2);        // cap at L3
+      const lv    = LEVELS[lvIdx];
+      const sz    = Math.round(basePx * lv.scale);
+      const lh    = Math.round(sz * lv.leading);
 
-      applyLevel(ctx, lv, baseDOM);
-      if (idx === 0) y += BREATHING;
+      setLevel(ctx, lv, basePx);
 
-      const rows = fillWrapped(ctx, line.toUpperCase(), safe.xMin, y, safe.textXMax - safe.xMin, lineH);
-      y += rows * lineH + (idx === 0 ? GAP_GROUPS : GAP_WITHIN);
+      if (idx === 0) {
+        // Dominant: breathing space before
+        yDom += G.airBefore;
+        const rows = wrapText(ctx, line.toUpperCase(), safe.x, yDom, textW, lh);
+        yDom += rows * lh + G.airAfterDom;
+      } else {
+        const rows = wrapText(ctx, line.toUpperCase(), safe.x, yDom, textW, lh);
+        yDom += rows * lh + G.intraGap;
+      }
     });
   }
 
-  // G3 — CTA block ──────────────────────────────────────────────────────────
-  const ctaGroup = groups.find(g => g.role === "cta_block");
-  if (ctaGroup) {
-    let y = anchors.subtitle;
-    for (const [idx, line] of ctaGroup.lines.filter(l => l.trim()).entries()) {
-      const role   = classifyLine(line);
-      const lv     = role === "cta" ? LEVELS[4] : LEVELS[3];
-      const sizePx = Math.round(baseDOM * lv.scaleFactor);
-      applyLevel(ctx, lv, baseDOM);
-      ctx.fillText(line.toUpperCase(), safe.xMin, y);
-      y += Math.round(sizePx * lv.leadingMult) + (idx === 0 ? GAP_WITHIN : GAP_WITHIN / 2);
+  // ── G3: CTA block ─────────────────────────────────────────────────────────
+  const cta = groups.find(g => g.role === "cta_block");
+  if (cta) {
+    let y = anchors.cta;
+    for (const [i, line] of cta.lines.filter(l => l.trim()).entries()) {
+      const role = classifyLine(line);
+      const lv   = role === "cta" ? LEVELS[4] : LEVELS[5];
+      const sz   = Math.round(basePx * lv.scale);
+      setLevel(ctx, lv, basePx);
+      ctx.fillText(line.toUpperCase(), safe.x, y);
+      y += Math.round(sz * lv.leading) + (i === 0 ? G.intraGap : G.intraGap / 2);
     }
   } else {
-    // Default CTA if none in copyLines
-    const lv     = LEVELS[4];
-    const sizePx = Math.round(baseDOM * lv.scaleFactor);
-    applyLevel(ctx, lv, baseDOM);
-    ctx.fillText("ESCÚCHALO HOY", safe.xMin, anchors.subtitle);
-    void sizePx;
+    // Default CTA if none in copy
+    setLevel(ctx, LEVELS[4], basePx);
+    ctx.fillText("ESCÚCHALO HOY", safe.x, anchors.cta);
   }
 
   ctx.globalAlpha = 1;
 }
 
+// ─── Host photo cache (avoid re-fetching on each render) ─────────────────────
+const _hostCache: Record<string, Promise<Blob>> = {};
+
+function fetchHostBlob(url: string): Promise<Blob> {
+  if (!_hostCache[url]) {
+    _hostCache[url] = fetch(url).then(r => {
+      if (!r.ok) throw new Error(`Host fetch ${r.status}`);
+      return r.blob();
+    });
+  }
+  return _hostCache[url];
+}
+
 // ─── Color helpers ────────────────────────────────────────────────────────────
-function hexToRgba(hex: string, alpha: number): string {
+function hexToRgba(hex: string, a: number) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
+  return `rgba(${r},${g},${b},${a})`;
 }
 
-/** Returns background hex for a piece per §02 Instrucción Maestra. */
-function pieceBgColor(piece: VisualPiece): string {
-  // Only pieces explicitly marked "negro" get #0A0A0A.
-  // Everything else (cobalt / both / undefined) → #1A1AE6 Cobalt (color dominante).
-  return piece.backgroundVersion === "negro" ? "#0A0A0A" : "#1A1AE6";
-}
-
-/** Cover-fits an image inside (x, y, w, h), pinned toward the top so the face stays high. */
 function drawCoverRight(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
-  x: number, y: number,
-  w: number, h: number,
-): void {
-  const imgRatio  = img.naturalWidth / img.naturalHeight;
-  const areaRatio = w / h;
-  let drawW: number, drawH: number, drawX: number, drawY: number;
-
-  if (imgRatio > areaRatio) {
-    // Image wider than area → fit by height, pin left edge of host zone
-    drawH = h; drawW = h * imgRatio;
-    drawX = x; drawY = y;
-  } else {
-    // Image taller → fit by width, pin top so face stays in upper third
-    drawW = w; drawH = w / imgRatio;
-    drawX = x; drawY = Math.max(0, (h - drawH) * 0.05);
-  }
-  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  x: number, y: number, w: number, h: number,
+) {
+  const ir = img.naturalWidth / img.naturalHeight;
+  const ar = w / h;
+  let dw: number, dh: number, dx: number, dy: number;
+  if (ir > ar) { dh = h; dw = h * ir; dx = x; dy = y; }
+  else         { dw = w; dh = w / ir; dx = x; dy = Math.max(0, (h - dh) * 0.05); }
+  ctx.drawImage(img, dx, dy, dw, dh);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * LOCAL COMPOSITE — no AI required.
- *
- * Builds the complete piece image entirely in-browser:
- *   1. Solid background per §02 (#1A1AE6 cobalt or #0A0A0A negro)
- *   2. Host reference photo from Supabase Storage, positioned on the right
- *   3. Soft gradient blend where the host meets the background
- *   4. Variable copy (dominant L1, secondary L2, tertiary L3, CTA L5)
- *   5. Fixed brand block (§06): PODCAST · Ep. XX · Spotify · Apple · CHRISTIAN VILLAMAR
- *
- * Returns a PNG data URL ready to display and store.
- * Falls back gracefully if the host photo cannot be loaded.
+ * Builds the complete piece image entirely in-browser.
+ * No AI required — solid background + host photo + AMTME text layers.
  */
 export async function buildLocalComposite(
   piece: VisualPiece,
@@ -442,70 +414,63 @@ export async function buildLocalComposite(
   episodeNumber: string,
   supabaseUrl: string,
 ): Promise<string> {
-  const W   = piece.width;
-  const H   = piece.height;
-  const bg  = pieceBgColor(piece);
+  const W      = piece.width;
+  const H      = piece.height;
+  const bgHex  = piece.backgroundVersion === "negro" ? P.negro : P.cobalt;
+  const basePx = Math.round(W * DOM_RATIO);
 
-  const canvas = document.createElement("canvas");
-  canvas.width  = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d");
+  // Preload fonts before touching canvas
+  await preloadFonts(basePx);
+
+  const canvas  = document.createElement("canvas");
+  canvas.width  = W; canvas.height = H;
+  const ctx     = canvas.getContext("2d");
   if (!ctx) throw new Error("No 2D context");
 
-  // ── 1. Solid background ───────────────────────────────────────────────────
-  ctx.fillStyle = bg;
+  // 1. Solid background
+  ctx.fillStyle = bgHex;
   ctx.fillRect(0, 0, W, H);
 
-  // ── 2. Host photo ─────────────────────────────────────────────────────────
-  const hostUrl    = `${supabaseUrl}/storage/v1/object/public/generated-images/host-${piece.hostReference}.png`;
-  let   hostLoaded = false;
-
+  // 2. Host photo (right 60%)
   try {
-    const resp      = await fetch(hostUrl);
-    const blob      = await resp.blob();
-    const objectUrl = URL.createObjectURL(blob);
-
+    const hostUrl = `${supabaseUrl}/storage/v1/object/public/generated-images/host-${piece.hostReference}.png`;
+    const blob    = await fetchHostBlob(hostUrl);
+    const objUrl  = URL.createObjectURL(blob);
     try {
-      const hostImg = new Image();
+      const img   = new Image();
       await new Promise<void>((res, rej) => {
-        hostImg.onload  = () => res();
-        hostImg.onerror = () => rej(new Error("host load"));
-        hostImg.src     = objectUrl;
+        img.onload  = () => res();
+        img.onerror = () => rej(new Error("host img"));
+        img.src     = objUrl;
       });
+      const hx = Math.round(W * 0.38);
+      drawCoverRight(ctx, img, hx, 0, W - hx, H);
 
-      // Host zone: right 58% of canvas (text occupies left 50%, slight overlap per spec)
-      const hostZoneX = Math.round(W * 0.40);
-      const hostZoneW = W - hostZoneX;
-      drawCoverRight(ctx, hostImg, hostZoneX, 0, hostZoneW, H);
-      hostLoaded = true;
-
-      // ── 3. Gradient blend — background fades in over the host's left edge ──
-      const fadeStart = hostZoneX - Math.round(W * 0.05);
-      const fadeEnd   = hostZoneX + Math.round(W * 0.18);
+      // 3. Gradient blend (background → transparent over ~20% of canvas)
+      const fadeStart = hx - Math.round(W * 0.04);
+      const fadeEnd   = hx + Math.round(W * 0.20);
       const grad      = ctx.createLinearGradient(fadeStart, 0, fadeEnd, 0);
-      grad.addColorStop(0,   bg);                      // fully opaque background
-      grad.addColorStop(1,   hexToRgba(bg, 0));        // transparent (host shows through)
+      grad.addColorStop(0, bgHex);
+      grad.addColorStop(1, hexToRgba(bgHex, 0));
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, fadeEnd, H);
     } finally {
-      URL.revokeObjectURL(objectUrl);
+      URL.revokeObjectURL(objUrl);
     }
-  } catch {
-    // Host photo unavailable — solid background still shows, text still renders
-    void hostLoaded;
-  }
+  } catch { /* host photo unavailable — solid background + text still renders */ }
 
-  // ── 4 & 5. Text layers ────────────────────────────────────────────────────
-  renderVariableContent(ctx, copyLines, W, H, episodeNumber);
-  renderFixedBrandBlock(ctx, W, H, episodeNumber);
+  // 4. Variable content
+  renderContent(ctx, copyLines, W, H, episodeNumber, basePx);
+
+  // 5. Fixed brand block (always identical across all 15 pieces)
+  renderFixedBlock(ctx, W, H, episodeNumber, basePx);
 
   return canvas.toDataURL("image/png");
 }
 
 /**
- * COMPOSITE ON TOP OF EXISTING IMAGE (legacy / AI-generated bases).
- * Fetches `baseImageUrl`, draws it, then overlays AMTME text.
- * Falls back to the original URL on any error.
+ * Legacy: composites text on top of an existing remote base image.
+ * Used only for old AI-generated images still in DB.
  */
 export async function buildCompositeImage(
   baseImageUrl: string,
@@ -513,35 +478,40 @@ export async function buildCompositeImage(
   piece: VisualPiece,
   episodeNumber: string,
 ): Promise<string> {
+  // For remote URLs (old AI images), rebuild from scratch using local composite
+  // so the brand system is always correctly applied regardless of what's in storage.
+  if (!baseImageUrl.startsWith("data:")) {
+    try {
+      // We don't have supabaseUrl here — extract it from the URL if it's a Supabase URL
+      const match = baseImageUrl.match(/^(https:\/\/[^/]+\.supabase\.co)/);
+      if (match) {
+        return await buildLocalComposite(piece, copyLines, episodeNumber, match[1]);
+      }
+    } catch { /* fall through to overlay approach */ }
+  }
+
+  // data URL or non-Supabase URL → overlay text on top
   try {
     const resp      = await fetch(baseImageUrl);
     if (!resp.ok) throw new Error(`Fetch ${resp.status}`);
     const blob      = await resp.blob();
     const objectUrl = URL.createObjectURL(blob);
-
     try {
       const canvas  = document.createElement("canvas");
-      canvas.width  = piece.width;
-      canvas.height = piece.height;
+      canvas.width  = piece.width; canvas.height = piece.height;
       const ctx     = canvas.getContext("2d");
       if (!ctx) throw new Error("No 2D context");
-
-      const img = new Image();
+      const img     = new Image();
       await new Promise<void>((res, rej) => {
-        img.onload  = () => res();
-        img.onerror = () => rej(new Error("img load failed"));
-        img.src     = objectUrl;
+        img.onload = () => res(); img.onerror = () => rej(new Error("img"));
+        img.src    = objectUrl;
       });
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      renderVariableContent(ctx, copyLines, piece.width, piece.height, episodeNumber);
-      renderFixedBrandBlock(ctx, piece.width, piece.height, episodeNumber);
-
+      const basePx = Math.round(piece.width * DOM_RATIO);
+      await preloadFonts(basePx);
+      renderContent(ctx, copyLines, piece.width, piece.height, episodeNumber, basePx);
+      renderFixedBlock(ctx, piece.width, piece.height, episodeNumber, basePx);
       return canvas.toDataURL("image/png");
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  } catch {
-    return baseImageUrl;
-  }
+    } finally { URL.revokeObjectURL(objectUrl); }
+  } catch { return baseImageUrl; }
 }
