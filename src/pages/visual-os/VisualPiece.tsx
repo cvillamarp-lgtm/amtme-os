@@ -9,7 +9,7 @@
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Eye, EyeOff, Grid, Save,
-  CheckCircle2, History,
+  CheckCircle2, History, RefreshCw,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-import { useEpisodePieces, useVisualPiece, usePieceCopyBlocks, usePieceVersions, usePieceChangeLog, useSavePieceCopy, useUpdatePieceStatus, useRecordExport, useRestoreVersion } from "@/hooks/visual-os/useVisualPieces";
-import { useVisualEpisode } from "@/hooks/visual-os/useVisualEpisodes";
+import { useEpisodePieces, useVisualPiece, usePieceCopyBlocks, usePieceVersions, usePieceChangeLog, useSavePieceCopy, useUpdatePieceStatus, useRecordExport, useRestoreVersion, useReseedPieceCopy } from "@/hooks/visual-os/useVisualPieces";
+import { useVisualEpisode, useKeyPhrases } from "@/hooks/visual-os/useVisualEpisodes";
 import { useTemplateRules } from "@/hooks/visual-os/useVisualTemplates";
 import { validateVisualPiece } from "@/lib/visual-os/validator";
 import { toCanvasPiece } from "@/lib/visual-os/types";
@@ -42,6 +42,7 @@ export default function VisualPiece() {
   const { episodeId, pieceId } = useParams<{ episodeId: string; pieceId: string }>();
 
   const { data: episode }          = useVisualEpisode(episodeId);
+  const { data: keyPhrases = [] }  = useKeyPhrases(episodeId);
   const { data: piece }            = useVisualPiece(pieceId);
   const { data: copyBlocksRaw = [] } = usePieceCopyBlocks(pieceId);
   const { data: versions       = [] } = usePieceVersions(pieceId);
@@ -53,6 +54,7 @@ export default function VisualPiece() {
   const updateStatus   = useUpdatePieceStatus();
   const recordExport   = useRecordExport();
   const restoreVersion = useRestoreVersion();
+  const reseedCopy     = useReseedPieceCopy();
 
   // Local copy state (editable)
   const [localBlocks, setLocalBlocks] = useState<CopyBlock[]>([]);
@@ -100,6 +102,24 @@ export default function VisualPiece() {
       toast.success("Versión guardada");
     } catch {
       toast.error("Error al guardar");
+    }
+  };
+
+  const handleReseed = async () => {
+    if (!pieceId || !piece?.template?.piece_code || !episode) return;
+    try {
+      await reseedCopy.mutateAsync({
+        pieceId,
+        pieceCode:  piece.template.piece_code,
+        episodeCtx: {
+          episode_number: String(episode.number ?? ""),
+          thesis_central: episode.thesis_central ?? "",
+          key_phrases:    keyPhrases.map(k => k.phrase).filter(Boolean),
+        },
+      });
+      toast.success("Copy pre-llenado con frases del episodio");
+    } catch {
+      toast.error("Error al re-seed");
     }
   };
 
@@ -288,17 +308,32 @@ export default function VisualPiece() {
                 placeholder="Motivo del cambio (opcional)..."
                 className="h-7 text-xs"
               />
-              <Button
-                size="sm"
-                className="w-full h-8 text-xs gap-1.5"
-                disabled={!isDirty || saveCopy.isPending}
-                onClick={handleSave}
-              >
-                {saveCopy.isPending
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <Save className="h-3.5 w-3.5" />}
-                Guardar versión
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1.5 flex-shrink-0"
+                  disabled={reseedCopy.isPending}
+                  onClick={handleReseed}
+                  title="Pre-llenar campos con la tesis y frases clave del episodio"
+                >
+                  {reseedCopy.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <RefreshCw className="h-3.5 w-3.5" />}
+                  Auto-fill
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 h-8 text-xs gap-1.5"
+                  disabled={!isDirty || saveCopy.isPending}
+                  onClick={handleSave}
+                >
+                  {saveCopy.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Save className="h-3.5 w-3.5" />}
+                  Guardar
+                </Button>
+              </div>
             </div>
           </TabsContent>
 

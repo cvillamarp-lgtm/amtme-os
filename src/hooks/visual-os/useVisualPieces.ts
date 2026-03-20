@@ -6,6 +6,7 @@ import type {
 } from "@/lib/visual-os/types";
 import { buildFileName } from "@/lib/visual-os/palette";
 import type { VOSValidationResult } from "@/lib/visual-os/validator";
+import { seedCopyBlock, type EpisodeContext } from "@/lib/visual-os/copySeeder";
 
 // ─── Pieces for an episode ────────────────────────────────────────────────────
 
@@ -127,16 +128,18 @@ export function usePieceChangeLog(pieceId: string | undefined) {
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-/** Initialize all 15 pieces for an episode from the templates. */
+/** Initialize all 15 pieces for an episode from the templates, pre-filling copy with episode data. */
 export function useInitEpisodePieces() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
       episodeId,
       templates,
+      episodeCtx,
     }: {
-      episodeId: string;
-      templates: { id: string; piece_code: string }[];
+      episodeId:   string;
+      templates:   { id: string; piece_code: string }[];
+      episodeCtx?: EpisodeContext;
     }) => {
       // Check existing
       const { data: existing } = await supabase
@@ -158,8 +161,9 @@ export function useInitEpisodePieces() {
         .select();
       if (error) throw error;
 
-      // For each piece, initialize copy blocks from template rules
+      // For each piece, initialize copy blocks — pre-filled from episode context
       for (const piece of (pieces ?? [])) {
+        const tpl = toCreate.find(t => t.id === piece.template_id);
         const { data: rules } = await supabase
           .from("visual_template_rules")
           .select("*")
@@ -167,10 +171,16 @@ export function useInitEpisodePieces() {
           .eq("rule_type", "copy_block")
           .order("order_index");
         if (!rules?.length) continue;
+
         const copyRows = (rules ?? []).map(r => ({
           piece_id:    piece.id,
           block_name:  r.rule_key,
-          block_value: (r.rule_value_json as any)?.default ?? "",
+          // Seed from episode data if available, else fall back to template default
+          block_value: episodeCtx
+            ? (seedCopyBlock(r.rule_key, tpl?.piece_code ?? "", episodeCtx)
+               || (r.rule_value_json as any)?.default
+               || "")
+            : ((r.rule_value_json as any)?.default ?? ""),
           is_fixed:    false,
           order_index: r.order_index,
         }));
@@ -179,6 +189,45 @@ export function useInitEpisodePieces() {
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["vos_pieces", vars.episodeId] });
+    },
+  });
+}
+
+/**
+ * Re-seed copy blocks for an already-initialized piece using fresh episode data.
+ * Useful when the episode's thesis or key phrases are edited after initialization.
+ */
+export function useReseedPieceCopy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pieceId,
+      pieceCode,
+      episodeCtx,
+    }: {
+      pieceId:    string;
+      pieceCode:  string;
+      episodeCtx: EpisodeContext;
+    }) => {
+      // Load existing blocks
+      const { data: blocks } = await supabase
+        .from("piece_copy_blocks")
+        .select("id, block_name")
+        .eq("piece_id", pieceId);
+      if (!blocks?.length) return;
+
+      // Update each block with seeded value (skip if seeder returns "")
+      for (const b of blocks) {
+        const seeded = seedCopyBlock(b.block_name, pieceCode, episodeCtx);
+        if (!seeded) continue;
+        await supabase
+          .from("piece_copy_blocks")
+          .update({ block_value: seeded, updated_at: new Date().toISOString() })
+          .eq("id", b.id);
+      }
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["vos_copy", vars.pieceId] });
     },
   });
 }

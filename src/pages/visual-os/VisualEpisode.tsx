@@ -162,11 +162,20 @@ export default function VisualEpisode() {
 
   const handleInitPieces = async () => {
     if (!episodeId || !templates.length) return;
+
+    // Build episode context for auto-seeding copy blocks
+    const episodeCtx = episode ? {
+      episode_number: String(episode.number ?? ""),
+      thesis_central: thesis.trim() || episode.thesis_central || "",
+      key_phrases:    (phraseList ?? []).filter(Boolean),
+    } : undefined;
+
     await initPieces.mutateAsync({
       episodeId,
       templates: templates.map(t => ({ id: t.id, piece_code: t.piece_code })),
+      episodeCtx,
     });
-    toast.success("15 piezas inicializadas");
+    toast.success("15 piezas inicializadas con frases del episodio");
   };
 
   if (epLoading || piecesLoading) {
