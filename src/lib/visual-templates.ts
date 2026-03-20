@@ -518,48 +518,42 @@ export interface EpisodeInput {
  * The AI should never see copy text, typography levels, or brand checklists.
  * Text overlay is applied separately via canvas-text-overlay.ts.
  */
-export function buildPiecePrompt(piece: VisualPiece, input: EpisodeInput, _copyLines: string[]): string {
+export function buildPiecePrompt(piece: VisualPiece, input: EpisodeInput, copyLines: string[]): string {
   const epNum = input.number.padStart(2, "0");
 
-  // Background color per piece
-  const bg =
-    piece.backgroundVersion === "cobalt"
-      ? "deep cobalt blue (#1A1AE6), flat and clean"
-      : piece.backgroundVersion === "negro" || !piece.backgroundVersion
-      ? "deep editorial black (#0A0A0A), flat and clean"
-      : "deep cobalt blue (#1A1AE6), flat and clean"; // "both" defaults to cobalt
+  // Background per piece (§02 Instrucción Maestra)
+  const bgHex  = piece.backgroundVersion === "negro" ? "#0A0A0A" : "#1A1AE6";
+  const bgName = piece.backgroundVersion === "negro" ? "negro editorial profundo (#0A0A0A)" : "cobalt blue profundo (#1A1AE6)";
 
-  // Format label
+  // Canvas format
   const fmt =
-    piece.format === "1:1"  ? "square 1:1 (1080×1080 px) for Instagram feed and Spotify cover" :
-    piece.format === "4:5"  ? "portrait 4:5 (1080×1350 px) for Instagram portrait feed" :
-    piece.format === "9:16" ? "vertical 9:16 (1080×1920 px) for Reels, TikTok and Stories" :
-    `${piece.width}×${piece.height} px`;
+    piece.format === "1:1"  ? "cuadrado 1:1, 1080×1080px — Spotify cover / Instagram feed" :
+    piece.format === "4:5"  ? "portrait 4:5, 1080×1350px — Instagram feed portrait" :
+    piece.format === "9:16" ? "vertical 9:16, 1080×1920px — Reels / TikTok / Story" :
+    `${piece.width}×${piece.height}px`;
 
-  // Host pose per reference
-  const hostPose =
-    piece.hostReference === "imagen01"
-      ? "The host sits backwards on a wooden chair — arms relaxed over the backrest, white AMTME t-shirt, green cap, blue jeans, white sneakers, tattoo on left forearm. He faces the camera with a calm, direct, intimate gaze. Full body visible."
-      : "The host sits on the floor with legs open in a relaxed V-shape — blue AMTME t-shirt, green cap, blue jeans, white sneakers, tattoo on left forearm. He faces the camera with a calm, reflective gaze. Full body visible.";
-
-  // Text zone side (always left)
-  const textZone =
+  // Text zone note per format
+  const textZoneNote =
     piece.format === "9:16"
-      ? "The upper third of the image is intentionally clear — this is where text overlays will be added in post-production."
-      : "The LEFT half of the image is intentionally clear — this is where text overlays will be added in post-production. The host occupies the RIGHT half.";
+      ? "Tercio SUPERIOR completamente despejado (Y: 0–640px) — zona reservada para texto editorial."
+      : "Mitad IZQUIERDA completamente despejada (X: 90–540px) — zona reservada para texto editorial. Host en la mitad derecha (X: 440–990px).";
 
-  return `${fmt} photograph for the podcast "A Mí Tampoco Me Explicaron" — Episode ${epNum}.
+  // Content lines (non-empty, non-placeholder)
+  const contentLines = copyLines
+    .filter(l => l.trim() && !l.startsWith("["))
+    .slice(0, 4);
 
-BACKGROUND: Solid ${bg}. No texture, no gradients, no patterns.
+  const copySection = contentLines.length > 0
+    ? `\nCONTENIDO DEL EPISODIO (para contexto de composición — NO renderizar texto):
+${contentLines.map((l, i) => `  L${i + 1}: ${l}`).join("\n")}`
+    : "";
 
-HOST: ${hostPose}
-The host's face blends softly into the background on his left edge — subtle, not a hard cutout.
+  return `FORMATO: ${fmt}.
+FONDO: sólido ${bgName}. Sin texturas, sin gradientes, sin patrones, sin elementos extra.
+COMPOSICIÓN: ${textZoneNote}
+EPISODIO: Ep. ${epNum} de "A Mí Tampoco Me Explicaron". Fondo exacto: ${bgHex}.${copySection}
 
-COMPOSITION: ${textZone}
-
-MOOD: Premium editorial magazine cover. Minimal. Confident. Intimate. Like GQ or Monocle. One subject, one background color, abundant breathing room.
-
-CRITICAL — NO TEXT OF ANY KIND: Zero words, letters, numbers, captions, logos, icons, watermarks, or UI elements anywhere in the image. Text is composited in post-production. Any text in the generated image makes it unusable and it will be discarded.`;
+INSTRUCCIÓN CRÍTICA: NO incluir ningún texto, número, letra, ícono, logo ni elemento UI en la imagen. El texto se agrega en post-producción vía canvas. Cualquier texto visible hace la imagen inutilizable.`;
 }
 
 // ─────────────────────────────────────────────────────────────────

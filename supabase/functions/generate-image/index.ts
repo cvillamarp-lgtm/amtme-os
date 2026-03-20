@@ -27,18 +27,65 @@ function getHostReferenceUrl(key: "imagen01" | "imagen02"): string {
   return `${baseUrl}/storage/v1/object/public/generated-images/host-${key}.png`;
 }
 
-const AMTME_BRAND_PROMPT = `Generate ONE single image for the podcast "A Mí Tampoco Me Explicaron".
+// ─── AMTME Master Image Prompt ───────────────────────────────────────────────
+// Source: Instrucción Maestra + host photo description approved by Christian Villamar.
+// The AI generates: hyperrealistic host photo + correct background + clear left text zone.
+// ALL typography is rendered separately by the canvas overlay — NEVER by the AI.
+const AMTME_BRAND_PROMPT = `CALIDAD EDITORIAL ALTA DEFINICIÓN — Podcast "A Mí Tampoco Me Explicaron" (AMTME).
 
-⚠️ CRITICAL — NO TEXT: Do NOT render any text, words, letters, numbers, or captions anywhere on the image. Absolutely zero text. Text is added programmatically in post-production. If you include any text the image will be discarded.
+═══ SUJETO — IDENTIDAD EXACTA, NO MODIFICAR ═══
+Fotografía de estudio hiperrealista, cuerpo completo (de cabeza a tenis), encuadre vertical, composición frontal, centrada y simétrica. Estética de foto real de estudio, como revista editorial premium (GQ, Monocle).
 
-WHAT TO GENERATE — A VISUAL SCENE:
-A deep cobalt blue canvas (hex #1A1AE6) with a photograph of the podcast host integrated into the right half of the image. The host is a Hispanic adult man with a short beard, green cap, tattoo on his left forearm, and an AMTME t-shirt. His expression is calm, contemplative, intimate — not smiling forcefully. The photo blends softly into the cobalt background on his left edge (subtle gradient, no hard cutout). His face and eyes fall in the upper-right area of the composition.
+Hombre adulto sentado al revés sobre una silla de madera (mirando hacia el respaldo), con piernas abiertas, torso levemente inclinado hacia adelante, brazos relajados apoyados sobre el respaldo, mirando directamente a cámara con expresión serena, tranquila y segura.
 
-The left half of the image is intentionally clear cobalt blue — this is where the text overlay will be applied later.
+APARIENCIA EXACTA (preservar sin excepción):
+• Complexión atlética delgada, proporciones naturales, rostro masculino realista
+• Barba corta bien definida, textura natural, crecimiento ligeramente irregular
+• Gorra verde lisa mate
+• Camiseta blanca con logo "AMTME" en azul y ícono de micrófono azul en el pecho — forma, tamaño, color y posición exactos
+• Jeans azules con textura auténtica y costuras visibles
+• Tenis blancos limpios con volumen y materiales realistas
+• Tatuaje visible en el brazo derecho del sujeto (lado izquierdo de la imagen), integrado naturalmente a la piel, siguiendo correctamente la anatomía del brazo
+• Mano derecha del sujeto apoyada sobre el respaldo; mano izquierda cayendo de forma natural al frente
+• Postura casual, estable y anatómicamente correcta
 
-MOOD: Premium editorial, like a GQ or Monocle magazine cover. Minimal. Confident. One subject, one background color, abundant breathing room.
+═══ COLORES AMTME — OBLIGATORIOS ═══
+• Fondo cobalt: #1A1AE6 — usado en piezas de feed, identitarias y portadas de episodio
+• Fondo negro: #0A0A0A — usado en Cover 1:1 Spotify y piezas introspectivas
+• El fondo es SÓLIDO, PLANO y LIMPIO — sin texturas, gradientes, patrones ni elementos extra
 
-WHAT IS NOT IN THIS IMAGE: No text. No labels. No episode numbers. No show name. No handle. No logos. No icons. No design charts. No color swatches. No multiple panels. No lorem ipsum. No mockup frames. Just the host and the cobalt background.`;
+═══ COMPOSICIÓN EDITORIAL ═══
+• El host ocupa la mitad DERECHA del canvas (X: 440–990px en canvas de 1080px de ancho)
+• La mitad IZQUIERDA (X: 90–540px) es la zona de texto: completamente DESPEJADA, solo el color de fondo — no colocar ningún elemento aquí
+• El borde izquierdo del host se funde SUAVEMENTE con el fondo (gradiente sutil, sin corte duro)
+• Los ojos del host están en el tercio superior de la imagen (Y: 220–360px)
+• El host nunca es tapado por texto ni elementos visuales
+• La figura del host es visible de cuerpo completo
+
+═══ ILUMINACIÓN Y CALIDAD ═══
+• Luz de estudio suave, difusa y frontal, ligeramente envolvente
+• Sombras blandas y coherentes debajo de la silla, piernas y tenis
+• Catchlight natural en los ojos
+• Exposición limpia, contraste moderado, balance de blancos neutro a ligeramente frío
+• Piel realista: poros sutiles, microtextura, variaciones tonales naturales
+• Manos y dedos anatómicamente correctos; uñas, nudillos y articulaciones reales
+• Madera de la silla con veta natural y tono cálido
+• Nitidez alta pero natural, sin sobreprocesado
+• Estética de cámara full-frame, lente 50–85mm, apertura f/4
+
+═══ TEXTO — ZONA RESERVADA ═══
+La zona izquierda del canvas (X: 90–540px) debe estar completamente libre de elementos visuales. Sobre esta zona, en post-producción, se superpondrán los textos del sistema editorial AMTME:
+• Dominante emocional: color #F2C84B (amarillo), tamaño máximo, peso ExtraBold
+• Secundario: color #F5F0E8 (cream), 72% del tamaño dominante
+• Firma inferior: "A MÍ TAMPOCO ME EXPLICARON", color #888888, tracking +40
+
+NO INCLUIR NINGÚN TEXTO, NÚMERO, LETRA, ÍCONO, LOGO NI ELEMENTO UI en la imagen generada. El texto se agrega programáticamente en post-producción. Cualquier texto en la imagen generada la hace inutilizable.
+
+═══ INSTRUCCIÓN DE CORRECCIÓN PRIORITARIA ═══
+Corregir cualquier defecto anatómico o de generación MANTENIENDO EXACTAMENTE la identidad del sujeto, la pose, la ropa, la silla, el encuadre y la composición general. Mejorar especialmente: manos, dedos, proporciones, textura de piel, definición de barba, integración del tatuaje, pliegues de la ropa, perspectiva de la silla, simetría facial natural, limpieza del fondo y calidad general. NO reinterpretar al sujeto, NO cambiar su rostro, NO modificar la ropa, NO alterar el estilo fotográfico.
+
+═══ NEGATIVOS ═══
+No caricatura, no ilustración, no anime, no render 3D, no CGI, no piel plástica, no exceso de suavizado, no sobreenfoque, no sobreprocesado, no manos deformes, no dedos extra, no dedos fusionados, no dedos cortados, no anatomía incorrecta, no brazos desproporcionados, no piernas asimétricas, no silla torcida, no perspectiva incorrecta, no tatuaje flotante, no logo alterado, no texto visible, no letras, no números, no UI elements, no íconos, no logos, no diseño gráfico, no cambio de ropa, no cambio de gorra, no cambio de expresión, no cambio de pose, no fondo diferente, no iluminación dramática, no color grading cinematográfico, no viñeta fuerte, no desenfoque artificial, no rostro cambiado, no identidad alterada, no composición desequilibrada, no duplicaciones, no elementos extra, no diseño de brand system, no swatches de color, no mockups.`;
 
 
 
