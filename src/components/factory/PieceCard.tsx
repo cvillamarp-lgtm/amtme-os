@@ -11,7 +11,8 @@ import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
-import { buildCompositeImage } from "@/lib/canvas-text-overlay";
+import { buildLocalComposite, buildCompositeImage } from "@/lib/canvas-text-overlay";
+import { env } from "@/lib/env";
 
 interface PieceCardProps {
   piece: VisualPiece;
@@ -43,6 +44,15 @@ export function PieceCard({
 
   useEffect(() => {
     if (!imageUrl) { setCompositeUrl(undefined); return; }
+
+    // Data URLs are already full composites (built by buildLocalComposite) — display directly.
+    // Remote URLs are legacy AI-generated bases that still need text overlaid.
+    if (imageUrl.startsWith("data:")) {
+      compositeRef.current = imageUrl;
+      setCompositeUrl(imageUrl);
+      return;
+    }
+
     buildCompositeImage(imageUrl, copyLines, piece, episodeInput.number)
       .then((url) => {
         compositeRef.current = url;
@@ -53,20 +63,34 @@ export function PieceCard({
   const generateImage = async () => {
     setGenerating(true);
     try {
-      const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
-      const data = await invokeEdgeFunction<{ imageUrl?: string }>(
-        "generate-image",
-        { prompt, hostReference: piece.hostReference, pieceId: piece.id, includeHost },
-        { timeoutMs: 120_000, maxRetries: 0 }
+      // Build the complete image locally — no AI call needed.
+      // Background color + host photo from Supabase Storage + all AMTME text layers.
+      const dataUrl = await buildLocalComposite(
+        piece,
+        copyLines,
+        episodeInput.number,
+        env.VITE_SUPABASE_URL,
       );
-      if (data?.imageUrl) {
-        onImageGenerated(piece.id, data.imageUrl, prompt);
-        toast.success(`Imagen generada: ${piece.shortName}`);
-      } else {
-        throw new Error("No se recibió imagen");
-      }
+      onImageGenerated(piece.id, dataUrl, "local-composite");
+      toast.success(`Imagen generada: ${piece.shortName}`);
     } catch (e: unknown) {
-      showEdgeFunctionError(e);
+      // Fallback to AI generation if local composite fails
+      try {
+        const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
+        const data = await invokeEdgeFunction<{ imageUrl?: string }>(
+          "generate-image",
+          { prompt, hostReference: piece.hostReference, pieceId: piece.id, includeHost },
+          { timeoutMs: 120_000, maxRetries: 0 }
+        );
+        if (data?.imageUrl) {
+          onImageGenerated(piece.id, data.imageUrl, prompt);
+          toast.success(`Imagen generada: ${piece.shortName}`);
+        } else {
+          throw new Error("No se recibió imagen");
+        }
+      } catch (e2: unknown) {
+        showEdgeFunctionError(e2);
+      }
     } finally {
       setGenerating(false);
     }

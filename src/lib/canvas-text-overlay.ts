@@ -383,7 +383,130 @@ function renderVariableContent(
   ctx.globalAlpha = 1;
 }
 
+// ─── Color helpers ────────────────────────────────────────────────────────────
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Returns background hex for a piece per §02 Instrucción Maestra. */
+function pieceBgColor(piece: VisualPiece): string {
+  // Only pieces explicitly marked "negro" get #0A0A0A.
+  // Everything else (cobalt / both / undefined) → #1A1AE6 Cobalt (color dominante).
+  return piece.backgroundVersion === "negro" ? "#0A0A0A" : "#1A1AE6";
+}
+
+/** Cover-fits an image inside (x, y, w, h), pinned toward the top so the face stays high. */
+function drawCoverRight(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number, y: number,
+  w: number, h: number,
+): void {
+  const imgRatio  = img.naturalWidth / img.naturalHeight;
+  const areaRatio = w / h;
+  let drawW: number, drawH: number, drawX: number, drawY: number;
+
+  if (imgRatio > areaRatio) {
+    // Image wider than area → fit by height, pin left edge of host zone
+    drawH = h; drawW = h * imgRatio;
+    drawX = x; drawY = y;
+  } else {
+    // Image taller → fit by width, pin top so face stays in upper third
+    drawW = w; drawH = w / imgRatio;
+    drawX = x; drawY = Math.max(0, (h - drawH) * 0.05);
+  }
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * LOCAL COMPOSITE — no AI required.
+ *
+ * Builds the complete piece image entirely in-browser:
+ *   1. Solid background per §02 (#1A1AE6 cobalt or #0A0A0A negro)
+ *   2. Host reference photo from Supabase Storage, positioned on the right
+ *   3. Soft gradient blend where the host meets the background
+ *   4. Variable copy (dominant L1, secondary L2, tertiary L3, CTA L5)
+ *   5. Fixed brand block (§06): PODCAST · Ep. XX · Spotify · Apple · CHRISTIAN VILLAMAR
+ *
+ * Returns a PNG data URL ready to display and store.
+ * Falls back gracefully if the host photo cannot be loaded.
+ */
+export async function buildLocalComposite(
+  piece: VisualPiece,
+  copyLines: string[],
+  episodeNumber: string,
+  supabaseUrl: string,
+): Promise<string> {
+  const W   = piece.width;
+  const H   = piece.height;
+  const bg  = pieceBgColor(piece);
+
+  const canvas = document.createElement("canvas");
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2D context");
+
+  // ── 1. Solid background ───────────────────────────────────────────────────
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 2. Host photo ─────────────────────────────────────────────────────────
+  const hostUrl    = `${supabaseUrl}/storage/v1/object/public/generated-images/host-${piece.hostReference}.png`;
+  let   hostLoaded = false;
+
+  try {
+    const resp      = await fetch(hostUrl);
+    const blob      = await resp.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    try {
+      const hostImg = new Image();
+      await new Promise<void>((res, rej) => {
+        hostImg.onload  = () => res();
+        hostImg.onerror = () => rej(new Error("host load"));
+        hostImg.src     = objectUrl;
+      });
+
+      // Host zone: right 58% of canvas (text occupies left 50%, slight overlap per spec)
+      const hostZoneX = Math.round(W * 0.40);
+      const hostZoneW = W - hostZoneX;
+      drawCoverRight(ctx, hostImg, hostZoneX, 0, hostZoneW, H);
+      hostLoaded = true;
+
+      // ── 3. Gradient blend — background fades in over the host's left edge ──
+      const fadeStart = hostZoneX - Math.round(W * 0.05);
+      const fadeEnd   = hostZoneX + Math.round(W * 0.18);
+      const grad      = ctx.createLinearGradient(fadeStart, 0, fadeEnd, 0);
+      grad.addColorStop(0,   bg);                      // fully opaque background
+      grad.addColorStop(1,   hexToRgba(bg, 0));        // transparent (host shows through)
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, fadeEnd, H);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch {
+    // Host photo unavailable — solid background still shows, text still renders
+    void hostLoaded;
+  }
+
+  // ── 4 & 5. Text layers ────────────────────────────────────────────────────
+  renderVariableContent(ctx, copyLines, W, H, episodeNumber);
+  renderFixedBrandBlock(ctx, W, H, episodeNumber);
+
+  return canvas.toDataURL("image/png");
+}
+
+/**
+ * COMPOSITE ON TOP OF EXISTING IMAGE (legacy / AI-generated bases).
+ * Fetches `baseImageUrl`, draws it, then overlays AMTME text.
+ * Falls back to the original URL on any error.
+ */
 export async function buildCompositeImage(
   baseImageUrl: string,
   copyLines: string[],
@@ -391,7 +514,7 @@ export async function buildCompositeImage(
   episodeNumber: string,
 ): Promise<string> {
   try {
-    const resp = await fetch(baseImageUrl);
+    const resp      = await fetch(baseImageUrl);
     if (!resp.ok) throw new Error(`Fetch ${resp.status}`);
     const blob      = await resp.blob();
     const objectUrl = URL.createObjectURL(blob);
@@ -403,7 +526,6 @@ export async function buildCompositeImage(
       const ctx     = canvas.getContext("2d");
       if (!ctx) throw new Error("No 2D context");
 
-      // 1. Draw AI-generated base image (background + host)
       const img = new Image();
       await new Promise<void>((res, rej) => {
         img.onload  = () => res();
@@ -412,10 +534,7 @@ export async function buildCompositeImage(
       });
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // 2. Variable content (dominant, secondary, CTA) from copyLines
       renderVariableContent(ctx, copyLines, piece.width, piece.height, episodeNumber);
-
-      // 3. Fixed brand identity block — ALWAYS the same in every image
       renderFixedBrandBlock(ctx, piece.width, piece.height, episodeNumber);
 
       return canvas.toDataURL("image/png");
