@@ -1,8 +1,9 @@
+import React from "react";
 import {
   Home, Mic, Factory, BarChart3, ListTodo, LogOut,
   Lightbulb, Send, FlaskConical, Users, Sun, Moon,
   AudioWaveform, BookOpen, StickyNote, Layers, DollarSign,
-  CalendarDays, FileText, Wand2, Palette, Brush, ImagePlay, BookMarked,
+  CalendarDays, FileText, Wand2, Palette, Brush, ImagePlay, BookMarked, Globe2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -25,7 +26,7 @@ import {
 interface NavItem {
   label: string;
   url: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   badgeKey?: "pendingTasks" | "pendingAssets";
 }
 
@@ -46,7 +47,7 @@ const distributeNav: NavItem[] = [
   { label: "Publicaciones", url: "/publications", icon: Send },
   { label: "Calendario",    url: "/calendar",     icon: CalendarDays },
   { label: "Audio",         url: "/audio",        icon: AudioWaveform },
-  { label: "Cuentas",       url: "/accounts",     icon: Users },
+  { label: "Cuentas",       url: "/accounts",     icon: Globe2 },
   { label: "Invitados",     url: "/guests",       icon: Users },
   { label: "Patrocinadores",url: "/sponsors",     icon: DollarSign },
   { label: "Tareas",        url: "/tasks",        icon: ListTodo, badgeKey: "pendingTasks" },
@@ -200,7 +201,7 @@ export function AppSidebar() {
 
         <button
           onClick={() => supabase.auth.signOut()}
-          className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-[8px] text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-all duration-150"
+          className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-[8px] text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
         >
           <LogOut className="h-4 w-4 shrink-0 opacity-70" />
           {!collapsed && (

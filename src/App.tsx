@@ -62,6 +62,13 @@ const VisualOS        = lazyWithRecovery(() => import("./pages/visual-os/VisualO
 const VisualEpisode   = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
 const VisualPiece     = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
 const VisualTemplates = lazyWithRecovery(() => import("./pages/visual-os/VisualTemplates"));
+const VisualOSEditor  = lazyWithRecovery(() => import("./pages/VisualOSEditorPage"));
+
+// ── Script Engine ─────────────────────────────────────────────────────────────
+const ScriptEngineIngesta  = lazyWithRecovery(() => import("./pages/ScriptEngineIngesta"));
+const ScriptEngineClean    = lazyWithRecovery(() => import("./pages/ScriptEngineClean"));
+const ScriptEngineSemantico = lazyWithRecovery(() => import("./pages/ScriptEngineSemantico"));
+const ScriptEngineOutputs  = lazyWithRecovery(() => import("./pages/ScriptEngineOutputs"));
 
 // ── QueryClient ───────────────────────────────────────────────────────────────
 const queryClient = new QueryClient({
@@ -243,6 +250,13 @@ const App = () => (
                         <Route path="/visual/templates"                               element={<R C={VisualTemplates} />} />
                         <Route path="/visual/episode/:episodeId"                      element={<R C={VisualEpisode} />} />
                         <Route path="/visual/episode/:episodeId/piece/:pieceId"       element={<R C={VisualPiece} />} />
+                        <Route path="/visual/editor/:semanticMapId"                   element={<R C={VisualOSEditor} />} />
+
+                        {/* Script Engine */}
+                        <Route path="/script-engine/ingesta"                          element={<R C={ScriptEngineIngesta} />} />
+                        <Route path="/script-engine/clean/:rawInputId"                element={<R C={ScriptEngineClean} />} />
+                        <Route path="/script-engine/semantico/:cleanedTextId"         element={<R C={ScriptEngineSemantico} />} />
+                        <Route path="/script-engine/outputs/:semanticMapId"           element={<R C={ScriptEngineOutputs} />} />
 
                         <Route path="*" element={<R C={NotFound} />} />
                       </Routes>

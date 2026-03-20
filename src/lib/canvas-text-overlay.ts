@@ -1,619 +1,380 @@
 /**
- * AMTME Canvas Text Overlay — Visual OS v2 (VOSPalette)
- * ────────────────────────────────────────────────────────
- * Renders every piece image entirely in-browser:
- *   1. Solid background  (#193497 cobalt | #282828 ink)
- *   2. Host photo        (from Supabase Storage, right half)
- *   3. Gradient blend    (background fades into host edge)
- *   4. Variable content  (dominant L1 · secondary L2 · tertiary L3 · CTA L5)
- *   5. Fixed brand block (§06 — PODCAST · Ep. · Spotify · Apple · host name)
- *
- * Palette updated to VOS spec:
- *   INK #282828 · PAPER #F9F6EF · COBALT #193497 · GREEN #EAFF00
- * Text is NEVER rendered by AI — canvas guarantees 100% accuracy.
+ * AMTME Canvas Rendering Engine
+ * Visual OS − Renderizado de piezas visuales
+ * Instrucción Maestra §07–§09: Color, figura humana, sombra, subrayado, safe zones
  */
 
-import type { VisualPiece } from "@/lib/visual-templates";
+import { Palette } from "@/lib/design-utils";
 
-// ─── VOS Palette (Instrucción Maestra v2) ────────────────────────────────────
-const P = {
-  cobalt:  "#193497",   // Azul primario — fondo feed
-  ink:     "#282828",   // Negro editorial — fondo introspectivo (NOT pure black)
-  green:   "#EAFF00",   // Highlighter microacento — L1 dominante
-  paper:   "#F9F6EF",   // Crema editorial — L2 · L3 · L5 CTA (NOT pure white)
-  gray:    "#9A9A9A",   // Texto secundario apagado
-  muted:   "#666666",   // Firma / metadatos
-  white:   "#FFFFFF",
-  spotify: "#1DB954",
-  apple:   "#FC3C44",
+export interface CanvasRenderConfig {
+  width: number;
+  height: number;
+  palette: Palette;
+  hostImage?: "REF_1" | "REF_2" | "none";
+  keyword: string;
+  headline: string;
+  subheadline?: string;
+  bodyText?: string;
+  cta?: string;
+  episodeBadge?: string;
+}
+
+export const TYPOGRAPHY = {
+  display: { font: "Montserrat", weight: 900, baseSize: 96 },
+  headline: { font: "Montserrat", weight: 700, baseSize: 80 },
+  quote: { font: "Playfair Display", weight: 700, baseSize: 56 },
+  ui: { font: "Inter", weight: 400, baseSize: 11, weights: { regular: 400, medium: 500, semibold: 600 } },
 } as const;
 
-// ─── 3-Level Typographic Hierarchy (VOS spec §03) ────────────────────────────
-// Base (dominant) = 8.5% of canvas width → ~92px on 1080px
-const DOM_RATIO = 0.085;
-
-interface Level {
-  scale:      number;   // relative to dominant base (1.0 = 100%)
-  weight:     number;   // CSS font-weight
-  color:      string;
-  opacity:    number;
-  tracking:   number;   // letter-spacing in px (at full resolution)
-  leading:    number;   // line-height multiplier
+export interface SafeZone {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-const LEVELS: Level[] = [
-  // L1 — Dominante  100% · 900 · #EAFF00 · tracking –0.5 · leading 0.90
-  { scale: 1.00, weight: 900, color: P.green,  opacity: 1.00, tracking: -0.5, leading: 0.90 },
-  // L2 — Secundario  72% · 700 · #F9F6EF · tracking +1.0 · leading 1.05
-  { scale: 0.72, weight: 700, color: P.paper,  opacity: 1.00, tracking:  1.0, leading: 1.05 },
-  // L3 — Terciario   60% · 500 · #F9F6EF · tracking +1.2 · leading 1.05
-  { scale: 0.60, weight: 500, color: P.paper,  opacity: 1.00, tracking:  1.2, leading: 1.05 },
-  // L4 — Subtítulo   52% · 400 · #9A9A9A · tracking +1.5 · op 0.90
-  { scale: 0.52, weight: 400, color: P.gray,   opacity: 0.90, tracking:  1.5, leading: 1.05 },
-  // L5 — CTA         45% · 500 · #F9F6EF · tracking +2.5 · op 0.90
-  { scale: 0.45, weight: 500, color: P.paper,  opacity: 0.90, tracking:  2.5, leading: 1.05 },
-  // L6 — Firma       38% · 400 · #666666 · tracking +3.5 · op 0.85
-  { scale: 0.38, weight: 400, color: P.muted,  opacity: 0.85, tracking:  3.5, leading: 1.10 },
-];
-
-// ─── Y-Anchors §04-D ─────────────────────────────────────────────────────────
-// Absolute pixel values from the spec (1080×1350 reference).
-// Scaled proportionally for other canvas heights.
-function getAnchors(H: number) {
-  // Reference: 1080×1350 spec (all values in px)
-  const ref = { H: 1350, header: 170, secondary: 340, dominant: 480, cta: 820, footer: 1100 };
-  const r   = H / ref.H;
-  return {
-    header:    Math.round(ref.header    * r),  // G1 metadatos
-    secondary: Math.round(ref.secondary * r),  // L2 above dominant (§04-D)
-    dominant:  Math.round(ref.dominant  * r),  // L1 titular
-    cta:       Math.round(ref.cta       * r),  // G3 CTA
-    footer:    Math.round(ref.footer    * r),  // G4 logos + firma
-  };
+export function calculateSafeZone(width: number, height: number): SafeZone {
+  const padding = 80;
+  return { x: padding, y: padding, width: width - padding * 2, height: height - padding * 2 };
 }
 
-// ─── Safe Zones §01-C ────────────────────────────────────────────────────────
-function getSafeZone(W: number, H: number) {
-  const xMargin = Math.round(W * 0.083);             // 90px on 1080px
-  const yMargin = H <= 1080 ? Math.round(H * 0.083)
-                : H <= 1350 ? Math.round(H * 0.089)
-                :             Math.round(H * 0.130);
-  return {
-    x:        xMargin,
-    y:        yMargin,
-    maxX:     W - xMargin,
-    maxY:     H - yMargin,
-    textMaxX: Math.round(W * 0.50),               // text zone = left 50%
-  };
-}
-
-// ─── Professional background treatment ───────────────────────────────────────
-/**
- * Draws the editorial depth stack on top of the solid base color:
- *   1. Radial light source — upper-left origin, subtle brightening
- *   2. Edge vignette — cinematic darkening at corners
- *   3. Film grain — tiled noise at ~7 % opacity (editorial, non-stock)
- *
- * All effects are within VOS spec (no glow, no dramatic shadows, no loud gradients).
- */
-function drawProfessionalBg(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-): void {
-  // ── 1. Radial light source (upper-left) ────────────────────────────────────
-  const radial = ctx.createRadialGradient(
-    W * 0.22, H * 0.24, 0,         // focal point: upper-left text zone
-    W * 0.50, H * 0.52, W * 1.05,  // outer radius wider than canvas
-  );
-  radial.addColorStop(0.00, "rgba(255,255,255,0.09)");  // light source
-  radial.addColorStop(0.40, "rgba(255,255,255,0.00)");  // transparent falloff
-  radial.addColorStop(1.00, "rgba(0,0,0,0.28)");        // opposite corner darkening
-  ctx.fillStyle = radial;
-  ctx.fillRect(0, 0, W, H);
-
-  // ── 2. Edge vignette ───────────────────────────────────────────────────────
-  const vignette = ctx.createRadialGradient(
-    W * 0.50, H * 0.50, H * 0.25,   // inner bright zone
-    W * 0.50, H * 0.50, H * 0.95,   // outer dark rim
-  );
-  vignette.addColorStop(0, "rgba(0,0,0,0.00)");
-  vignette.addColorStop(1, "rgba(0,0,0,0.42)");
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, W, H);
-
-  // ── 3. Editorial grain ────────────────────────────────────────────────────
-  // Tile a 256 × 256 noise canvas so large images stay fast
-  const GRAIN_SIZE = 256;
-  const gc = document.createElement("canvas");
-  gc.width  = GRAIN_SIZE;
-  gc.height = GRAIN_SIZE;
-  const gctx = gc.getContext("2d");
-  if (gctx) {
-    const gd = gctx.createImageData(GRAIN_SIZE, GRAIN_SIZE);
-    for (let i = 0; i < gd.data.length; i += 4) {
-      const v           = (Math.random() * 90) | 0;   // 0–90 noise
-      gd.data[i]     = v;
-      gd.data[i + 1] = v;
-      gd.data[i + 2] = v;
-      gd.data[i + 3] = 22;                           // ~8.5 % opacity — very subtle
-    }
-    gctx.putImageData(gd, 0, 0);
-    const pat = ctx.createPattern(gc, "repeat");
-    if (pat) {
-      const prev = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = "overlay";      // grain brightens light, darkens dark
-      ctx.fillStyle = pat;
-      ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = prev;
-    }
+export function removeBlackBackground(imageData: ImageData, paletteIsDarkBg: boolean): ImageData {
+  if (paletteIsDarkBg) return imageData;
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const luminance = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    if (luminance < 20) data[i + 3] = 0;
   }
+  return imageData;
 }
 
-/**
- * Draws a thin #EAFF00 accent line (filete) before the dominant text block.
- * 60 px wide · 2 px tall — microacento editorial, 1 element per spec.
- */
-function drawAccentRule(
+export function drawLongShadow(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-): void {
+  width: number,
+  height: number,
+  bgColor: string
+) {
+  const rgb = parseInt(bgColor.slice(1), 16);
+  const r = ((rgb >> 16) & 0xff) * 0.65;
+  const g = ((rgb >> 8) & 0xff) * 0.65;
+  const b = (rgb & 0xff) * 0.65;
+  const shadowColor = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.5)`;
+
   ctx.save();
-  ctx.globalAlpha = 0.90;
-  ctx.fillStyle   = P.green;
-  ctx.fillRect(x, y, 52, 2);
+  ctx.fillStyle = shadowColor;
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = `rgba(0, 0, 0, 0.3)`;
+  ctx.beginPath();
+  ctx.ellipse(x + width / 2, y + height + 20, width * 0.7, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
-// ─── Gestalt spacing §04-B ────────────────────────────────────────────────────
-const G = {
-  groupGap:    44,   // min px between groups (Gestalt Proximity)
-  intraGap:    10,   // px within a group
-  airBefore:   20,   // breathing before dominant
-  airAfterDom: 36,   // extra gap after dominant (dominant isolation)
-} as const;
-
-// ─── Line utilities ───────────────────────────────────────────────────────────
-/** Returns true if a line is a template placeholder like "[TERCIARIO — CREAM]". */
-const isPlaceholder = (l: string) => /^\[.+\]$/.test(l.trim());
-
-/** Returns true if a line is the fixed podcast name (used in footer, not header). */
-const isPodcastName = (l: string) =>
-  /^A\s+M[IÍ]\s+TAMPOCO\s+ME\s+EXPLICARON$/i.test(l.trim());
-
-type LineRole = "meta_top" | "content" | "cta" | "episode" | "handle" | "signature" | "empty";
-
-function classifyLine(raw: string): LineRole {
-  const u = raw.trim().toUpperCase();
-  if (!u || isPlaceholder(raw)) return "empty";
-  if (u.startsWith("@"))                                return "handle";
-  if (/^(CHRISTIAN VILLAMAR|SPOTIFY|APPLE PODCAST)/.test(u)) return "signature";
-  if (/^EP[\s.]/.test(u) || /^\d{1,2}\s*[—-]/.test(u) || /^\d{2}$/.test(u)) return "episode";
-  if (/^(NUEVO EPISODIO|EPISODIO NUEVO|PODCAST)/.test(u))    return "meta_top";
-  if (/^(ESC[ÚU]CHALO|GU[ÁA]RDALO|COMP[ÁA]RTELO|ESCUCHA EL|S[IÍ]GUENOS|NUEVO EP)/.test(u)) return "cta";
-  // "A MÍ TAMPOCO ME EXPLICARON" is a signature/footer line, NOT a header trigger
-  if (isPodcastName(raw))                                    return "signature";
-  return "content";
+export interface UnderlineConfig {
+  x: number;
+  y: number;
+  width: number;
+  color: string;
+  thickness: number;
+  borderRadius: number;
+  gap: number;
 }
 
-type GroupRole = "header" | "content" | "cta_block" | "footer";
-interface Group { role: GroupRole; lines: string[] }
-
-function parseGroups(lines: string[]): Group[] {
-  // Split into non-empty blocks separated by blank/placeholder lines
-  const blocks: string[][] = [];
-  let cur: string[] = [];
-  for (const l of lines) {
-    if (!l.trim() || isPlaceholder(l)) {
-      if (cur.length) { blocks.push(cur); cur = []; }
-    } else {
-      cur.push(l);
-    }
-  }
-  if (cur.length) blocks.push(cur);
-
-  const FOOTER_ROLES: LineRole[] = ["episode", "handle", "signature", "empty", "meta_top"];
-  const CTA_ROLES:    LineRole[] = ["cta", "episode", "handle", "signature"];
-
-  return blocks.map((block): Group => {
-    const roles = block.map(classifyLine);
-
-    // Header: first line is explicitly a meta_top trigger (NUEVO EPISODIO / PODCAST)
-    if (roles[0] === "meta_top") return { role: "header", lines: block };
-
-    // Footer: all lines are non-content (episode, handle, signature, podcast name)
-    if (roles.every(r => FOOTER_ROLES.includes(r))) return { role: "footer", lines: block };
-
-    // CTA block: has a CTA line but no raw content lines
-    if (roles.some(r => r === "cta") && !roles.some(r => r === "content"))
-      return { role: "cta_block", lines: block };
-
-    // Mixed CTA+footer (e.g. "ESCÚCHALO HOY · EP. 29 · @handle")
-    if (roles.every(r => CTA_ROLES.includes(r))) return { role: "cta_block", lines: block };
-
-    // Default: content block (dominant + secondary + tertiary)
-    return { role: "content", lines: block };
-  });
+export function drawUnderline(ctx: CanvasRenderingContext2D, config: UnderlineConfig) {
+  ctx.save();
+  ctx.fillStyle = config.color;
+  ctx.fillRect(config.x, config.y + config.gap, config.width, config.thickness);
+  ctx.restore();
 }
 
-// ─── Canvas helpers ───────────────────────────────────────────────────────────
-function setLevel(ctx: CanvasRenderingContext2D, lv: Level, basePx: number) {
-  const sz = Math.round(basePx * lv.scale);
-  ctx.font        = `${lv.weight} ${sz}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.fillStyle   = lv.color;
-  ctx.globalAlpha = lv.opacity;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = `${lv.tracking}px`;
-}
-
-/** Word-wraps text, returns line count rendered. */
-function wrapText(
+export async function drawHostImage(
   ctx: CanvasRenderingContext2D,
-  text: string, x: number, y: number, maxW: number, lineH: number,
-): number {
-  const words = text.split(" ");
-  let line = ""; let rows = 0;
-  for (const w of words) {
-    const candidate = line ? `${line} ${w}` : w;
-    if (ctx.measureText(candidate).width > maxW && line) {
-      ctx.fillText(line, x, y + rows * lineH); line = w; rows++;
-    } else { line = candidate; }
-  }
-  if (line) { ctx.fillText(line, x, y + rows * lineH); rows++; }
-  return rows;
-}
+  hostImage: "REF_1" | "REF_2" | "none" | undefined,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  paletteIsDarkBg: boolean
+) {
+  if (!hostImage || hostImage === "none") return;
 
-// ─── Font preloading ──────────────────────────────────────────────────────────
-async function preloadFonts(basePx: number) {
-  if (typeof document === "undefined") return;
   try {
-    const sizes = [
-      Math.round(basePx * 1.00),  // L1
-      Math.round(basePx * 0.72),  // L2
-      Math.round(basePx * 0.45),  // L5
-      Math.round(basePx * 0.38),  // L6
-    ];
-    await Promise.allSettled([
-      ...sizes.map(s => document.fonts.load(`900 ${s}px Inter`)),
-      ...sizes.map(s => document.fonts.load(`700 ${s}px Inter`)),
-      ...sizes.map(s => document.fonts.load(`400 ${s}px Inter`)),
-    ]);
-  } catch { /* non-critical */ }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error(`Failed to load host image`));
+      img.src = `/host/${hostImage}.png`;
+    });
+
+    ctx.save();
+    if (!paletteIsDarkBg) {
+      ctx.drawImage(img, x, y, width, height);
+      const imageData = ctx.getImageData(x, y, width, height);
+      const cleaned = removeBlackBackground(imageData, false);
+      ctx.putImageData(cleaned, x, y);
+    } else {
+      ctx.globalCompositeOperation = "screen";
+      ctx.drawImage(img, x, y, width, height);
+    }
+    drawLongShadow(ctx, x, y, width, height, "");
+    ctx.restore();
+  } catch (error) {
+    console.error("Error drawing host image:", error);
+  }
 }
 
-// ─── Platform logo drawers ────────────────────────────────────────────────────
-function drawSpotify(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.save(); ctx.globalAlpha = 1;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = P.spotify; ctx.fill();
-  ctx.strokeStyle = P.white; ctx.lineCap = "round";
-  for (const [yOff, spread] of [[-0.20, 0.60], [0.00, 0.45], [0.18, 0.30]] as [number, number][]) {
-    ctx.lineWidth = r * 0.17;
+export function drawText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  config: { font: string; size: number; weight: number; color: string; align?: CanvasTextAlign }
+) {
+  ctx.save();
+  ctx.font = `${config.weight} ${config.size}px "${config.font}"`;
+  ctx.fillStyle = config.color;
+  ctx.textAlign = config.align || "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(text, x, y, maxWidth);
+  ctx.restore();
+}
+
+export async function renderCanvas(
+  canvas: HTMLCanvasElement,
+  config: CanvasRenderConfig
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not get canvas context");
+
+  canvas.width = config.width;
+  canvas.height = config.height;
+
+  const palette = config.palette;
+  const safeZone = calculateSafeZone(config.width, config.height);
+  const isDarkBg = palette.bg.toLowerCase() !== "#f0eee6";
+
+  ctx.fillStyle = palette.bg;
+  ctx.fillRect(0, 0, config.width, config.height);
+
+  if (config.hostImage && config.hostImage !== "none") {
+    const hostWidth = Math.round(config.width * 0.45);
+    const hostX = config.width - hostWidth;
+    await drawHostImage(ctx, config.hostImage, hostX, 0, hostWidth, config.height, isDarkBg);
+  }
+
+  const contentX = safeZone.x;
+  let contentY = safeZone.y + 150;
+
+  if (config.headline) {
+    drawText(ctx, config.headline, contentX, contentY, safeZone.width, {
+      font: TYPOGRAPHY.headline.font,
+      size: TYPOGRAPHY.headline.baseSize,
+      weight: TYPOGRAPHY.headline.weight,
+      color: palette.text,
+    });
+    contentY += TYPOGRAPHY.headline.baseSize + 30;
+  }
+
+  if (config.keyword) {
+    drawText(ctx, config.keyword, contentX, contentY, safeZone.width, {
+      font: TYPOGRAPHY.display.font,
+      size: TYPOGRAPHY.display.baseSize,
+      weight: TYPOGRAPHY.display.weight,
+      color: palette.accent,
+    });
+
+    drawUnderline(ctx, {
+      x: contentX,
+      y: contentY + TYPOGRAPHY.display.baseSize,
+      width: Math.min(ctx.measureText(config.keyword).width, safeZone.width),
+      color: palette.accent,
+      thickness: 4,
+      borderRadius: 2,
+      gap: 4,
+    });
+
+    contentY += TYPOGRAPHY.display.baseSize + 50;
+  }
+
+  if (config.subheadline) {
+    ctx.fillStyle = palette.text;
+    ctx.globalAlpha = 0.8;
+    drawText(ctx, config.subheadline, contentX, contentY, safeZone.width, {
+      font: TYPOGRAPHY.ui.font,
+      size: 18,
+      weight: TYPOGRAPHY.ui.weights.regular,
+      color: palette.text,
+    });
+    ctx.globalAlpha = 1.0;
+    contentY += 50;
+  }
+
+  if (config.cta) {
+    const ctaWidth = 220;
+    const ctaHeight = 44;
+    ctx.fillStyle = palette.accent;
+    ctx.fillRect(contentX, contentY, ctaWidth, ctaHeight);
+    ctx.fillStyle = palette.bg;
+    ctx.font = `${TYPOGRAPHY.ui.weights.semibold} 16px "${TYPOGRAPHY.ui.font}"`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(config.cta, contentX + ctaWidth / 2, contentY + ctaHeight / 2);
+  }
+
+  if (config.episodeBadge) {
+    const badgeX = config.width - safeZone.x - 60;
+    const badgeY = safeZone.y;
+    ctx.strokeStyle = palette.accent;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(badgeX, badgeY, 60, 20);
+    ctx.fillStyle = palette.text;
+    ctx.globalAlpha = 0.4;
+    ctx.font = `${TYPOGRAPHY.ui.weights.semibold} 10px "${TYPOGRAPHY.ui.font}"`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(config.episodeBadge, badgeX + 30, badgeY + 10);
+    ctx.globalAlpha = 1.0;
+  }
+}
+
+export function drawSafeZoneOverlay(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  color = "#E4F542",
+  opacity = 0.2
+) {
+  const safeZone = calculateSafeZone(width, height);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = opacity;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(safeZone.x, safeZone.y, safeZone.width, safeZone.height);
+  ctx.restore();
+}
+
+export function drawGridOverlay(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  columns = 12,
+  color = "#E4F542",
+  opacity = 0.06
+) {
+  const columnWidth = width / columns;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = opacity;
+  ctx.lineWidth = 1;
+  for (let i = 1; i < columns; i++) {
+    const x = i * columnWidth;
     ctx.beginPath();
-    ctx.arc(cx, cy + r * yOff + r * spread * 0.4, r * spread, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
     ctx.stroke();
   }
   ctx.restore();
 }
 
-function drawApple(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  ctx.save(); ctx.globalAlpha = 1;
-  const [s, lft, top, cur] = [r * 2, cx - r, cy - r, r * 0.40];
-  ctx.beginPath();
-  ctx.moveTo(lft + cur, top);
-  ctx.lineTo(lft + s - cur, top); ctx.quadraticCurveTo(lft + s, top, lft + s, top + cur);
-  ctx.lineTo(lft + s, top + s - cur); ctx.quadraticCurveTo(lft + s, top + s, lft + s - cur, top + s);
-  ctx.lineTo(lft + cur, top + s); ctx.quadraticCurveTo(lft, top + s, lft, top + s - cur);
-  ctx.lineTo(lft, top + cur); ctx.quadraticCurveTo(lft, top, lft + cur, top);
-  ctx.closePath(); ctx.fillStyle = P.apple; ctx.fill();
-  ctx.fillStyle = P.white;
-  ctx.beginPath(); ctx.arc(cx, cy - r * 0.12, r * 0.28, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = P.white; ctx.lineWidth = r * 0.14; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(cx, cy + r * 0.18); ctx.lineTo(cx, cy + r * 0.50); ctx.stroke();
-  ctx.lineWidth = r * 0.12;
-  for (const sp of [0.55, 0.40]) {
-    ctx.beginPath(); ctx.arc(cx, cy - r * 0.12, r * sp, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
-  }
-  ctx.restore();
-}
-
-// ─── Fixed brand block §06 ────────────────────────────────────────────────────
-function renderFixedBlock(
-  ctx: CanvasRenderingContext2D, W: number, H: number, epNum: string, basePx: number,
-) {
-  const safe   = getSafeZone(W, H);
-  const anchors = getAnchors(H);
-  const lv6    = LEVELS[5];
-  const sz6    = Math.round(basePx * lv6.scale);
-  const lh6    = Math.round(sz6 * lv6.leading);
-  const logoR  = Math.round(sz6 * 0.52);
-  const gap    = Math.round(sz6 * 0.42);
-
-  const blockH = lh6 * 4 + G.intraGap * 3;
-  let y = Math.max(anchors.footer, safe.maxY - blockH);
-
-  // ── Footer scrim — semi-transparent gradient so brand block reads over photo ─
-  const scrimTop  = y - lh6 * 2;
-  const scrimGrad = ctx.createLinearGradient(0, scrimTop, 0, H);
-  scrimGrad.addColorStop(0, "rgba(0,0,0,0.00)");
-  scrimGrad.addColorStop(1, "rgba(0,0,0,0.55)");
-  ctx.fillStyle = scrimGrad;
-  ctx.fillRect(0, scrimTop, W, H - scrimTop);
-
-  ctx.textAlign    = "left";
-  ctx.textBaseline = "alphabetic";
-
-  // Row 1 — PODCAST tag
-  ctx.font        = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = lv6.opacity;
-  ctx.fillStyle   = lv6.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
-  ctx.fillText("PODCAST", safe.x, y);
-  y += lh6 + G.intraGap;
-
-  // Row 2 — Ep. XX — A MÍ TAMPOCO ME EXPLICARON
-  ctx.font        = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = lv6.opacity; ctx.fillStyle = lv6.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
-  ctx.fillText(`Ep. ${epNum}  —  A MÍ TAMPOCO ME EXPLICARON`, safe.x, y);
-  y += lh6 + G.intraGap;
-
-  // Row 3 — Platform logos
-  const labelY = y;
-  drawSpotify(ctx, safe.x + logoR, labelY - logoR * 0.75, logoR);
-  ctx.font = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = lv6.opacity; ctx.fillStyle = lv6.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
-  ctx.fillText("SPOTIFY", safe.x + logoR * 2 + gap, labelY);
-  const spotW = ctx.measureText("SPOTIFY").width;
-  const appleX = safe.x + logoR * 2 + gap + spotW + Math.round(sz6 * 1.4);
-  drawApple(ctx, appleX + logoR, labelY - logoR * 0.75, logoR);
-  ctx.globalAlpha = lv6.opacity; ctx.fillStyle = lv6.color;
-  ctx.fillText("APPLE PODCASTS", appleX + logoR * 2 + gap, labelY);
-  y += lh6 + G.intraGap;
-
-  // Row 4 — CHRISTIAN VILLAMAR
-  ctx.font = `${lv6.weight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
-  ctx.globalAlpha = 0.85;
-  ctx.fillStyle   = lv6.color;
-  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3px";
-  ctx.fillText("CHRISTIAN VILLAMAR", safe.x, y);
-  ctx.globalAlpha = 1;
-}
-
-// ─── Variable content renderer ────────────────────────────────────────────────
-function renderContent(
-  ctx: CanvasRenderingContext2D, copyLines: string[], W: number, H: number,
-  epNum: string, basePx: number,
-) {
-  const safe    = getSafeZone(W, H);
-  const anchors = getAnchors(H);
-  const textW   = safe.textMaxX - safe.x;
-
-  const resolved = copyLines.map(l =>
-    l.replace(/\bXX\b/gi, epNum).replace(/\bEP\.\s*XX\b/gi, `Ep. ${epNum}`)
-  );
-  const groups = parseGroups(resolved);
-
-  ctx.textAlign    = "left";
-  ctx.textBaseline = "alphabetic";
-
-  // ── G1: Header (NUEVO EPISODIO / PODCAST tag from copy) ──────────────────
-  const header = groups.find(g => g.role === "header");
-  if (header) {
-    setLevel(ctx, LEVELS[5], basePx);
-    const sz = Math.round(basePx * LEVELS[5].scale);
-    let y    = anchors.header;
-    for (const line of header.lines) {
-      ctx.fillText(line.toUpperCase(), safe.x, y);
-      y += Math.round(sz * LEVELS[5].leading) + G.intraGap;
-    }
-  }
-
-  // ── G2: Content (L1 dominant → L2 secondary → L3 tertiary) ──────────────
-  const content = groups.find(g => g.role === "content");
-  if (content) {
-    const lines = content.lines.filter(l => l.trim() && !isPlaceholder(l));
-    let yDom = anchors.dominant;
-
-    lines.forEach((line, idx) => {
-      const lvIdx = Math.min(idx, 2);        // cap at L3
-      const lv    = LEVELS[lvIdx];
-      const sz    = Math.round(basePx * lv.scale);
-      const lh    = Math.round(sz * lv.leading);
-
-      setLevel(ctx, lv, basePx);
-
-      if (idx === 0) {
-        // Green accent filete (§ microacento) — 12px above dominant
-        drawAccentRule(ctx, safe.x, yDom + G.airBefore - 20);
-
-        // Dominant: subtle text shadow for depth (not dramatic — spec compliant)
-        yDom += G.airBefore;
-        ctx.save();
-        ctx.shadowColor   = "rgba(0,0,0,0.55)";
-        ctx.shadowBlur    = 14;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 3;
-        const rows = wrapText(ctx, line.toUpperCase(), safe.x, yDom, textW, lh);
-        ctx.restore();  // clears shadow for subsequent text
-        yDom += rows * lh + G.airAfterDom;
-      } else {
-        const rows = wrapText(ctx, line.toUpperCase(), safe.x, yDom, textW, lh);
-        yDom += rows * lh + G.intraGap;
-      }
-    });
-  }
-
-  // ── G3: CTA block ─────────────────────────────────────────────────────────
-  const cta = groups.find(g => g.role === "cta_block");
-  if (cta) {
-    let y = anchors.cta;
-    for (const [i, line] of cta.lines.filter(l => l.trim()).entries()) {
-      const role = classifyLine(line);
-      const lv   = role === "cta" ? LEVELS[4] : LEVELS[5];
-      const sz   = Math.round(basePx * lv.scale);
-      setLevel(ctx, lv, basePx);
-      ctx.fillText(line.toUpperCase(), safe.x, y);
-      y += Math.round(sz * lv.leading) + (i === 0 ? G.intraGap : G.intraGap / 2);
-    }
-  } else {
-    // Default CTA if none in copy
-    setLevel(ctx, LEVELS[4], basePx);
-    ctx.fillText("ESCÚCHALO HOY", safe.x, anchors.cta);
-  }
-
-  ctx.globalAlpha = 1;
-}
-
-// ─── Host photo cache (avoid re-fetching on each render) ─────────────────────
-const _hostCache: Record<string, Promise<Blob>> = {};
-
-function fetchHostBlob(url: string): Promise<Blob> {
-  if (!_hostCache[url]) {
-    _hostCache[url] = fetch(url).then(r => {
-      if (!r.ok) throw new Error(`Host fetch ${r.status}`);
-      return r.blob();
-    });
-  }
-  return _hostCache[url];
-}
-
-// ─── Color helpers ────────────────────────────────────────────────────────────
-function hexToRgba(hex: string, a: number) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-
-function drawCoverRight(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  x: number, y: number, w: number, h: number,
-) {
-  const ir = img.naturalWidth / img.naturalHeight;
-  const ar = w / h;
-  let dw: number, dh: number, dx: number, dy: number;
-  if (ir > ar) { dh = h; dw = h * ir; dx = x; dy = y; }
-  else         { dw = w; dh = w / ir; dx = x; dy = Math.max(0, (h - dh) * 0.05); }
-  ctx.drawImage(img, dx, dy, dw, dh);
-}
-
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 /**
- * Builds the complete piece image entirely in-browser.
- * No AI required — solid background + host photo + AMTME text layers.
+ * Backward Compatibility: Legacy Canvas Building Functions
+ * Used by existing PieceCard, PiecePreviewCanvas components
  */
+export interface CanvasPiece {
+  id: string;
+  width_px: number;
+  height_px: number;
+  bg_color: string;
+  accent_color: string;
+  text_color: string;
+  host_image?: "REF_1" | "REF_2" | "none";
+}
+
 export async function buildLocalComposite(
-  piece: VisualPiece,
-  copyLines: string[],
+  piece: CanvasPiece,
+  lines: string[],
   episodeNumber: string,
-  supabaseUrl: string,
+  _supabaseUrl?: string
 ): Promise<string> {
-  const W      = piece.width;
-  const H      = piece.height;
-  // VOS: "ink" (#282828) for introspective pieces; "cobalt" (#193497) for everything else
-  const bgHex  = (piece.backgroundVersion === "negro" || piece.backgroundVersion === "ink")
-    ? P.ink
-    : P.cobalt;
-  const basePx = Math.round(W * DOM_RATIO);
+  const canvas = document.createElement("canvas");
+  canvas.width = piece.width_px || 1080;
+  canvas.height = piece.height_px || 1920;
 
-  // Preload fonts before touching canvas
-  await preloadFonts(basePx);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not get canvas context");
 
-  const canvas  = document.createElement("canvas");
-  canvas.width  = W; canvas.height = H;
-  const ctx     = canvas.getContext("2d");
-  if (!ctx) throw new Error("No 2D context");
+  ctx.fillStyle = piece.bg_color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 1. Solid base + professional depth treatment
-  ctx.fillStyle = bgHex;
-  ctx.fillRect(0, 0, W, H);
-  drawProfessionalBg(ctx, W, H);
-
-  // 2. Host photo (right 60%)
-  try {
-    const hostUrl = `${supabaseUrl}/storage/v1/object/public/generated-images/host-${piece.hostReference}.png`;
-    const blob    = await fetchHostBlob(hostUrl);
-    const objUrl  = URL.createObjectURL(blob);
+  if (piece.host_image && piece.host_image !== "none") {
+    const hostWidth = Math.round(canvas.width * 0.45);
+    const hostX = canvas.width - hostWidth;
     try {
-      const img   = new Image();
-      await new Promise<void>((res, rej) => {
-        img.onload  = () => res();
-        img.onerror = () => rej(new Error("host img"));
-        img.src     = objUrl;
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          ctx.globalCompositeOperation = "darken";
+          ctx.drawImage(img, hostX, 0, hostWidth, canvas.height);
+          ctx.globalCompositeOperation = "source-over";
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = `/host/${piece.host_image}.png`;
       });
-      const hx = Math.round(W * 0.38);
-      drawCoverRight(ctx, img, hx, 0, W - hx, H);
-
-      // 3. Gradient blend (background → transparent over ~20% of canvas)
-      const fadeStart = hx - Math.round(W * 0.04);
-      const fadeEnd   = hx + Math.round(W * 0.20);
-      const grad      = ctx.createLinearGradient(fadeStart, 0, fadeEnd, 0);
-      grad.addColorStop(0, bgHex);
-      grad.addColorStop(1, hexToRgba(bgHex, 0));
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, fadeEnd, H);
-    } finally {
-      URL.revokeObjectURL(objUrl);
+    } catch {
+      // Ignore host image loading failures in preview path
     }
-  } catch { /* host photo unavailable — solid background + text still renders */ }
+  }
 
-  // 4. Variable content
-  renderContent(ctx, copyLines, W, H, episodeNumber, basePx);
+  const lineHeight = 80;
+  const startY = 200;
+  const maxWidth = Math.round(canvas.width * 0.6);
 
-  // 5. Fixed brand block (always identical across all 15 pieces)
-  renderFixedBlock(ctx, W, H, episodeNumber, basePx);
+  ctx.fillStyle = piece.text_color;
+  ctx.font = "bold 72px Montserrat";
+  ctx.textBaseline = "top";
+
+  lines.forEach((line, index) => {
+    const y = startY + index * lineHeight;
+    if (y < canvas.height - 100) {
+      ctx.fillText(line, 80, y, maxWidth);
+    }
+  });
+
+  if (lines.length > 0 && lines[0]) {
+    const metrics = ctx.measureText(lines[0]);
+    ctx.fillStyle = piece.accent_color;
+    ctx.fillRect(80, startY + 72 + 8, Math.min(metrics.width, maxWidth), 4);
+  }
+
+  ctx.strokeStyle = piece.accent_color;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(canvas.width - 120, 40, 80, 40);
+  ctx.fillStyle = piece.text_color;
+  ctx.globalAlpha = 0.6;
+  ctx.font = "bold 14px Inter";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`EP ${episodeNumber}`, canvas.width - 80, 60);
+  ctx.globalAlpha = 1;
 
   return canvas.toDataURL("image/png");
 }
 
-/**
- * Legacy: composites text on top of an existing remote base image.
- * Used only for old AI-generated images still in DB.
- */
 export async function buildCompositeImage(
-  baseImageUrl: string,
-  copyLines: string[],
-  piece: VisualPiece,
+  piece: CanvasPiece,
+  lines: string[],
   episodeNumber: string,
-): Promise<string> {
-  // For remote URLs (old AI images), rebuild from scratch using local composite
-  // so the brand system is always correctly applied regardless of what's in storage.
-  if (!baseImageUrl.startsWith("data:")) {
-    try {
-      // We don't have supabaseUrl here — extract it from the URL if it's a Supabase URL
-      const match = baseImageUrl.match(/^(https:\/\/[^/]+\.supabase\.co)/);
-      if (match) {
-        return await buildLocalComposite(piece, copyLines, episodeNumber, match[1]);
-      }
-    } catch { /* fall through to overlay approach */ }
-  }
-
-  // data URL or non-Supabase URL → overlay text on top
-  try {
-    const resp      = await fetch(baseImageUrl);
-    if (!resp.ok) throw new Error(`Fetch ${resp.status}`);
-    const blob      = await resp.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    try {
-      const canvas  = document.createElement("canvas");
-      canvas.width  = piece.width; canvas.height = piece.height;
-      const ctx     = canvas.getContext("2d");
-      if (!ctx) throw new Error("No 2D context");
-      const img     = new Image();
-      await new Promise<void>((res, rej) => {
-        img.onload = () => res(); img.onerror = () => rej(new Error("img"));
-        img.src    = objectUrl;
-      });
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const basePx = Math.round(piece.width * DOM_RATIO);
-      await preloadFonts(basePx);
-      renderContent(ctx, copyLines, piece.width, piece.height, episodeNumber, basePx);
-      renderFixedBlock(ctx, piece.width, piece.height, episodeNumber, basePx);
-      return canvas.toDataURL("image/png");
-    } finally { URL.revokeObjectURL(objectUrl); }
-  } catch { return baseImageUrl; }
+  supabaseUrl?: string
+): Promise<Blob> {
+  const dataUrl = await buildLocalComposite(piece, lines, episodeNumber, supabaseUrl);
+  const response = await fetch(dataUrl);
+  return response.blob();
 }
