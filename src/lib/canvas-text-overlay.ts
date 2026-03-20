@@ -229,15 +229,17 @@ function drawApplePodcastsLogo(ctx: CanvasRenderingContext2D, cx: number, cy: nu
   ctx.restore();
 }
 
-// ─── Fixed Brand Identity Block — appears IDENTICALLY in every image ──────────
+// ─── Fixed Brand Identity Block — §06 Instrucción Maestra ────────────────────
 /**
- * Renders the permanent brand footer at G4 position.
- * Same content, same position, same size in ALL 15 pieces.
+ * Renders the PERMANENT brand identity block identically in ALL pieces.
+ * Source: Instrucción Maestra §06-A "Elementos que aparecen en TODA pieza"
  *
- * Layout (bottom to top from safe.yMax):
- *   Row A: Platform logos + labels  (Spotify ⬤ Apple Podcasts)
- *   Row B: "A MÍ TAMPOCO ME EXPLICARON · EP. XX"
- *   Row C: "CHRISTIAN VILLAMAR"
+ * Layout (anchored to G4, bottom of safe zone):
+ *
+ *   Row 1 — PODCAST tag             "PODCAST"  tracking +40 · L6 · pequeño
+ *   Row 2 — Episode + show name     "Ep. 29 —  A MÍ TAMPOCO ME EXPLICARON"
+ *   Row 3 — Platform logos          [● SPOTIFY]   [■ APPLE PODCASTS]
+ *   Row 4 — Host signature          "CHRISTIAN VILLAMAR"  opacidad 85%
  */
 function renderFixedBrandBlock(
   ctx: CanvasRenderingContext2D,
@@ -248,50 +250,61 @@ function renderFixedBrandBlock(
   const safe    = getSafeZone(W, H);
   const anchors = getAnchors(H);
   const baseDOM = Math.round(W * DOMINANT_RATIO);
-  const lv6     = LEVELS[5];
+  const lv6     = LEVELS[5];                          // L6: 38% · w300 · #888888 · op 85%
   const sz6     = Math.round(baseDOM * lv6.scaleFactor);
   const lineH6  = Math.round(sz6 * lv6.leadingMult);
-  const logoR   = Math.round(sz6 * 0.55);  // logo radius, proportional to L6 text
-  const gap     = Math.round(sz6 * 0.5);   // gap between logo and label text
+  const logoR   = Math.round(sz6 * 0.50);             // logo radius proportional to L6
 
-  // Pin the block so its last row lands at safe.yMax
-  const blockH = lineH6 * 3 + GAP_WITHIN * 2;
+  // 4 rows + 3 gaps between them
+  const blockH = lineH6 * 4 + GAP_WITHIN * 3;
   let y = Math.max(anchors.footer, safe.yMax - blockH);
 
   ctx.textAlign    = "left";
   ctx.textBaseline = "alphabetic";
 
-  // Row A — Platform logos + labels ────────────────────────────────────────
-  applyLevel(ctx, lv6, baseDOM);
-  const labelY = y + sz6 * 0.08; // slight optical baseline correction
-
-  // Spotify
-  drawSpotifyLogo(ctx, safe.xMin + logoR, labelY - logoR * 0.8, logoR);
+  // ── Row 1: "PODCAST" tag (tracking +40, §06-A) ───────────────────────────
+  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
   ctx.globalAlpha = lv6.opacity;
   ctx.fillStyle   = lv6.color;
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px"; // tracking +40
+  ctx.fillText("PODCAST", safe.xMin, y);
+  y += lineH6 + GAP_WITHIN;
+
+  // ── Row 2: "Ep. 29 —  A MÍ TAMPOCO ME EXPLICARON" (§06-A format) ─────────
+  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  ctx.globalAlpha = lv6.opacity;
+  ctx.fillStyle   = lv6.color;
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
+  ctx.fillText(`Ep. ${epNum} —  A MÍ TAMPOCO ME EXPLICARON`, safe.xMin, y);
+  y += lineH6 + GAP_WITHIN;
+
+  // ── Row 3: Platform logos + labels (§06-A "Spotify + Apple Podcasts · alineados") ─
+  const labelY   = y;
+  const gap      = Math.round(sz6 * 0.40);
+
+  // Spotify logo + label
+  drawSpotifyLogo(ctx, safe.xMin + logoR, labelY - logoR * 0.75, logoR);
+  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  ctx.globalAlpha = lv6.opacity;
+  ctx.fillStyle   = lv6.color;
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3.5px";
   ctx.fillText("SPOTIFY", safe.xMin + logoR * 2 + gap, labelY);
 
-  // Apple Podcasts — after "SPOTIFY" text
-  applyLevel(ctx, lv6, baseDOM);
-  const spotifyWidth = ctx.measureText("SPOTIFY").width;
-  const appleX = safe.xMin + logoR * 2 + gap + spotifyWidth + gap * 3;
-  drawApplePodcastsLogo(ctx, appleX + logoR, labelY - logoR * 0.8, logoR);
+  // Apple Podcasts logo + label — 24px separation per §06-A
+  const spotifyW   = ctx.measureText("SPOTIFY").width;
+  const separation = Math.round(sz6 * 1.5);  // ~24px optical sep at scale
+  const appleX     = safe.xMin + logoR * 2 + gap + spotifyW + separation;
+  drawApplePodcastsLogo(ctx, appleX + logoR, labelY - logoR * 0.75, logoR);
   ctx.globalAlpha = lv6.opacity;
   ctx.fillStyle   = lv6.color;
   ctx.fillText("APPLE PODCASTS", appleX + logoR * 2 + gap, labelY);
-
   y += lineH6 + GAP_WITHIN;
 
-  // Row B — Podcast name + episode number ───────────────────────────────────
-  applyLevel(ctx, lv6, baseDOM);
-  ctx.fillText(
-    `A MÍ TAMPOCO ME EXPLICARON  ·  EP. ${epNum}`,
-    safe.xMin, y,
-  );
-  y += lineH6 + GAP_WITHIN;
-
-  // Row C — Host signature ───────────────────────────────────────────────────
-  applyLevel(ctx, lv6, baseDOM);
+  // ── Row 4: "CHRISTIAN VILLAMAR" · opacidad 85% · tracking +30 (§06-A) ────
+  ctx.font        = `${lv6.fontWeight} ${sz6}px Inter,"Helvetica Neue",Arial,sans-serif`;
+  ctx.globalAlpha = 0.85;   // §06-A: "opacidad 85%"
+  ctx.fillStyle   = lv6.color;
+  (ctx as unknown as { letterSpacing: string }).letterSpacing = "3px";  // tracking +30
   ctx.fillText("CHRISTIAN VILLAMAR", safe.xMin, y);
 
   ctx.globalAlpha = 1;
