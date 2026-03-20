@@ -149,8 +149,9 @@ export function seedCopyBlock(
   switch (pieceCode) {
     // ── P01 Portada 1:1 ─────────────────────────────────────────────────────
     case "P01":
-      if (blockName === "frase_principal_linea_1") return cap(t1);
-      if (blockName === "frase_principal_linea_2") return cap(t2);
+      // Seeds use "frase_principal_l1" (short form) — support both
+      if (blockName === "frase_principal_l1" || blockName === "frase_principal_linea_1") return cap(t1);
+      if (blockName === "frase_principal_l2" || blockName === "frase_principal_linea_2") return cap(t2);
       break;
 
     // ── P02 Lanzamiento 4:5 ─────────────────────────────────────────────────
