@@ -1,32 +1,34 @@
 /**
- * AMTME Canvas Text Overlay — Instrucción Maestra v1
- * ────────────────────────────────────────────────────
+ * AMTME Canvas Text Overlay — Visual OS v2 (VOSPalette)
+ * ────────────────────────────────────────────────────────
  * Renders every piece image entirely in-browser:
- *   1. Solid background  (#1A1AE6 cobalt | #0A0A0A negro)
+ *   1. Solid background  (#193497 cobalt | #282828 ink)
  *   2. Host photo        (from Supabase Storage, right half)
  *   3. Gradient blend    (background fades into host edge)
  *   4. Variable content  (dominant L1 · secondary L2 · tertiary L3 · CTA L5)
  *   5. Fixed brand block (§06 — PODCAST · Ep. · Spotify · Apple · host name)
  *
+ * Palette updated to VOS spec:
+ *   INK #282828 · PAPER #F9F6EF · COBALT #193497 · GREEN #EAFF00
  * Text is NEVER rendered by AI — canvas guarantees 100% accuracy.
  */
 
 import type { VisualPiece } from "@/lib/visual-templates";
 
-// ─── AMTME Official Palette §02 ──────────────────────────────────────────────
+// ─── VOS Palette (Instrucción Maestra v2) ────────────────────────────────────
 const P = {
-  cobalt:    "#1A1AE6",   // Color dominante / fondo feed
-  negro:     "#0A0A0A",   // Fondo introspectivo / Cover
-  yellow:    "#F2C84B",   // L1 Dominante emocional
-  cream:     "#F5F0E8",   // L2 Secundario · L3 Terciario · L5 CTA
-  grayLight: "#CCCCCC",   // L4 Subtítulo
-  grayMid:   "#888888",   // L6 Firma · metadatos
-  white:     "#FFFFFF",
-  spotify:   "#1DB954",
-  apple:     "#FC3C44",
+  cobalt:  "#193497",   // Azul primario — fondo feed
+  ink:     "#282828",   // Negro editorial — fondo introspectivo (NOT pure black)
+  green:   "#EAFF00",   // Highlighter microacento — L1 dominante
+  paper:   "#F9F6EF",   // Crema editorial — L2 · L3 · L5 CTA (NOT pure white)
+  gray:    "#9A9A9A",   // Texto secundario apagado
+  muted:   "#666666",   // Firma / metadatos
+  white:   "#FFFFFF",
+  spotify: "#1DB954",
+  apple:   "#FC3C44",
 } as const;
 
-// ─── 6-Level Typographic Hierarchy §03-A ─────────────────────────────────────
+// ─── 3-Level Typographic Hierarchy (VOS spec §03) ────────────────────────────
 // Base (dominant) = 8.5% of canvas width → ~92px on 1080px
 const DOM_RATIO = 0.085;
 
@@ -40,18 +42,18 @@ interface Level {
 }
 
 const LEVELS: Level[] = [
-  // L1 — Dominante  100% · 900 · #F2C84B · tracking –0.5 · leading 0.90
-  { scale: 1.00, weight: 900, color: P.yellow,    opacity: 1.00, tracking: -0.5, leading: 0.90 },
-  // L2 — Secundario  72% · 700 · #F5F0E8 · tracking +1.0 · leading 1.05
-  { scale: 0.72, weight: 700, color: P.cream,     opacity: 1.00, tracking:  1.0, leading: 1.05 },
-  // L3 — Terciario   60% · 500 · #F5F0E8 · tracking +1.2 · leading 1.05
-  { scale: 0.60, weight: 500, color: P.cream,     opacity: 1.00, tracking:  1.2, leading: 1.05 },
-  // L4 — Subtítulo   52% · 400 · #CCCCCC · tracking +1.5 · op 0.90
-  { scale: 0.52, weight: 400, color: P.grayLight, opacity: 0.90, tracking:  1.5, leading: 1.05 },
-  // L5 — CTA         45% · 500 · #F5F0E8 · tracking +2.5 · op 0.90
-  { scale: 0.45, weight: 500, color: P.cream,     opacity: 0.90, tracking:  2.5, leading: 1.05 },
-  // L6 — Firma       38% · 400 · #888888 · tracking +3.5 · op 0.85
-  { scale: 0.38, weight: 400, color: P.grayMid,   opacity: 0.85, tracking:  3.5, leading: 1.10 },
+  // L1 — Dominante  100% · 900 · #EAFF00 · tracking –0.5 · leading 0.90
+  { scale: 1.00, weight: 900, color: P.green,  opacity: 1.00, tracking: -0.5, leading: 0.90 },
+  // L2 — Secundario  72% · 700 · #F9F6EF · tracking +1.0 · leading 1.05
+  { scale: 0.72, weight: 700, color: P.paper,  opacity: 1.00, tracking:  1.0, leading: 1.05 },
+  // L3 — Terciario   60% · 500 · #F9F6EF · tracking +1.2 · leading 1.05
+  { scale: 0.60, weight: 500, color: P.paper,  opacity: 1.00, tracking:  1.2, leading: 1.05 },
+  // L4 — Subtítulo   52% · 400 · #9A9A9A · tracking +1.5 · op 0.90
+  { scale: 0.52, weight: 400, color: P.gray,   opacity: 0.90, tracking:  1.5, leading: 1.05 },
+  // L5 — CTA         45% · 500 · #F9F6EF · tracking +2.5 · op 0.90
+  { scale: 0.45, weight: 500, color: P.paper,  opacity: 0.90, tracking:  2.5, leading: 1.05 },
+  // L6 — Firma       38% · 400 · #666666 · tracking +3.5 · op 0.85
+  { scale: 0.38, weight: 400, color: P.muted,  opacity: 0.85, tracking:  3.5, leading: 1.10 },
 ];
 
 // ─── Y-Anchors §04-D ─────────────────────────────────────────────────────────
@@ -416,7 +418,10 @@ export async function buildLocalComposite(
 ): Promise<string> {
   const W      = piece.width;
   const H      = piece.height;
-  const bgHex  = piece.backgroundVersion === "negro" ? P.negro : P.cobalt;
+  // VOS: "ink" (#282828) for introspective pieces; "cobalt" (#193497) for everything else
+  const bgHex  = (piece.backgroundVersion === "negro" || piece.backgroundVersion === "ink")
+    ? P.ink
+    : P.cobalt;
   const basePx = Math.round(W * DOM_RATIO);
 
   // Preload fonts before touching canvas
