@@ -27,23 +27,18 @@ function getHostReferenceUrl(key: "imagen01" | "imagen02"): string {
   return `${baseUrl}/storage/v1/object/public/generated-images/host-${key}.png`;
 }
 
-const AMTME_BRAND_PROMPT = `Generate a single finished Instagram post for the Spanish-language podcast "A Mí Tampoco Me Explicaron". This is one complete image — not a brand guide, not a template, not a mockup. One image.
+const AMTME_BRAND_PROMPT = `Generate ONE single image for the podcast "A Mí Tampoco Me Explicaron".
 
-BACKGROUND: Deep cobalt blue, hex #1A1AE6. Rich, saturated, editorial blue fills the entire canvas.
+⚠️ CRITICAL — NO TEXT: Do NOT render any text, words, letters, numbers, or captions anywhere on the image. Absolutely zero text. Text is added programmatically in post-production. If you include any text the image will be discarded.
 
-TEXT ON THE LEFT SIDE OF THE IMAGE:
-- The main headline phrase: rendered in large, bold, uppercase sans-serif letters in warm golden yellow (#F2C84B). This is the biggest element on the page. Tight letter-spacing. Left-aligned.
-- Below it: the show name "A MÍ TAMPOCO ME EXPLICARON" and the episode number in cream / off-white (#F5F0E8). Smaller than the headline. Same left alignment.
-- At the bottom: "@yosoyvillamar" and "PODCAST" in light gray (#999999), very small.
+WHAT TO GENERATE — A VISUAL SCENE:
+A deep cobalt blue canvas (hex #1A1AE6) with a photograph of the podcast host integrated into the right half of the image. The host is a Hispanic adult man with a short beard, green cap, tattoo on his left forearm, and an AMTME t-shirt. His expression is calm, contemplative, intimate — not smiling forcefully. The photo blends softly into the cobalt background on his left edge (subtle gradient, no hard cutout). His face and eyes fall in the upper-right area of the composition.
 
-HOST PHOTO ON THE RIGHT SIDE:
-- A real photograph of a Hispanic adult man: short beard, green cap, tattoo on his left forearm, wearing an AMTME t-shirt. Natural, unposed expression — contemplative.
-- The photo blends into the cobalt background with a soft left-edge fade. No hard cutout.
-- His face falls in the upper third of the image. His eyes look toward the text.
+The left half of the image is intentionally clear cobalt blue — this is where the text overlay will be applied later.
 
-OVERALL FEEL: Premium editorial magazine cover. Like a Monocle or GQ cover but for a podcast. Minimal, confident, no clutter. The cobalt blue background with golden-yellow headline creates a bold visual contrast that stops the scroll.
+MOOD: Premium editorial, like a GQ or Monocle magazine cover. Minimal. Confident. One subject, one background color, abundant breathing room.
 
-WHAT IS NOT IN THIS IMAGE: No design charts. No color swatches. No multiple panels. No lorem ipsum. No mockup frames. No brand guidelines document. Just one finished Instagram post.`;
+WHAT IS NOT IN THIS IMAGE: No text. No labels. No episode numbers. No show name. No handle. No logos. No icons. No design charts. No color swatches. No multiple panels. No lorem ipsum. No mockup frames. Just the host and the cobalt background.`;
 
 
 

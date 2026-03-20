@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
+import { buildCompositeImage } from "@/lib/canvas-text-overlay";
 
 interface PieceCardProps {
   piece: VisualPiece;
@@ -35,6 +36,19 @@ export function PieceCard({
 }: PieceCardProps) {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  // compositeUrl holds the canvas-rendered version (base image + AMTME text overlay).
+  // Falls back to raw imageUrl if the browser canvas composite fails.
+  const [compositeUrl, setCompositeUrl] = useState<string | undefined>(undefined);
+  const compositeRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!imageUrl) { setCompositeUrl(undefined); return; }
+    buildCompositeImage(imageUrl, copyLines, piece, episodeInput.number)
+      .then((url) => {
+        compositeRef.current = url;
+        setCompositeUrl(url);
+      });
+  }, [imageUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const generateImage = async () => {
     setGenerating(true);
@@ -96,7 +110,11 @@ export function PieceCard({
         <div className="rounded-md overflow-hidden border border-border bg-secondary/30">
           <AspectRatio ratio={aspectRatio}>
             {imageUrl ? (
-              <img src={imageUrl} alt={piece.name} className="w-full h-full object-cover" />
+              <img
+                src={compositeUrl ?? imageUrl}
+                alt={piece.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <Image className="h-8 w-8 text-muted-foreground/30" />
@@ -140,10 +158,19 @@ export function PieceCard({
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
           </Button>
           {imageUrl && (
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" asChild>
-              <a href={imageUrl} download target="_blank" rel="noopener noreferrer">
-                <Download className="h-3 w-3" />
-              </a>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              onClick={() => {
+                const url = compositeRef.current ?? imageUrl;
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `AMTME_Ep${episodeInput.number.padStart(2,"0")}_Pieza${String(piece.id).padStart(2,"0")}_vF.png`;
+                a.click();
+              }}
+            >
+              <Download className="h-3 w-3" />
             </Button>
           )}
         </div>
