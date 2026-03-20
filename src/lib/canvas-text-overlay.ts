@@ -87,6 +87,85 @@ function getSafeZone(W: number, H: number) {
   };
 }
 
+// ─── Professional background treatment ───────────────────────────────────────
+/**
+ * Draws the editorial depth stack on top of the solid base color:
+ *   1. Radial light source — upper-left origin, subtle brightening
+ *   2. Edge vignette — cinematic darkening at corners
+ *   3. Film grain — tiled noise at ~7 % opacity (editorial, non-stock)
+ *
+ * All effects are within VOS spec (no glow, no dramatic shadows, no loud gradients).
+ */
+function drawProfessionalBg(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+): void {
+  // ── 1. Radial light source (upper-left) ────────────────────────────────────
+  const radial = ctx.createRadialGradient(
+    W * 0.22, H * 0.24, 0,         // focal point: upper-left text zone
+    W * 0.50, H * 0.52, W * 1.05,  // outer radius wider than canvas
+  );
+  radial.addColorStop(0.00, "rgba(255,255,255,0.09)");  // light source
+  radial.addColorStop(0.40, "rgba(255,255,255,0.00)");  // transparent falloff
+  radial.addColorStop(1.00, "rgba(0,0,0,0.28)");        // opposite corner darkening
+  ctx.fillStyle = radial;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 2. Edge vignette ───────────────────────────────────────────────────────
+  const vignette = ctx.createRadialGradient(
+    W * 0.50, H * 0.50, H * 0.25,   // inner bright zone
+    W * 0.50, H * 0.50, H * 0.95,   // outer dark rim
+  );
+  vignette.addColorStop(0, "rgba(0,0,0,0.00)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.42)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 3. Editorial grain ────────────────────────────────────────────────────
+  // Tile a 256 × 256 noise canvas so large images stay fast
+  const GRAIN_SIZE = 256;
+  const gc = document.createElement("canvas");
+  gc.width  = GRAIN_SIZE;
+  gc.height = GRAIN_SIZE;
+  const gctx = gc.getContext("2d");
+  if (gctx) {
+    const gd = gctx.createImageData(GRAIN_SIZE, GRAIN_SIZE);
+    for (let i = 0; i < gd.data.length; i += 4) {
+      const v           = (Math.random() * 90) | 0;   // 0–90 noise
+      gd.data[i]     = v;
+      gd.data[i + 1] = v;
+      gd.data[i + 2] = v;
+      gd.data[i + 3] = 22;                           // ~8.5 % opacity — very subtle
+    }
+    gctx.putImageData(gd, 0, 0);
+    const pat = ctx.createPattern(gc, "repeat");
+    if (pat) {
+      const prev = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = "overlay";      // grain brightens light, darkens dark
+      ctx.fillStyle = pat;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = prev;
+    }
+  }
+}
+
+/**
+ * Draws a thin #EAFF00 accent line (filete) before the dominant text block.
+ * 60 px wide · 2 px tall — microacento editorial, 1 element per spec.
+ */
+function drawAccentRule(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+): void {
+  ctx.save();
+  ctx.globalAlpha = 0.90;
+  ctx.fillStyle   = P.green;
+  ctx.fillRect(x, y, 52, 2);
+  ctx.restore();
+}
+
 // ─── Gestalt spacing §04-B ────────────────────────────────────────────────────
 const G = {
   groupGap:    44,   // min px between groups (Gestalt Proximity)
@@ -253,6 +332,14 @@ function renderFixedBlock(
   const blockH = lh6 * 4 + G.intraGap * 3;
   let y = Math.max(anchors.footer, safe.maxY - blockH);
 
+  // ── Footer scrim — semi-transparent gradient so brand block reads over photo ─
+  const scrimTop  = y - lh6 * 2;
+  const scrimGrad = ctx.createLinearGradient(0, scrimTop, 0, H);
+  scrimGrad.addColorStop(0, "rgba(0,0,0,0.00)");
+  scrimGrad.addColorStop(1, "rgba(0,0,0,0.55)");
+  ctx.fillStyle = scrimGrad;
+  ctx.fillRect(0, scrimTop, W, H - scrimTop);
+
   ctx.textAlign    = "left";
   ctx.textBaseline = "alphabetic";
 
@@ -338,9 +425,18 @@ function renderContent(
       setLevel(ctx, lv, basePx);
 
       if (idx === 0) {
-        // Dominant: breathing space before
+        // Green accent filete (§ microacento) — 12px above dominant
+        drawAccentRule(ctx, safe.x, yDom + G.airBefore - 20);
+
+        // Dominant: subtle text shadow for depth (not dramatic — spec compliant)
         yDom += G.airBefore;
+        ctx.save();
+        ctx.shadowColor   = "rgba(0,0,0,0.55)";
+        ctx.shadowBlur    = 14;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 3;
         const rows = wrapText(ctx, line.toUpperCase(), safe.x, yDom, textW, lh);
+        ctx.restore();  // clears shadow for subsequent text
         yDom += rows * lh + G.airAfterDom;
       } else {
         const rows = wrapText(ctx, line.toUpperCase(), safe.x, yDom, textW, lh);
@@ -432,9 +528,10 @@ export async function buildLocalComposite(
   const ctx     = canvas.getContext("2d");
   if (!ctx) throw new Error("No 2D context");
 
-  // 1. Solid background
+  // 1. Solid base + professional depth treatment
   ctx.fillStyle = bgHex;
   ctx.fillRect(0, 0, W, H);
+  drawProfessionalBg(ctx, W, H);
 
   // 2. Host photo (right 60%)
   try {
