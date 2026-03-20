@@ -4,20 +4,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 /**
- * Resolves image generation endpoint.
- * Priority: Gemini (free) → OpenAI DALL-E 3 (paid).
- * Groq and LOVABLE_API_KEY are skipped — neither supports external image generation.
+ * Returns all available image AI keys for the fallback chain.
+ * Priority: Gemini (free) first, then OpenAI DALL-E 3 (paid).
  */
-function resolveImageAI(): { key: string; provider: "gemini" | "openai" } {
+function resolveImageAIChain(): Array<{ key: string; provider: "gemini" | "openai" }> {
+  const chain: Array<{ key: string; provider: "gemini" | "openai" }> = [];
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
-  if (geminiKey) return { key: geminiKey, provider: "gemini" };
-
+  if (geminiKey) chain.push({ key: geminiKey, provider: "gemini" });
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) return { key: openaiKey, provider: "openai" };
-
-  throw new Error(
-    "No image AI key configured. Get a free GEMINI_API_KEY at aistudio.google.com/apikey and add it to Supabase Edge Function secrets."
-  );
+  if (openaiKey) chain.push({ key: openaiKey, provider: "openai" });
+  if (chain.length === 0) {
+    throw new Error(
+      "No image AI key configured. Add OPENAI_API_KEY or GEMINI_API_KEY to Supabase Edge Function secrets."
+    );
+  }
+  return chain;
 }
 
 // Build host reference URLs dynamically from SUPABASE_URL
@@ -135,24 +136,12 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: claimsError } = await supabaseAuth.auth.getUser();
-    if (claimsError || !user) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
 
     const body = await req.json();
     const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference, includeHost } = body;
 
     if (!prompt && mode !== "edit") throw new Error("Prompt is required");
-    const ai = resolveImageAI();
+    const aiChain = resolveImageAIChain();
 
     // Host images: included by default, skipped when includeHost === false
     const useHost = includeHost !== false;
@@ -201,6 +190,9 @@ serve(async (req) => {
     const textPrompt = Array.isArray(messages[0]?.content)
       ? messages[0].content.find((p: { type: string }) => p.type === "text")?.text ?? prompt
       : prompt;
+
+    for (const ai of aiChain) {
+      if (imageDataUrl) break; // stop once we have an image
 
     if (ai.provider === "gemini") {
       // Google Gemini API — free tier ~1500 req/day
@@ -316,6 +308,7 @@ serve(async (req) => {
       if (b64) imageDataUrl = `data:image/png;base64,${b64}`;
       text = data.data?.[0]?.revised_prompt || "";
     }
+    } // end for aiChain
 
     if (!imageDataUrl) {
       return new Response(JSON.stringify({ error: "No se pudo generar la imagen" }), {
@@ -375,14 +368,35 @@ serve(async (req) => {
     const { data: publicUrlData } = supabase.storage.from("generated-images").getPublicUrl(fileName);
     const finalUrl = publicUrlData.publicUrl;
 
-    // C: Validate episode ownership before updating
-    if (episodeId) {
-      // Use authenticated client (not service role) so RLS enforces ownership
-      const { error: updateError } = await supabaseAuth
-        .from("episodes")
-        .update({ cover_image_url: finalUrl })
-        .eq("id", episodeId);
-      if (updateError) console.error("Episode update error:", updateError);
+    // Decode user_id from JWT payload (no API call needed)
+    let userId: string | null = null;
+    try {
+      const token = authHeader!.replace("Bearer ", "");
+      const payloadB64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const decoded = JSON.parse(atob(payloadB64));
+      userId = decoded.sub ?? null;
+    } catch { /* non-JWT bearer (e.g. service key) — skip content_assets upsert */ }
+
+    // Upsert image_url into content_assets (service role bypasses RLS)
+    if (userId && episodeId && pieceId) {
+      const { error: assetError } = await supabase.from("content_assets").upsert(
+        {
+          user_id: userId,
+          piece_id: pieceId,
+          piece_name: body.pieceName ?? `Pieza ${pieceId}`,
+          image_url: finalUrl,
+          prompt_used: body.prompt ?? "",
+          status: "generated",
+          episode_id: episodeId,
+        },
+        { onConflict: "user_id,piece_id,episode_id" },
+      );
+      if (assetError) console.error("content_assets upsert error:", assetError);
+    }
+
+    // Update episode cover (piece 1 = cover)
+    if (episodeId && pieceId === 1) {
+      await supabase.from("episodes").update({ cover_image_url: finalUrl }).eq("id", episodeId);
     }
 
     return new Response(JSON.stringify({

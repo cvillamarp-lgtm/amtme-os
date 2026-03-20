@@ -227,7 +227,7 @@ export default function ContentFactory() {
 
   const handleExtract = () =>
     extractContent(script, title, theme, epNumber, episodeId).then((r) => {
-      if (r) { setResumedFromDB(false); setTab("pieces"); }
+      if (r) setTab("pieces");
     });
 
   const handleGenerateCaptions = () => {
