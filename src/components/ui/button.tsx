@@ -9,7 +9,7 @@ const buttonVariants = cva(
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
     "text-sm font-medium tracking-[-0.011em]",
     "rounded-[10px]",
-    "transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+    "transition-all duration-150 ease-apple",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1",
     "disabled:pointer-events-none disabled:opacity-40",
     "active:scale-[0.97]",

@@ -1,3 +1,5 @@
+/// <reference path="./deno-shims.d.ts" />
+
 /**
  * Shared AI helpers for AMTME Edge Functions.
  * Primary: Anthropic Claude (claude-sonnet-4-20250514) via native API.

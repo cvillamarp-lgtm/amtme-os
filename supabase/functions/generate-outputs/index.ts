@@ -1,3 +1,5 @@
+/// <reference path="../_shared/deno-shims.d.ts" />
+
 /**
  * AMTME — generate-outputs Edge Function
  * Script Engine · Fase 4 — Generación de 10 tipos de outputs vía Claude

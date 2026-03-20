@@ -1,3 +1,5 @@
+/// <reference path="../_shared/deno-shims.d.ts" />
+
 /**
  * AMTME — semantic-map Edge Function
  * Script Engine · Fase 3 — Mapa semántico vía Claude.
@@ -112,7 +114,7 @@ function validateSemanticRanges(meta: Record<string, string>): string[] {
 
 // ─── Edge Function handler ────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 

@@ -1,3 +1,5 @@
+/// <reference path="../_shared/deno-shims.d.ts" />
+
 /**
  * AMTME — clean-text Edge Function
  * Script Engine · Fase 2 — Limpieza automática de texto vía Claude.
@@ -19,7 +21,7 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(w => w.length > 0).length;
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 

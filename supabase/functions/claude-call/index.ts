@@ -1,3 +1,5 @@
+/// <reference path="../_shared/deno-shims.d.ts" />
+
 /**
  * AMTME — claude-call Edge Function
  * Wrapper seguro para la Anthropic Claude API.
@@ -11,7 +13,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
