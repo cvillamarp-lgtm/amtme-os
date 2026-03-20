@@ -6,12 +6,12 @@
  *   Center → live preview with safe zones, technical/clean toggle
  *   Right  → copy editor, validation, version history, export, approval
  */
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Loader2, Eye, EyeOff, Grid, Save,
-  CheckCircle2, RotateCcw, History, Download, Layers,
+  CheckCircle2, History,
 } from "lucide-react";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +40,6 @@ import { PieceStatusBadge } from "@/components/visual-os/StatusBadge";
 
 export default function VisualPiece() {
   const { episodeId, pieceId } = useParams<{ episodeId: string; pieceId: string }>();
-  const navigate = useNavigate();
 
   const { data: episode }          = useVisualEpisode(episodeId);
   const { data: piece }            = useVisualPiece(pieceId);
@@ -63,8 +62,8 @@ export default function VisualPiece() {
   const [changeReason, setChangeReason] = useState("");
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null);
 
-  // Initialize local blocks from DB
-  useMemo(() => {
+  // Initialize local blocks from DB whenever the DB data changes
+  useEffect(() => {
     if (copyBlocksRaw.length > 0) {
       setLocalBlocks(copyBlocksRaw);
       setIsDirty(false);
@@ -233,8 +232,7 @@ export default function VisualPiece() {
             episodeNumber={epNumber}
             technicalMode={technicalMode}
             showGrid={showGrid}
-            className="max-h-full w-auto"
-            style={{ maxWidth: "100%", maxHeight: "100%" } as any}
+            className="max-h-full max-w-full w-auto"
             onPreviewReady={setPreviewUrl}
           />
         </div>
