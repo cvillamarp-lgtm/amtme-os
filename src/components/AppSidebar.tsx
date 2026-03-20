@@ -2,7 +2,7 @@ import {
   Home, Mic, Factory, BarChart3, ListTodo, LogOut,
   Lightbulb, Send, FlaskConical, Users, Sun, Moon,
   AudioWaveform, BookOpen, StickyNote, Layers, DollarSign,
-  CalendarDays, FileText, Wand2, Palette, Brush, ImagePlay,
+  CalendarDays, FileText, Wand2, Palette, Brush, ImagePlay, BookMarked,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -30,12 +30,16 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
-  { label: "Dashboard",   url: "/",         icon: Home },
-  { label: "Ideas",       url: "/ideas",    icon: Lightbulb },
-  { label: "Episodios",   url: "/episodes", icon: Mic },
-  { label: "Temporadas",  url: "/seasons",  icon: Layers },
-  { label: "Fábrica",     url: "/factory",  icon: Factory },
-  { label: "Visual OS",   url: "/visual",   icon: ImagePlay },
+  { label: "Dashboard",  url: "/",         icon: Home },
+  { label: "Ideas",      url: "/ideas",    icon: Lightbulb },
+  { label: "Episodios",  url: "/episodes", icon: Mic },
+  { label: "Temporadas", url: "/seasons",  icon: Layers },
+  { label: "Fábrica",    url: "/factory",  icon: Factory },
+];
+
+const visualNav: NavItem[] = [
+  { label: "Visual OS",   url: "/visual",           icon: ImagePlay  },
+  { label: "Plantilla",   url: "/visual/templates", icon: BookMarked },
 ];
 
 const distributeNav: NavItem[] = [
@@ -171,6 +175,7 @@ export function AppSidebar() {
       {/* Nav groups */}
       <SidebarContent className="py-1">
         <NavGroup label="Crear"      items={mainNav}       collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Visual OS"  items={visualNav}     collapsed={collapsed} counts={countsMap} />
         <NavGroup label="Distribuir" items={distributeNav} collapsed={collapsed} counts={countsMap} />
         <NavGroup label="Estudio"    items={studioNav}     collapsed={collapsed} counts={countsMap} />
         <NavGroup label="Medir"      items={measureNav}    collapsed={collapsed} counts={countsMap} />

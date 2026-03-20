@@ -58,9 +58,10 @@ const Episode360            = lazyWithRecovery(() => import("./pages/Episode360"
 const KnowledgeBase         = lazyWithRecovery(() => import("./pages/KnowledgeBase"));
 
 // ── Visual OS ─────────────────────────────────────────────────────────────────
-const VisualOS      = lazyWithRecovery(() => import("./pages/visual-os/VisualOS"));
-const VisualEpisode = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
-const VisualPiece   = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
+const VisualOS        = lazyWithRecovery(() => import("./pages/visual-os/VisualOS"));
+const VisualEpisode   = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
+const VisualPiece     = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
+const VisualTemplates = lazyWithRecovery(() => import("./pages/visual-os/VisualTemplates"));
 
 // ── QueryClient ───────────────────────────────────────────────────────────────
 const queryClient = new QueryClient({
@@ -239,6 +240,7 @@ const App = () => (
 
                         {/* Visual OS */}
                         <Route path="/visual"                                         element={<R C={VisualOS} />} />
+                        <Route path="/visual/templates"                               element={<R C={VisualTemplates} />} />
                         <Route path="/visual/episode/:episodeId"                      element={<R C={VisualEpisode} />} />
                         <Route path="/visual/episode/:episodeId/piece/:pieceId"       element={<R C={VisualPiece} />} />
 
