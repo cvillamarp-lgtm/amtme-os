@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import {
   Sparkles, Loader2, Layers, Download, MessageSquare, FolderOpen, Zap,
-  ExternalLink, Info, SwitchCamera, User, UserX,
+  ExternalLink, Info, SwitchCamera, User, UserX, ImagePlay,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -216,13 +216,19 @@ export default function ContentFactory() {
     if (extraction) setTab("pieces");
   }, [extraction]);
 
+  // Build episode context — prefer AI extraction, fall back to episode DB fields
+  const thesis     = extraction?.thesis     || episode?.thesis_central || episode?.hook    || "";
+  const keyPhrases = extraction?.keyPhrases || (
+    [episode?.hook, episode?.quote, episode?.cta].filter(Boolean) as string[]
+  );
+
   const episodeInput: EpisodeInput = useMemo(
     () => ({
-      number: epNumber || "XX",
-      thesis: extraction?.thesis || "",
-      keyPhrases: extraction?.keyPhrases || [],
+      number:     epNumber || "XX",
+      thesis,
+      keyPhrases,
     }),
-    [epNumber, extraction]
+    [epNumber, thesis, keyPhrases] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleExtract = () =>
@@ -264,6 +270,34 @@ export default function ContentFactory() {
 
   return (
     <div className="page-container animate-fade-in">
+
+      {/* ── Visual OS upgrade banner ───────────────────────────────────────── */}
+      <div className="flex items-center gap-3 rounded-lg border border-[#193497]/40 bg-[#193497]/10 px-4 py-3 mb-1">
+        <div
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+          style={{ backgroundColor: "#193497" }}
+        >
+          <ImagePlay className="h-4 w-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Visual OS disponible</p>
+          <p className="text-xs text-muted-foreground">
+            Sistema nuevo con editor por pieza, validaciones, auto-fill, historial y exportación.
+          </p>
+        </div>
+        {episodeId ? (
+          <Button size="sm" className="shrink-0 h-8 text-xs" style={{ backgroundColor: "#193497" }} asChild>
+            <Link to={`/visual/episode/${episodeId}`}>
+              Abrir Visual OS →
+            </Link>
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" className="shrink-0 h-8 text-xs" asChild>
+            <Link to="/visual">Ir a Visual OS →</Link>
+          </Button>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

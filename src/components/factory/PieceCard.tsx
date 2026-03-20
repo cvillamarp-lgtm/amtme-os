@@ -157,17 +157,24 @@ export function PieceCard({
           </AspectRatio>
         </div>
 
-        {/* Editable copy */}
+        {/* Editable copy — placeholders filtered from value, shown as hint */}
         <div className="space-y-1.5">
-          {copyLines.slice(0, 3).map((line, i) => (
-            <Input
-              key={`${piece.id}-${i}`}
-              value={line}
-              onChange={(e) => onCopyChange(piece.id, i, e.target.value)}
-              className="h-7 text-xs font-mono"
-              placeholder={piece.copyTemplate[i] || "..."}
-            />
-          ))}
+          {copyLines.slice(0, 3).map((line, i) => {
+            const isPlaceholder = /^\[.+\]$/.test((line ?? "").trim());
+            return (
+              <Input
+                key={`${piece.id}-${i}`}
+                value={isPlaceholder ? "" : (line ?? "")}
+                onChange={(e) => onCopyChange(piece.id, i, e.target.value)}
+                className="h-7 text-xs font-mono"
+                placeholder={
+                  isPlaceholder
+                    ? (line ?? "").replace(/^\[|\]$/g, "").toLowerCase()
+                    : piece.copyTemplate[i]?.replace(/^\[|\]$/g, "").toLowerCase() || "..."
+                }
+              />
+            );
+          })}
         </div>
 
         {/* Validation */}
