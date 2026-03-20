@@ -27,47 +27,24 @@ function getHostReferenceUrl(key: "imagen01" | "imagen02"): string {
   return `${baseUrl}/storage/v1/object/public/generated-images/host-${key}.png`;
 }
 
-const AMTME_BRAND_PROMPT = `You are generating a real Instagram post for the podcast "A Mí Tampoco Me Explicaron" (AMTME). This is a FINISHED social media graphic — not a brand guide, not a mockup, not a color palette chart.
+const AMTME_BRAND_PROMPT = `Generate a single finished Instagram post for the Spanish-language podcast "A Mí Tampoco Me Explicaron". This is one complete image — not a brand guide, not a template, not a mockup. One image.
 
-WHAT THE IMAGE LOOKS LIKE:
-- A dark, editorial Instagram post with black background (#0A0A0A)
-- Bold, uppercase sans-serif text (Inter or Helvetica Neue Black) on the LEFT half
-- The host's photo on the RIGHT half (when included)
-- Minimal design: maximum 3 text elements visible, abundant negative space
-- It looks like a premium editorial magazine cover or Apple-level product campaign
+BACKGROUND: Deep cobalt blue, hex #1A1AE6. Rich, saturated, editorial blue fills the entire canvas.
 
-COLOR PALETTE (these are the ONLY colors):
-- Background: #0A0A0A (deep black) — the canvas itself
-- Headline / dominant text: #F2C84B (warm yellow) — the most important phrase, large and bold
-- Body / secondary text: #F5F0E8 (cream/off-white) — supporting lines, episode number, show name
-- Tertiary / labels: #CCCCCC (light gray) — handles, small labels, timestamps
-- Accent line: thin horizontal rule in #F2C84B separating sections
-- Logos/icons: #FFFFFF pure white
+TEXT ON THE LEFT SIDE OF THE IMAGE:
+- The main headline phrase: rendered in large, bold, uppercase sans-serif letters in warm golden yellow (#F2C84B). This is the biggest element on the page. Tight letter-spacing. Left-aligned.
+- Below it: the show name "A MÍ TAMPOCO ME EXPLICARON" and the episode number in cream / off-white (#F5F0E8). Smaller than the headline. Same left alignment.
+- At the bottom: "@yosoyvillamar" and "PODCAST" in light gray (#999999), very small.
 
-TYPOGRAPHY ON THE IMAGE:
-- Dominant (largest): 1–3 words max, #F2C84B yellow, Extra Bold / Black weight, uppercase, very tight leading
-- Secondary: show name "A MÍ TAMPOCO ME EXPLICARON" in #F5F0E8, smaller, regular weight
-- Episode tag: "EP. XX" in #F2C84B or #CCCCCC, small caps
-- Handle: "@yosoyvillamar" in #CCCCCC, lightest weight, bottom area
-- NO cursives, NO gradients, NO drop shadows, NO decorative fonts
+HOST PHOTO ON THE RIGHT SIDE:
+- A real photograph of a Hispanic adult man: short beard, green cap, tattoo on his left forearm, wearing an AMTME t-shirt. Natural, unposed expression — contemplative.
+- The photo blends into the cobalt background with a soft left-edge fade. No hard cutout.
+- His face falls in the upper third of the image. His eyes look toward the text.
 
-LAYOUT:
-- LEFT ZONE (text): dominant headline stacked vertically, left-aligned, top-third to center
-- RIGHT ZONE (host): full-height photo, naturally cropped, slight vignette fade to black on left edge
-- Bottom strip: show name + episode number + platform logos (Spotify, Apple Podcasts) in white
+OVERALL FEEL: Premium editorial magazine cover. Like a Monocle or GQ cover but for a podcast. Minimal, confident, no clutter. The cobalt blue background with golden-yellow headline creates a bold visual contrast that stops the scroll.
 
-HOST PHOTO (when included):
-- The reference photos show the REAL host: adult Hispanic male, short beard, green cap, AMTME t-shirt, tattoo on left arm
-- PRESERVE exact facial features — do NOT alter face, skin tone, beard, tattoo
-- Photo sits flush right, blending into black background with a subtle left-edge gradient
-- Expression: natural, intimate, not posed — contemplative or slightly serious
+WHAT IS NOT IN THIS IMAGE: No design charts. No color swatches. No multiple panels. No lorem ipsum. No mockup frames. No brand guidelines document. Just one finished Instagram post.`;
 
-WHAT THIS IS NOT:
-- NOT a brand guide or color palette chart
-- NOT a mockup with lorem ipsum
-- NOT a tutorial or infographic about design
-- NOT a template preview
-- This is a REAL, FINISHED Instagram post ready to publish`;
 
 
 serve(async (req) => {
