@@ -24,7 +24,7 @@ Los siguientes puntos deben verificarse **antes de cualquier release**. Si algun
 ## Testing Instructions
 1. Run automated tests:
    ```bash
-   npm test
+   npm run test
    ```
 2. Conduct manual testing for critical features.
 3. Verify logs for any issues or errors.
