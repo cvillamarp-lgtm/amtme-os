@@ -50,7 +50,7 @@ La app no inventa contenido. Todo output deriva exclusivamente del texto real pe
 | **Frontend** | React 18 + Vite + Tailwind CSS |
 | **Backend / DB** | Supabase (PostgreSQL + Auth + Storage) |
 | **IA** | Anthropic Claude — claude-sonnet-4-20250514 vía Supabase Edge Functions |
-| **Estado global** | React Context (auth) · TanStack React Query (server state) · hooks/component state (UI local) |
+| **Estado global** | React Context (auth) + TanStack React Query (server state) + hooks locales (UI) |
 | **Deploy** | Vercel |
 | **Repositorio** | GitHub |
 | **Integraciones futuras** | Google Drive · Google Sheets · Google Calendar · OpenAI Images API |
@@ -63,7 +63,27 @@ No se expone ninguna API key en el frontend. La integración con Anthropic Claud
 
 Espaciado generoso, tipografía clara, interfaces que respiran, sin decoración innecesaria. Cada pantalla tiene una sola función principal visible. El sistema operativo es el producto — no la decoración.
 
-## 4. Arquitectura de Módulos
+## 4. Instalación y Desarrollo
+
+Este proyecto usa **npm** como gestor de paquetes estándar. Solo debe existir `package-lock.json` en el repositorio.
+
+```bash
+# Instalar dependencias (reproducible, sin modificar lockfile)
+npm ci
+
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Compilar para producción
+npm run build
+
+# Ejecutar tests
+npm run test
+```
+
+> **Importante:** No usar `bun`, `yarn` ni `pnpm`. Solo `npm`.
+
+## 5. Arquitectura de Módulos
 
 ```
 AMTME App
@@ -699,17 +719,35 @@ VALUES (
 
 ## 20. Variables de Entorno y Deploy
 
-### Variables de entorno (.env.local)
+### Variables requeridas
 
-```bash
-# Supabase
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
- 
-# Claude API — SOLO en Supabase Edge Functions, nunca en el frontend
-# Configurar en Supabase Dashboard → Settings → Edge Functions → Secrets
-ANTHROPIC_API_KEY=sk-ant-...
-```
+| Variable | Entorno | Descripción |
+|----------|---------|-------------|
+| `VITE_SUPABASE_URL` | Frontend | URL del proyecto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Anon/publishable key de Supabase |
+| `VITE_SUPABASE_PROJECT_ID` | Frontend | ID del proyecto Supabase |
+| `ANTHROPIC_API_KEY` | Edge Functions | API key de Claude — requerido para Script Engine |
+| `GEMINI_API_KEY` | Edge Functions | API key de Gemini — requerido para imágenes (gratuito en aistudio.google.com) |
+| `OPENAI_API_KEY` | Edge Functions | Opcional — fallback imágenes DALL-E 3 |
+| `GROQ_API_KEY` | Edge Functions | Opcional — texto rápido |
+
+### Dónde configurarlas
+
+- **Desarrollo local:** Copia `.env.example` como `.env.local` y rellena los valores reales.
+  ```bash
+  cp .env.example .env.local
+  ```
+- **Producción (Vercel):** Vercel Dashboard → Project → Settings → Environment Variables.
+- **Edge Functions (Supabase):** Supabase Dashboard → Project → Settings → Edge Functions → Secrets.
+
+### ⛔ Prohibición absoluta de commit de `.env`
+
+**Nunca** se debe commitear un archivo `.env` con valores reales al repositorio.
+
+- El archivo `.gitignore` ignora explícitamente `.env` y `.env.*` (excepción: `.env.example`).
+- Solo existe `.env.example` en el repo, con placeholders únicamente — este sí puede commitearse.
+- Si accidentalmente se commitea un `.env` real, rotar **inmediatamente** todas las credenciales expuestas.
+- El checklist de release incluye un gate explícito que bloquea cualquier release si existe un `.env` real en el repo o en el paquete distribuible.
 
 ### vercel.json
 
@@ -725,7 +763,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 1. Schema SQL en Supabase + datos seed (paletas, brand tokens, plantillas)
 2. Auth + roles Supabase + RLS policies
-3. React Context (auth) + TanStack React Query (server state) + hooks locales (UI state)
+3. Configuración de estado (React Context + TanStack React Query)
 4. WordCounter + colorUtils + canvasRenderer (componentes base)
 5. Dashboard + listado de episodios
 6. Módulo Ingesta con contador en tiempo real
