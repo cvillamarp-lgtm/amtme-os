@@ -26,6 +26,7 @@ import { WorkspaceAudit } from "@/components/workspace/WorkspaceAudit";
 import { WorkspaceAssets } from "@/components/workspace/WorkspaceAssets";
 import { WorkspaceProduccion } from "@/components/workspace/WorkspaceProduccion";
 import { WorkspaceCopilot } from "@/components/workspace/WorkspaceCopilot";
+import { WorkspaceConstructor } from "@/components/workspace/WorkspaceConstructor";
 import { NextActionBanner } from "@/components/workspace/NextActionBanner";
 
 export default function EpisodeWorkspace() {
@@ -120,6 +121,9 @@ export default function EpisodeWorkspace() {
           </TabsTrigger>
           <TabsTrigger value="copilot" className="text-xs gap-1.5 text-violet-500 data-[state=active]:text-violet-600">
             <Zap className="h-3.5 w-3.5" />Copiloto
+          </TabsTrigger>
+          <TabsTrigger value="constructor" className="text-xs gap-1.5 text-primary data-[state=active]:text-primary">
+            <Sparkles className="h-3.5 w-3.5" />Constructor IA
           </TabsTrigger>
         </TabsList>
 
@@ -217,6 +221,10 @@ export default function EpisodeWorkspace() {
 
           <TabsContent value="copilot" className="mt-0">
             <WorkspaceCopilot episode={episode} />
+          </TabsContent>
+
+          <TabsContent value="constructor" className="mt-0">
+            <WorkspaceConstructor episode={episode} />
           </TabsContent>
         </div>
       </Tabs>
