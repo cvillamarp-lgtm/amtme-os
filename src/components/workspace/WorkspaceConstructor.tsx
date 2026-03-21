@@ -105,6 +105,15 @@ const ACTION_LABELS: Record<PlanChange["action"], string> = {
   update_publication: "Actualizar cola",
 };
 
+const HIGH_IMPACT_EPISODE_FIELDS = new Set([
+  "working_title",
+  "theme",
+  "core_thesis",
+  "summary",
+  "hook",
+  "cta",
+]);
+
 export function WorkspaceConstructor({ episode }: Props) {
   const queryClient = useQueryClient();
   const [instruction, setInstruction] = useState("");
@@ -130,8 +139,33 @@ export function WorkspaceConstructor({ episode }: Props) {
 
   const canApply = selectedChangeIds.length > 0 && !hasBlockingConflicts && (!requiresExtraConfirmation || highRiskConfirmed);
 
+  const isHighImpactChange = (change: PlanChange) => {
+    if (change.entity_type !== "episode") return true;
+    if (HIGH_IMPACT_EPISODE_FIELDS.has(change.field)) return true;
+    const beforeLen = String(change.before ?? "").trim().length;
+    const afterLen = String(change.after ?? "").trim().length;
+    return Math.abs(afterLen - beforeLen) > 180;
+  };
+
   const toggleChangeSelection = (changeId: string, checked: boolean) => {
     setSelectedChangeIds((prev) => checked ? Array.from(new Set([...prev, changeId])) : prev.filter((id) => id !== changeId));
+  };
+
+  const selectAllUpdates = () => {
+    if (!plan) return;
+    setSelectedChangeIds(plan.changes.filter((c) => c.status === "update").map((c) => c.change_id));
+  };
+
+  const clearSelection = () => setSelectedChangeIds([]);
+
+  const selectConflicts = () => {
+    if (!plan) return;
+    setSelectedChangeIds(plan.changes.filter((c) => c.status === "conflict").map((c) => c.change_id));
+  };
+
+  const selectHighImpact = () => {
+    if (!plan) return;
+    setSelectedChangeIds(plan.changes.filter((c) => c.status === "update" && isHighImpactChange(c)).map((c) => c.change_id));
   };
 
   const renderWordDelta = (before: unknown, after: unknown) => {
@@ -375,6 +409,20 @@ export function WorkspaceConstructor({ episode }: Props) {
           {!plan && <p className="text-sm text-muted-foreground">Aquí verás qué cambia, qué se conserva y posibles conflictos.</p>}
           {plan && (
             <div className="space-y-2">
+              <div className="flex flex-wrap gap-2 pb-1">
+                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={selectAllUpdates}>
+                  Seleccionar todo
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={clearSelection}>
+                  Limpiar selección
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={selectConflicts}>
+                  Solo conflictos
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={selectHighImpact}>
+                  Solo alto impacto
+                </Button>
+              </div>
               {plan.changes.map((c, idx) => (
                 <div key={c.change_id || `${c.entity_type}-${c.action}-${c.field}-${idx}`} className="border border-border rounded-md p-3">
                   <div className="flex items-center gap-2 mb-1">
