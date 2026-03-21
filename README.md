@@ -50,7 +50,7 @@ La app no inventa contenido. Todo output deriva exclusivamente del texto real pe
 | **Frontend** | React 18 + Vite + Tailwind CSS |
 | **Backend / DB** | Supabase (PostgreSQL + Auth + Storage) |
 | **IA** | Anthropic Claude — claude-sonnet-4-20250514 vía Supabase Edge Functions |
-| **Estado global** | Zustand |
+| **Estado global** | React Context (auth) · TanStack React Query (server state) · hooks/component state (UI local) |
 | **Deploy** | Vercel |
 | **Repositorio** | GitHub |
 | **Integraciones futuras** | Google Drive · Google Sheets · Google Calendar · OpenAI Images API |
@@ -725,7 +725,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 1. Schema SQL en Supabase + datos seed (paletas, brand tokens, plantillas)
 2. Auth + roles Supabase + RLS policies
-3. Store Zustand (episodeStore)
+3. React Context (auth) + TanStack React Query (server state) + hooks locales (UI state)
 4. WordCounter + colorUtils + canvasRenderer (componentes base)
 5. Dashboard + listado de episodios
 6. Módulo Ingesta con contador en tiempo real
