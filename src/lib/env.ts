@@ -3,12 +3,10 @@ import { z } from "zod";
 const envSchema = z.object({
   VITE_SUPABASE_URL: z
     .string()
-    .url("VITE_SUPABASE_URL must be a valid URL")
-    .default("https://vudvgfdoeciurejtbzbw.supabase.co"),
+    .url("VITE_SUPABASE_URL must be a valid URL"),
   VITE_SUPABASE_ANON_KEY: z
     .string()
-    .min(1, "VITE_SUPABASE_ANON_KEY is required")
-    .default("sb_publishable_jL_FhH11B2KrVj7mXcJZEw_5ICdxTQG"),
+    .min(1, "VITE_SUPABASE_ANON_KEY is required"),
 });
 
 function parseEnv() {
