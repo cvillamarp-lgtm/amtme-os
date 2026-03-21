@@ -1,3 +1,4 @@
+import "../_shared/deno-shims.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -316,7 +317,7 @@ serve(async (req) => {
             .select("id")
             .single();
           if (createErr) return json({ error: createErr.message }, 500, cors);
-          if (created?.id) createdAssets.push(created.id);
+          if (created?.id) createdAssets.push(String(created.id));
           continue;
         }
 
@@ -386,7 +387,7 @@ serve(async (req) => {
             .select("id")
             .single();
           if (createErr) return json({ error: createErr.message }, 500, cors);
-          if (created?.id) createdTasks.push(created.id);
+          if (created?.id) createdTasks.push(String(created.id));
           continue;
         }
 
@@ -455,7 +456,7 @@ serve(async (req) => {
             .select("id")
             .single();
           if (createErr) return json({ error: createErr.message }, 500, cors);
-          if (created?.id) createdPublications.push(created.id);
+          if (created?.id) createdPublications.push(String(created.id));
           continue;
         }
 
