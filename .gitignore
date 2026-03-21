@@ -1,7 +1,7 @@
-# Variables de entorno
+# Variables de entorno — NUNCA commitear .env real
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Logs
 logs
