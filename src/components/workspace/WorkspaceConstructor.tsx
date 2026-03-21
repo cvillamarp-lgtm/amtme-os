@@ -14,6 +14,8 @@ import type { Tables } from "@/integrations/supabase/types";
 type Episode = Tables<"episodes">;
 
 interface PlanChange {
+  entity_type: "episode" | "asset_candidates" | "tasks" | "publication_queue";
+  action: "update_field" | "create_candidate" | "create_task" | "create_publication";
   field: string;
   before: unknown;
   after: unknown;
@@ -59,6 +61,9 @@ interface ApplyResult {
   run_id: string;
   status: "applied";
   updated_fields: string[];
+  created_assets?: number;
+  created_tasks?: number;
+  created_publications?: number;
 }
 
 interface Props {
@@ -70,6 +75,20 @@ const INTENT_LABELS: Record<string, string> = {
   REORGANIZE: "Reorganizar estructura",
   CONSOLIDATE: "Consolidar contenido",
   SAFETY_REVIEW: "Revisión de seguridad",
+};
+
+const ENTITY_LABELS: Record<PlanChange["entity_type"], string> = {
+  episode: "Episodio",
+  asset_candidates: "Assets",
+  tasks: "Tareas",
+  publication_queue: "Publicación",
+};
+
+const ACTION_LABELS: Record<PlanChange["action"], string> = {
+  update_field: "Actualizar",
+  create_candidate: "Crear candidate",
+  create_task: "Crear tarea",
+  create_publication: "Crear cola",
 };
 
 export function WorkspaceConstructor({ episode }: Props) {
@@ -174,7 +193,13 @@ export function WorkspaceConstructor({ episode }: Props) {
         run_id: plan.run_id,
       });
       queryClient.invalidateQueries({ queryKey: ["episode", episode.id] });
-      toast.success(`Cambios aplicados: ${data.updated_fields.length} campo(s)`);
+      const summary = [
+        `${data.updated_fields.length} campos`,
+        `${data.created_assets ?? 0} assets`,
+        `${data.created_tasks ?? 0} tareas`,
+        `${data.created_publications ?? 0} publicaciones`,
+      ].join(" · ");
+      toast.success(`Cambios aplicados: ${summary}`);
       setPlan(null);
       await loadHistory();
     } catch (e: unknown) {
@@ -324,10 +349,12 @@ export function WorkspaceConstructor({ episode }: Props) {
           {!plan && <p className="text-sm text-muted-foreground">Aquí verás qué cambia, qué se conserva y posibles conflictos.</p>}
           {plan && (
             <div className="space-y-2">
-              {plan.changes.map((c) => (
-                <div key={c.field} className="border border-border rounded-md p-3">
+              {plan.changes.map((c, idx) => (
+                <div key={`${c.entity_type}-${c.action}-${c.field}-${idx}`} className="border border-border rounded-md p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="text-xs font-medium capitalize">{c.field.replace(/_/g, " ")}</p>
+                    <Badge variant="secondary" className="text-[10px]">{ENTITY_LABELS[c.entity_type]}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{ACTION_LABELS[c.action]}</Badge>
                     <Badge variant="outline" className="text-[10px]">{c.status}</Badge>
                   </div>
                   {c.before !== null && c.before !== undefined && (
