@@ -14,8 +14,16 @@ import type { Tables } from "@/integrations/supabase/types";
 type Episode = Tables<"episodes">;
 
 interface PlanChange {
+  change_id: string;
   entity_type: "episode" | "asset_candidates" | "tasks" | "publication_queue";
-  action: "update_field" | "create_candidate" | "create_task" | "create_publication";
+  action:
+    | "update_field"
+    | "create_candidate"
+    | "update_candidate"
+    | "create_task"
+    | "update_task"
+    | "create_publication"
+    | "update_publication";
   field: string;
   before: unknown;
   after: unknown;
@@ -64,6 +72,9 @@ interface ApplyResult {
   created_assets?: number;
   created_tasks?: number;
   created_publications?: number;
+  updated_assets?: number;
+  updated_tasks?: number;
+  updated_publications?: number;
 }
 
 interface Props {
@@ -87,8 +98,11 @@ const ENTITY_LABELS: Record<PlanChange["entity_type"], string> = {
 const ACTION_LABELS: Record<PlanChange["action"], string> = {
   update_field: "Actualizar",
   create_candidate: "Crear candidate",
+  update_candidate: "Actualizar candidate",
   create_task: "Crear tarea",
+  update_task: "Actualizar tarea",
   create_publication: "Crear cola",
+  update_publication: "Actualizar cola",
 };
 
 export function WorkspaceConstructor({ episode }: Props) {
@@ -99,21 +113,26 @@ export function WorkspaceConstructor({ episode }: Props) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [rollingBackId, setRollingBackId] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
+  const [selectedChangeIds, setSelectedChangeIds] = useState<string[]>([]);
 
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
 
-  const hasBlockingConflicts = useMemo(
-    () => (plan?.changes ?? []).some((c) => c.status === "conflict"),
-    [plan],
-  );
+  const hasBlockingConflicts = useMemo(() => {
+    if (!plan) return false;
+    return plan.changes.some((c) => selectedChangeIds.includes(c.change_id) && c.status === "conflict");
+  }, [plan, selectedChangeIds]);
 
   const requiresExtraConfirmation = useMemo(
     () => !!plan?.risk && plan.risk.level === "high",
     [plan],
   );
 
-  const canApply = !hasBlockingConflicts && (!requiresExtraConfirmation || highRiskConfirmed);
+  const canApply = selectedChangeIds.length > 0 && !hasBlockingConflicts && (!requiresExtraConfirmation || highRiskConfirmed);
+
+  const toggleChangeSelection = (changeId: string, checked: boolean) => {
+    setSelectedChangeIds((prev) => checked ? Array.from(new Set([...prev, changeId])) : prev.filter((id) => id !== changeId));
+  };
 
   const renderWordDelta = (before: unknown, after: unknown) => {
     const beforeWords = String(before ?? "").trim().split(/\s+/).filter(Boolean);
@@ -174,6 +193,7 @@ export function WorkspaceConstructor({ episode }: Props) {
       });
       setPlan(data);
       setHighRiskConfirmed(false);
+      setSelectedChangeIds(data.changes.filter((c) => c.status === "update").map((c) => c.change_id));
       toast.success("Propuesta generada. Revisa antes de aplicar.");
       await loadHistory();
     } catch (e: unknown) {
@@ -191,6 +211,7 @@ export function WorkspaceConstructor({ episode }: Props) {
         mode: "apply",
         episode_id: episode.id,
         run_id: plan.run_id,
+        selected_change_ids: selectedChangeIds,
       });
       queryClient.invalidateQueries({ queryKey: ["episode", episode.id] });
       const summary = [
@@ -198,9 +219,13 @@ export function WorkspaceConstructor({ episode }: Props) {
         `${data.created_assets ?? 0} assets`,
         `${data.created_tasks ?? 0} tareas`,
         `${data.created_publications ?? 0} publicaciones`,
+        `${data.updated_assets ?? 0} updates assets`,
+        `${data.updated_tasks ?? 0} updates tareas`,
+        `${data.updated_publications ?? 0} updates publicación`,
       ].join(" · ");
       toast.success(`Cambios aplicados: ${summary}`);
       setPlan(null);
+      setSelectedChangeIds([]);
       await loadHistory();
     } catch (e: unknown) {
       showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
@@ -219,6 +244,7 @@ export function WorkspaceConstructor({ episode }: Props) {
       });
       toast.success("Propuesta cancelada");
       setPlan(null);
+      setSelectedChangeIds([]);
       await loadHistory();
     } catch (e: unknown) {
       showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
@@ -350,8 +376,13 @@ export function WorkspaceConstructor({ episode }: Props) {
           {plan && (
             <div className="space-y-2">
               {plan.changes.map((c, idx) => (
-                <div key={`${c.entity_type}-${c.action}-${c.field}-${idx}`} className="border border-border rounded-md p-3">
+                <div key={c.change_id || `${c.entity_type}-${c.action}-${c.field}-${idx}`} className="border border-border rounded-md p-3">
                   <div className="flex items-center gap-2 mb-1">
+                    <Checkbox
+                      checked={selectedChangeIds.includes(c.change_id)}
+                      onCheckedChange={(v) => toggleChangeSelection(c.change_id, !!v)}
+                      disabled={c.status !== "update" || applying}
+                    />
                     <p className="text-xs font-medium capitalize">{c.field.replace(/_/g, " ")}</p>
                     <Badge variant="secondary" className="text-[10px]">{ENTITY_LABELS[c.entity_type]}</Badge>
                     <Badge variant="secondary" className="text-[10px]">{ACTION_LABELS[c.action]}</Badge>
@@ -388,6 +419,7 @@ export function WorkspaceConstructor({ episode }: Props) {
                 </Button>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">Cambios seleccionados: {selectedChangeIds.length}</p>
             {requiresExtraConfirmation && (
               <label className="flex items-center gap-2 text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded p-2">
                 <Checkbox checked={highRiskConfirmed} onCheckedChange={(v) => setHighRiskConfirmed(!!v)} />

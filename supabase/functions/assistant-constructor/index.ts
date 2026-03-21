@@ -6,8 +6,16 @@ import { callAI } from "../_shared/ai.ts";
 type Mode = "plan" | "apply" | "cancel" | "history" | "rollback";
 
 type ProposedChange = {
+  change_id: string;
   entity_type: "episode" | "asset_candidates" | "tasks" | "publication_queue";
-  action: "update_field" | "create_candidate" | "create_task" | "create_publication";
+  action:
+    | "update_field"
+    | "create_candidate"
+    | "update_candidate"
+    | "create_task"
+    | "update_task"
+    | "create_publication"
+    | "update_publication";
   field: string;
   before: unknown;
   after: unknown;
@@ -47,7 +55,15 @@ const CRITICAL_FIELDS = new Set<string>([
 
 const ALLOWED_ENTITY_TYPES = ["episode", "asset_candidates", "tasks", "publication_queue"] as const;
 
-const ALLOWED_ACTIONS = ["update_field", "create_candidate", "create_task", "create_publication"] as const;
+const ALLOWED_ACTIONS = [
+  "update_field",
+  "create_candidate",
+  "update_candidate",
+  "create_task",
+  "update_task",
+  "create_publication",
+  "update_publication",
+] as const;
 
 const SYSTEM_PROMPT = `Eres un planner de cambios para una app editorial.
 Tu salida SIEMPRE es JSON válido.
@@ -82,6 +98,15 @@ function parseModelJson(raw: string): Record<string, unknown> {
     .trim();
   const objMatch = cleaned.match(/\{[\s\S]*\}/);
   return JSON.parse(objMatch?.[0] ?? cleaned);
+}
+
+function asUpdatePayload(row: Record<string, unknown>) {
+  const out = { ...row };
+  delete out.id;
+  delete out.user_id;
+  delete out.created_at;
+  delete out.updated_at;
+  return out;
 }
 
 function estimateRisk(changes: ProposedChange[], warnings: string[], conflicts: string[]): RiskSimulation {
@@ -203,6 +228,9 @@ serve(async (req) => {
 
     if (mode === "apply") {
       if (!runId) return json({ error: "run_id is required" }, 400, cors);
+      const selectedChangeIds = Array.isArray(body.selected_change_ids)
+        ? body.selected_change_ids.map((id: unknown) => String(id))
+        : null;
 
       const { data: run, error: runErr } = await admin
         .from("assistant_action_runs")
@@ -216,14 +244,29 @@ serve(async (req) => {
       if (run.status !== "planned") return json({ error: "Only planned runs can be applied" }, 400, cors);
 
       const changes = (run.proposed_changes as ProposedChange[] | null) ?? [];
+      const changesToApply = selectedChangeIds
+        ? changes.filter((c) => selectedChangeIds.includes(c.change_id))
+        : changes.filter((c) => c.status === "update");
       const patch: Record<string, unknown> = {};
       const createdAssets: string[] = [];
       const createdTasks: string[] = [];
       const createdPublications: string[] = [];
-      const conflicts = changes.filter((c) => c.status === "conflict");
+      const updatedAssets: string[] = [];
+      const updatedTasks: string[] = [];
+      const updatedPublications: string[] = [];
+      const executedActions: Record<string, unknown> = {
+        episode_patch: {},
+        created_assets: [] as string[],
+        created_tasks: [] as string[],
+        created_publications: [] as string[],
+        updated_assets_before: [] as Array<Record<string, unknown>>,
+        updated_tasks_before: [] as Array<Record<string, unknown>>,
+        updated_publications_before: [] as Array<Record<string, unknown>>,
+      };
+      const conflicts = changesToApply.filter((c) => c.status === "conflict");
       if (conflicts.length > 0) return json({ error: "Resolve conflicts before apply", conflicts }, 409, cors);
 
-      for (const change of changes) {
+      for (const change of changesToApply) {
         if (change.status !== "update") continue;
         if (change.entity_type === "episode") {
           if (!ALLOWED_FIELDS.includes(change.field as (typeof ALLOWED_FIELDS)[number])) continue;
@@ -277,6 +320,44 @@ serve(async (req) => {
           continue;
         }
 
+        if (change.entity_type === "asset_candidates" && change.action === "update_candidate") {
+          const payload = (change.payload ?? {}) as Record<string, unknown>;
+          const candidateId = String(payload.id ?? "").trim();
+          if (!candidateId) continue;
+
+          const { data: current, error: currentErr } = await admin
+            .from("asset_candidates")
+            .select("*")
+            .eq("id", candidateId)
+            .eq("user_id", user.id)
+            .eq("episode_id", episodeId)
+            .single();
+          if (currentErr || !current) return json({ error: "asset candidate not found" }, 404, cors);
+
+          const updatePayload = {
+            title: payload.title ?? current.title,
+            body_text: payload.body_text ?? current.body_text,
+            status: payload.status ?? current.status,
+            platform: payload.platform ?? current.platform,
+            asset_type: payload.asset_type ?? current.asset_type,
+          };
+
+          const { error: updateCandidateErr } = await admin
+            .from("asset_candidates")
+            .update(updatePayload)
+            .eq("id", candidateId)
+            .eq("user_id", user.id)
+            .eq("episode_id", episodeId);
+          if (updateCandidateErr) return json({ error: updateCandidateErr.message }, 500, cors);
+
+          (executedActions.updated_assets_before as Array<Record<string, unknown>>).push({
+            id: candidateId,
+            before: asUpdatePayload(current as unknown as Record<string, unknown>),
+          });
+          updatedAssets.push(candidateId);
+          continue;
+        }
+
         if (change.entity_type === "tasks" && change.action === "create_task") {
           const payload = (change.payload ?? {}) as Record<string, unknown>;
           const title = String(payload.title ?? "").trim();
@@ -306,6 +387,43 @@ serve(async (req) => {
             .single();
           if (createErr) return json({ error: createErr.message }, 500, cors);
           if (created?.id) createdTasks.push(created.id);
+          continue;
+        }
+
+        if (change.entity_type === "tasks" && change.action === "update_task") {
+          const payload = (change.payload ?? {}) as Record<string, unknown>;
+          const taskId = String(payload.id ?? "").trim();
+          if (!taskId) continue;
+
+          const { data: current, error: currentErr } = await admin
+            .from("tasks")
+            .select("*")
+            .eq("id", taskId)
+            .eq("user_id", user.id)
+            .single();
+          if (currentErr || !current) return json({ error: "task not found" }, 404, cors);
+
+          const updatePayload = {
+            title: payload.title ?? current.title,
+            description: payload.description ?? current.description,
+            status: payload.status ?? current.status,
+            priority: payload.priority ?? current.priority,
+            category: payload.category ?? current.category,
+            due_date: payload.due_date ?? current.due_date,
+          };
+
+          const { error: updateTaskErr } = await admin
+            .from("tasks")
+            .update(updatePayload)
+            .eq("id", taskId)
+            .eq("user_id", user.id);
+          if (updateTaskErr) return json({ error: updateTaskErr.message }, 500, cors);
+
+          (executedActions.updated_tasks_before as Array<Record<string, unknown>>).push({
+            id: taskId,
+            before: asUpdatePayload(current as unknown as Record<string, unknown>),
+          });
+          updatedTasks.push(taskId);
           continue;
         }
 
@@ -340,9 +458,47 @@ serve(async (req) => {
           if (created?.id) createdPublications.push(created.id);
           continue;
         }
+
+        if (change.entity_type === "publication_queue" && change.action === "update_publication") {
+          const payload = (change.payload ?? {}) as Record<string, unknown>;
+          const publicationId = String(payload.id ?? "").trim();
+          if (!publicationId) continue;
+
+          const { data: current, error: currentErr } = await admin
+            .from("publication_queue")
+            .select("*")
+            .eq("id", publicationId)
+            .eq("user_id", user.id)
+            .eq("episode_id", episodeId)
+            .single();
+          if (currentErr || !current) return json({ error: "publication queue item not found" }, 404, cors);
+
+          const updatePayload = {
+            status: payload.status ?? current.status,
+            notes: payload.notes ?? current.notes,
+            scheduled_at: payload.scheduled_at ?? current.scheduled_at,
+            checklist: payload.checklist ?? current.checklist,
+            platform: payload.platform ?? current.platform,
+          };
+
+          const { error: updatePublicationErr } = await admin
+            .from("publication_queue")
+            .update(updatePayload)
+            .eq("id", publicationId)
+            .eq("user_id", user.id)
+            .eq("episode_id", episodeId);
+          if (updatePublicationErr) return json({ error: updatePublicationErr.message }, 500, cors);
+
+          (executedActions.updated_publications_before as Array<Record<string, unknown>>).push({
+            id: publicationId,
+            before: asUpdatePayload(current as unknown as Record<string, unknown>),
+          });
+          updatedPublications.push(publicationId);
+          continue;
+        }
       }
 
-      if (Object.keys(patch).length === 0) {
+      if (Object.keys(patch).length === 0 && createdAssets.length === 0 && createdTasks.length === 0 && createdPublications.length === 0 && updatedAssets.length === 0 && updatedTasks.length === 0 && updatedPublications.length === 0) {
         const { error: markErr } = await admin
           .from("assistant_action_runs")
           .update({ status: "canceled" })
@@ -353,17 +509,24 @@ serve(async (req) => {
         return json({ run_id: runId, status: "canceled", updated_fields: [] }, 200, cors);
       }
 
-      const { error: updateErr } = await admin
-        .from("episodes")
-        .update(patch)
-        .eq("id", episodeId)
-        .eq("user_id", user.id);
-      if (updateErr) return json({ error: updateErr.message }, 500, cors);
+      if (Object.keys(patch).length > 0) {
+        const { error: updateErr } = await admin
+          .from("episodes")
+          .update(patch)
+          .eq("id", episodeId)
+          .eq("user_id", user.id);
+        if (updateErr) return json({ error: updateErr.message }, 500, cors);
+      }
 
       const afterSnapshot = {
         ...buildSnapshot(episode as unknown as Record<string, unknown>),
         ...patch,
       };
+
+      executedActions.episode_patch = patch;
+      executedActions.created_assets = createdAssets;
+      executedActions.created_tasks = createdTasks;
+      executedActions.created_publications = createdPublications;
 
       const { error: runUpdateErr } = await admin
         .from("assistant_action_runs")
@@ -371,7 +534,7 @@ serve(async (req) => {
           status: "applied",
           applied_at: new Date().toISOString(),
           after_snapshot: afterSnapshot,
-          executed_actions: patch,
+          executed_actions: executedActions,
         })
         .eq("id", runId)
         .eq("episode_id", episodeId)
@@ -385,6 +548,9 @@ serve(async (req) => {
         created_assets: createdAssets.length,
         created_tasks: createdTasks.length,
         created_publications: createdPublications.length,
+        updated_assets: updatedAssets.length,
+        updated_tasks: updatedTasks.length,
+        updated_publications: updatedPublications.length,
       }, 200, cors);
     }
 
@@ -393,7 +559,7 @@ serve(async (req) => {
 
       const { data: run, error: runErr } = await admin
         .from("assistant_action_runs")
-        .select("id, status, before_snapshot")
+        .select("id, status, before_snapshot, executed_actions")
         .eq("id", runId)
         .eq("episode_id", episodeId)
         .eq("user_id", user.id)
@@ -407,12 +573,59 @@ serve(async (req) => {
         if (before[field] !== undefined) rollbackPatch[field] = before[field];
       }
 
-      const { error: epUpdateErr } = await admin
-        .from("episodes")
-        .update(rollbackPatch)
-        .eq("id", episodeId)
-        .eq("user_id", user.id);
-      if (epUpdateErr) return json({ error: epUpdateErr.message }, 500, cors);
+      if (Object.keys(rollbackPatch).length > 0) {
+        const { error: epUpdateErr } = await admin
+          .from("episodes")
+          .update(rollbackPatch)
+          .eq("id", episodeId)
+          .eq("user_id", user.id);
+        if (epUpdateErr) return json({ error: epUpdateErr.message }, 500, cors);
+      }
+
+      const executed = (run.executed_actions ?? {}) as Record<string, unknown>;
+      const createdAssetIds = Array.isArray(executed.created_assets) ? executed.created_assets.map((v) => String(v)) : [];
+      const createdTaskIds = Array.isArray(executed.created_tasks) ? executed.created_tasks.map((v) => String(v)) : [];
+      const createdPublicationIds = Array.isArray(executed.created_publications) ? executed.created_publications.map((v) => String(v)) : [];
+
+      if (createdAssetIds.length > 0) {
+        const { error } = await admin.from("asset_candidates").delete().eq("user_id", user.id).eq("episode_id", episodeId).in("id", createdAssetIds);
+        if (error) return json({ error: error.message }, 500, cors);
+      }
+      if (createdTaskIds.length > 0) {
+        const { error } = await admin.from("tasks").delete().eq("user_id", user.id).in("id", createdTaskIds);
+        if (error) return json({ error: error.message }, 500, cors);
+      }
+      if (createdPublicationIds.length > 0) {
+        const { error } = await admin.from("publication_queue").delete().eq("user_id", user.id).eq("episode_id", episodeId).in("id", createdPublicationIds);
+        if (error) return json({ error: error.message }, 500, cors);
+      }
+
+      const updatedAssetsBefore = Array.isArray(executed.updated_assets_before) ? executed.updated_assets_before as Array<Record<string, unknown>> : [];
+      for (const row of updatedAssetsBefore) {
+        const id = String(row.id ?? "");
+        const beforeRow = (row.before ?? {}) as Record<string, unknown>;
+        if (!id) continue;
+        const { error } = await admin.from("asset_candidates").update(beforeRow).eq("id", id).eq("user_id", user.id).eq("episode_id", episodeId);
+        if (error) return json({ error: error.message }, 500, cors);
+      }
+
+      const updatedTasksBefore = Array.isArray(executed.updated_tasks_before) ? executed.updated_tasks_before as Array<Record<string, unknown>> : [];
+      for (const row of updatedTasksBefore) {
+        const id = String(row.id ?? "");
+        const beforeRow = (row.before ?? {}) as Record<string, unknown>;
+        if (!id) continue;
+        const { error } = await admin.from("tasks").update(beforeRow).eq("id", id).eq("user_id", user.id);
+        if (error) return json({ error: error.message }, 500, cors);
+      }
+
+      const updatedPublicationsBefore = Array.isArray(executed.updated_publications_before) ? executed.updated_publications_before as Array<Record<string, unknown>> : [];
+      for (const row of updatedPublicationsBefore) {
+        const id = String(row.id ?? "");
+        const beforeRow = (row.before ?? {}) as Record<string, unknown>;
+        if (!id) continue;
+        const { error } = await admin.from("publication_queue").update(beforeRow).eq("id", id).eq("user_id", user.id).eq("episode_id", episodeId);
+        if (error) return json({ error: error.message }, 500, cors);
+      }
 
       const { error: runUpdateErr } = await admin
         .from("assistant_action_runs")
@@ -434,6 +647,7 @@ serve(async (req) => {
 Campos permitidos: ${ALLOWED_FIELDS.join(", ")}
 Entidades permitidas: episode, asset_candidates, tasks, publication_queue
 Acciones permitidas: update_field, create_candidate, create_task, create_publication
+Acciones update existentes: update_candidate, update_task, update_publication (requieren payload.id)
 Estado actual del episodio:
 ${JSON.stringify(buildSnapshot(episode as unknown as Record<string, unknown>), null, 2)}
 
@@ -447,10 +661,10 @@ Responde JSON exacto:
   "operations": [
     {
       "entity_type": "episode | asset_candidates | tasks | publication_queue",
-      "action": "update_field | create_candidate | create_task | create_publication",
+      "action": "update_field | create_candidate | update_candidate | create_task | update_task | create_publication | update_publication",
       "field": "si action=update_field, uno de los permitidos",
       "value": "si action=update_field, nuevo valor",
-      "payload": {"si action=create_*, datos de la entidad"},
+      "payload": {"si action=create_* o update_*, datos de la entidad; para update_* incluye id"},
       "reason": "por qué"
     }
   ],
@@ -492,19 +706,19 @@ Responde JSON exacto:
         const after = op.value ?? null;
 
         if (String(before ?? "").trim() === String(after ?? "").trim()) {
-          changes.push({ entity_type: entityType, action, field, before, after, status: "no_change", reason: reason || "Sin cambios efectivos" });
+          changes.push({ change_id: crypto.randomUUID(), entity_type: entityType, action, field, before, after, status: "no_change", reason: reason || "Sin cambios efectivos" });
           continue;
         }
 
         const isCritical = CRITICAL_FIELDS.has(field);
         const hasBefore = String(before ?? "").trim().length > 0;
         if (isCritical && hasBefore) {
-          changes.push({ entity_type: entityType, action, field, before, after, status: "conflict", reason: reason || "Campo crítico ya tiene valor" });
+          changes.push({ change_id: crypto.randomUUID(), entity_type: entityType, action, field, before, after, status: "conflict", reason: reason || "Campo crítico ya tiene valor" });
           conflicts.push(`${field}: el campo ya tiene contenido y requiere revisión manual`);
           continue;
         }
 
-        changes.push({ entity_type: entityType, action, field, before, after, status: "update", reason });
+        changes.push({ change_id: crypto.randomUUID(), entity_type: entityType, action, field, before, after, status: "update", reason });
         continue;
       }
 
@@ -528,6 +742,7 @@ Responde JSON exacto:
             status: "no_change",
             reason: "Sin contenido suficiente para crear asset",
             payload: assetPayload,
+            change_id: crypto.randomUUID(),
           });
           continue;
         }
@@ -552,6 +767,7 @@ Responde JSON exacto:
             status: "conflict",
             reason: "Posible duplicado",
             payload: assetPayload,
+            change_id: crypto.randomUUID(),
           });
           conflicts.push("asset_candidate duplicado detectado");
           continue;
@@ -566,6 +782,73 @@ Responde JSON exacto:
           status: "update",
           reason: reason || "Crear nuevo asset candidate",
           payload: assetPayload,
+          change_id: crypto.randomUUID(),
+        });
+        continue;
+      }
+
+      if (entityType === "asset_candidates" && action === "update_candidate") {
+        const assetPayload = payload ?? {};
+        const candidateId = String(assetPayload.id ?? "").trim();
+        if (!candidateId) {
+          changes.push({
+            change_id: crypto.randomUUID(),
+            entity_type: entityType,
+            action,
+            field: "asset_candidate",
+            before: null,
+            after: assetPayload,
+            status: "conflict",
+            reason: "Falta payload.id para actualizar asset",
+            payload: assetPayload,
+          });
+          conflicts.push("update_candidate sin id");
+          continue;
+        }
+
+        const { data: existing, error: existingErr } = await admin
+          .from("asset_candidates")
+          .select("id, title, body_text, status, platform, asset_type")
+          .eq("id", candidateId)
+          .eq("user_id", user.id)
+          .eq("episode_id", episodeId)
+          .single();
+
+        if (existingErr || !existing) {
+          changes.push({
+            change_id: crypto.randomUUID(),
+            entity_type: entityType,
+            action,
+            field: "asset_candidate",
+            before: null,
+            after: assetPayload,
+            status: "conflict",
+            reason: "Asset candidate no encontrado",
+            payload: assetPayload,
+          });
+          conflicts.push("asset candidate no encontrado para update");
+          continue;
+        }
+
+        const updatePayload = {
+          id: candidateId,
+          title: assetPayload.title ?? existing.title,
+          body_text: assetPayload.body_text ?? existing.body_text,
+          status: assetPayload.status ?? existing.status,
+          platform: assetPayload.platform ?? existing.platform,
+          asset_type: assetPayload.asset_type ?? existing.asset_type,
+        };
+
+        changes.push({
+          change_id: crypto.randomUUID(),
+          entity_type: entityType,
+          action,
+          field: "asset_candidate",
+          before: existing,
+          after: updatePayload,
+          status: "update",
+          reason: reason || "Actualizar asset candidate existente",
+          payload: updatePayload,
         });
         continue;
       }
@@ -590,6 +873,7 @@ Responde JSON exacto:
             status: "no_change",
             reason: "Task sin título",
             payload: taskPayload,
+            change_id: crypto.randomUUID(),
           });
           continue;
         }
@@ -612,6 +896,7 @@ Responde JSON exacto:
             status: "conflict",
             reason: "Posible duplicado",
             payload: taskPayload,
+            change_id: crypto.randomUUID(),
           });
           conflicts.push("task duplicada detectada");
           continue;
@@ -626,6 +911,73 @@ Responde JSON exacto:
           status: "update",
           reason: reason || "Crear nueva tarea",
           payload: taskPayload,
+          change_id: crypto.randomUUID(),
+        });
+        continue;
+      }
+
+      if (entityType === "tasks" && action === "update_task") {
+        const taskPayload = payload ?? {};
+        const taskId = String(taskPayload.id ?? "").trim();
+        if (!taskId) {
+          changes.push({
+            change_id: crypto.randomUUID(),
+            entity_type: entityType,
+            action,
+            field: "task",
+            before: null,
+            after: taskPayload,
+            status: "conflict",
+            reason: "Falta payload.id para actualizar task",
+            payload: taskPayload,
+          });
+          conflicts.push("update_task sin id");
+          continue;
+        }
+
+        const { data: existing, error: existingErr } = await admin
+          .from("tasks")
+          .select("id, title, description, status, priority, category, due_date")
+          .eq("id", taskId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (existingErr || !existing) {
+          changes.push({
+            change_id: crypto.randomUUID(),
+            entity_type: entityType,
+            action,
+            field: "task",
+            before: null,
+            after: taskPayload,
+            status: "conflict",
+            reason: "Task no encontrada",
+            payload: taskPayload,
+          });
+          conflicts.push("task no encontrada para update");
+          continue;
+        }
+
+        const updatePayload = {
+          id: taskId,
+          title: taskPayload.title ?? existing.title,
+          description: taskPayload.description ?? existing.description,
+          status: taskPayload.status ?? existing.status,
+          priority: taskPayload.priority ?? existing.priority,
+          category: taskPayload.category ?? existing.category,
+          due_date: taskPayload.due_date ?? existing.due_date,
+        };
+
+        changes.push({
+          change_id: crypto.randomUUID(),
+          entity_type: entityType,
+          action,
+          field: "task",
+          before: existing,
+          after: updatePayload,
+          status: "update",
+          reason: reason || "Actualizar task existente",
+          payload: updatePayload,
         });
         continue;
       }
@@ -659,6 +1011,7 @@ Responde JSON exacto:
             status: "conflict",
             reason: "Posible duplicado",
             payload: publicationPayload,
+            change_id: crypto.randomUUID(),
           });
           conflicts.push("publication_queue duplicada detectada");
           continue;
@@ -673,6 +1026,73 @@ Responde JSON exacto:
           status: "update",
           reason: reason || "Crear nueva publicación en cola",
           payload: publicationPayload,
+          change_id: crypto.randomUUID(),
+        });
+        continue;
+      }
+
+      if (entityType === "publication_queue" && action === "update_publication") {
+        const publicationPayload = payload ?? {};
+        const publicationId = String(publicationPayload.id ?? "").trim();
+        if (!publicationId) {
+          changes.push({
+            change_id: crypto.randomUUID(),
+            entity_type: entityType,
+            action,
+            field: "publication_queue",
+            before: null,
+            after: publicationPayload,
+            status: "conflict",
+            reason: "Falta payload.id para actualizar publication_queue",
+            payload: publicationPayload,
+          });
+          conflicts.push("update_publication sin id");
+          continue;
+        }
+
+        const { data: existing, error: existingErr } = await admin
+          .from("publication_queue")
+          .select("id, platform, status, notes, scheduled_at, checklist")
+          .eq("id", publicationId)
+          .eq("user_id", user.id)
+          .eq("episode_id", episodeId)
+          .single();
+
+        if (existingErr || !existing) {
+          changes.push({
+            change_id: crypto.randomUUID(),
+            entity_type: entityType,
+            action,
+            field: "publication_queue",
+            before: null,
+            after: publicationPayload,
+            status: "conflict",
+            reason: "Publication queue no encontrada",
+            payload: publicationPayload,
+          });
+          conflicts.push("publication_queue no encontrada para update");
+          continue;
+        }
+
+        const updatePayload = {
+          id: publicationId,
+          platform: publicationPayload.platform ?? existing.platform,
+          status: publicationPayload.status ?? existing.status,
+          notes: publicationPayload.notes ?? existing.notes,
+          scheduled_at: publicationPayload.scheduled_at ?? existing.scheduled_at,
+          checklist: publicationPayload.checklist ?? existing.checklist,
+        };
+
+        changes.push({
+          change_id: crypto.randomUUID(),
+          entity_type: entityType,
+          action,
+          field: "publication_queue",
+          before: existing,
+          after: updatePayload,
+          status: "update",
+          reason: reason || "Actualizar item de publication_queue",
+          payload: updatePayload,
         });
         continue;
       }
