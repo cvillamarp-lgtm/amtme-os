@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -11,17 +12,13 @@ serve(async (req) => {
     // Require Authorization header (JWT validation handled by --no-verify-jwt gateway flag)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const { pieces, episodeTitle, episodeNumber, thesis } = await req.json();
 
     if (!pieces || !Array.isArray(pieces) || pieces.length === 0) {
-      return new Response(JSON.stringify({ error: "Se requiere al menos una pieza" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere al menos una pieza", 400);
     }
     const pieceNames = pieces.map((p: { id: number; name: string; copy: string }) =>
       `Pieza ${p.id} (${p.name}): Copy → "${p.copy}"`
@@ -68,9 +65,7 @@ ${pieceNames}`;
       parsed = JSON.parse(cleaned);
     } catch {
       console.error("JSON parse error. Raw:", rawContent);
-      return new Response(JSON.stringify({ error: "La IA no devolvió un JSON válido. Intenta de nuevo." }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "AI_ERROR", "La IA no devolvió un JSON válido. Intenta de nuevo.", 500);
     }
 
     return new Response(JSON.stringify({ captions: parsed }), {
@@ -78,8 +73,6 @@ ${pieceNames}`;
     });
   } catch (e) {
     console.error("generate-captions error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });

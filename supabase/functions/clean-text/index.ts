@@ -13,6 +13,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callClaude } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const CLEAN_TEXT_SYSTEM = `Eres un editor profesional. Limpia este texto eliminando timestamps, marcas técnicas irrelevantes, exceso de muletillas, repeticiones innecesarias y errores básicos de puntuación. Reconstruye párrafos legibles. Conserva el tono emocional, íntimo y humano del hablante. No resumas. No inventes. No expliques. Devuelve únicamente el texto limpio.`;
 
@@ -28,9 +29,7 @@ serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const supabase = createClient(
@@ -41,26 +40,25 @@ serve(async (req: Request) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
 
     const { raw_input_id, raw_text } = await req.json();
 
     if (!raw_text || raw_text.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "raw_text es requerido" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "raw_text es requerido", 400);
     }
 
     const rawWordCount = countWords(raw_text);
 
     // Bloqueo: texto muy corto
     if (rawWordCount < 300) {
-      return new Response(
-        JSON.stringify({ error: `El texto es muy corto para procesar (${rawWordCount} palabras — mínimo 300)` }),
-        { status: 422, headers: { ...cors, "Content-Type": "application/json" } },
+      return errorResponse(
+        cors,
+        "VALIDATION_ERROR",
+        `El texto es muy corto para procesar (${rawWordCount} palabras — mínimo 300)`,
+        422,
+        { word_count: rawWordCount, minimum: 300 },
       );
     }
 
@@ -71,9 +69,7 @@ serve(async (req: Request) => {
 
     // Validación: texto limpio no puede ser vacío
     if (cleanedWordCount === 0) {
-      return new Response(JSON.stringify({ error: "Claude devolvió texto vacío" }), {
-        status: 502, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "AI_ERROR", "Claude devolvió texto vacío", 502);
     }
 
     const reductionPct = rawWordCount > 0
@@ -113,9 +109,6 @@ serve(async (req: Request) => {
     );
   } catch (e) {
     console.error("[clean-text] Error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } },
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });

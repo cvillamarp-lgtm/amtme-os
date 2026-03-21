@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const GRAPH = "https://graph.facebook.com/v18.0";
 
@@ -131,9 +132,7 @@ serve(async (req) => {
     // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -142,16 +141,12 @@ serve(async (req) => {
     });
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const { platform } = await req.json();
     if (!platform) {
-      return new Response(JSON.stringify({ error: "Se requiere platform" }), {
-        status: 200, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere platform", 200);
     }
 
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -165,21 +160,15 @@ serve(async (req) => {
       .single();
 
     if (accountError || !account) {
-      return new Response(JSON.stringify({ error: "Cuenta no encontrada." }), {
-        status: 200, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "NOT_FOUND", "Cuenta no encontrada.", 200);
     }
 
     if (!account.access_token) {
-      return new Response(JSON.stringify({
-        error: "No hay token de acceso. Conecta la cuenta vía OAuth primero.",
-      }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "INTERNAL_ERROR", "No hay token de acceso. Conecta la cuenta vía OAuth primero.",, 200);
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
-      return new Response(JSON.stringify({
-        error: "Token expirado. Ve a Cuentas y reconecta.",
-      }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "INTERNAL_ERROR", "Token expirado. Ve a Cuentas y reconecta.",, 200);
     }
 
     // Mark as syncing
@@ -209,9 +198,7 @@ serve(async (req) => {
         synced_at: new Date().toISOString(),
       }).eq("id", account.id);
 
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 200, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "INTERNAL_ERROR", msg, 200);
     }
 
     // Merge metadata: preserve existing fields (notes, avg_reach, etc.) and overlay API data
@@ -241,9 +228,6 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error("sync-platform-account error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }),
-      { status: 200, headers: { ...cors, "Content-Type": "application/json" } }
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 200);
   }
 });

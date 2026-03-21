@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 // OAuth configuration per platform
 const PLATFORM_CONFIG: Record<string, {
@@ -37,24 +38,18 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const { platform, user_id } = await req.json();
 
     if (!platform || !user_id) {
-      return new Response(JSON.stringify({ error: "Se requiere platform y user_id" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere platform y user_id", 400);
     }
 
     const config = PLATFORM_CONFIG[platform];
     if (!config) {
-      return new Response(JSON.stringify({ error: `Plataforma no soportada: ${platform}` }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", `Plataforma no soportada: ${platform}`, 400);
     }
 
     const clientId = Deno.env.get(config.clientIdKey);
@@ -86,8 +81,6 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("oauth-init error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 500);
   }
 });

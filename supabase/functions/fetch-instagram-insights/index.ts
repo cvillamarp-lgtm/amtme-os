@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const GRAPH = "https://graph.facebook.com/v18.0";
 
@@ -168,9 +169,7 @@ serve(async (req) => {
     // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -181,9 +180,7 @@ serve(async (req) => {
     });
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     // Service role client for reading tokens + writing results
@@ -198,21 +195,15 @@ serve(async (req) => {
       .single();
 
     if (accountError || !account) {
-      return new Response(JSON.stringify({
-        error: "No hay cuenta de Instagram conectada. Ve a Cuentas → Conectar Instagram.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "VALIDATION_ERROR", "No hay cuenta de Instagram conectada. Ve a Cuentas → Conectar Instagram.",, 400);
     }
 
     if (!account.access_token) {
-      return new Response(JSON.stringify({
-        error: "Token de Instagram no disponible. Reconecta la cuenta.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "VALIDATION_ERROR", "Token de Instagram no disponible. Reconecta la cuenta.",, 400);
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
-      return new Response(JSON.stringify({
-        error: "Token de Instagram expirado. Ve a Cuentas y reconecta.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "VALIDATION_ERROR", "Token de Instagram expirado. Ve a Cuentas y reconecta.",, 400);
     }
 
     const accessToken = account.access_token as string;
@@ -222,14 +213,11 @@ serve(async (req) => {
     if (!igUserId) {
       const discovered = await discoverIgAccountId(accessToken);
       if (!discovered) {
-        return new Response(JSON.stringify({
-          error: "No se encontró una cuenta de Instagram Business. Reconecta Instagram desde la página de Cuentas.",
-        }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        return errorResponse(cors, "VALIDATION_ERROR", "No se encontró una cuenta de Instagram Business. Reconecta Instagram desde la página de Cuentas.",, 400);
       }
       // Return descriptive error if discovery returned an error object
       if ("error" in discovered) {
-        return new Response(JSON.stringify({ error: discovered.error }),
-          { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        return errorResponse(cors, "VALIDATION_ERROR", discovered.error, 400);
       }
       igUserId = discovered.igId;
       // Persist account_id and account_name for future calls
@@ -369,9 +357,6 @@ serve(async (req) => {
         // The error will be shown via the response
       }
     } catch { /* ignore */ }
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 500);
   }
 });

@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const AMTME_SYSTEM_PROMPT = `Eres el sistema de producción del podcast A Mí Tampoco Me Explicaron (AMTME).
 Host: Christian Villamar (@yosoyvillamar). Base: Playa del Carmen, México.
@@ -48,18 +49,14 @@ serve(async (req) => {
     // Validate JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
 
     const body = await req.json();
@@ -69,10 +66,7 @@ serve(async (req) => {
     if (mode === "regenerate_field") {
       const { field_name, idea_principal, current_fields, episode_number } = body;
       if (!field_name || !FIELD_INSTRUCTIONS[field_name]) {
-        return new Response(JSON.stringify({ error: `Invalid field_name: ${field_name}` }), {
-          status: 400,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "VALIDATION_ERROR", `Invalid field_name: ${field_name}`, 400);
       }
 
       const contextLines = Object.entries(current_fields || {})
@@ -114,10 +108,7 @@ Responde ÚNICAMENTE con el texto del campo, sin JSON, sin comillas, sin explica
     if (mode === "generate_options") {
       const { field_name, idea_principal, current_fields, episode_number, count = 3 } = body;
       if (!field_name || !FIELD_INSTRUCTIONS[field_name]) {
-        return new Response(JSON.stringify({ error: `Invalid field_name: ${field_name}` }), {
-          status: 400,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "VALIDATION_ERROR", `Invalid field_name: ${field_name}`, 400);
       }
 
       const contextLines = Object.entries(current_fields || {})
@@ -174,10 +165,7 @@ Responde ÚNICAMENTE con un array JSON válido, sin markdown, sin backticks, sin
     const { idea_principal, conflicto_central, intencion_del_episodio, tono, restricciones, episode_number } = body;
 
     if (!idea_principal) {
-      return new Response(JSON.stringify({ error: "idea_principal is required" }), {
-        status: 400,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "idea_principal is required", 400);
     }
 
     const fieldInstructions = Object.entries(FIELD_INSTRUCTIONS)
@@ -239,10 +227,8 @@ ${fieldInstructions}
   } catch (error) {
     console.error("generate-episode-fields error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    const code = message.includes("Créditos") ? "QUOTA_EXCEEDED" : "INTERNAL_ERROR";
     const status = message.includes("Créditos") ? 402 : 500;
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, code, message, status);
   }
 });

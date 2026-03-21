@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const SYSTEM_PROMPT = `Eres el Copiloto Operativo del podcast A Mí Tampoco Me Explicaron (AMTME).
 Host: Christian Villamar. Base: Playa del Carmen, México.
@@ -43,9 +44,7 @@ serve(async (req) => {
     // ── Auth ──────────────────────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const supabaseUser = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -53,9 +52,7 @@ serve(async (req) => {
     });
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
 
     // Service-role client for DB writes
@@ -68,9 +65,7 @@ serve(async (req) => {
     const { episode_id, command } = body as { episode_id: string; command: string };
 
     if (!episode_id || !command) {
-      return new Response(JSON.stringify({ error: "episode_id and command are required" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "episode_id and command are required", 400);
     }
 
     // ── Fetch episode ─────────────────────────────────────────────────────────
@@ -82,9 +77,7 @@ serve(async (req) => {
       .single();
 
     if (epErr || !episode) {
-      return new Response(JSON.stringify({ error: "Episode not found" }), {
-        status: 404, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "NOT_FOUND", "Episode not found", 404);
     }
 
     // ── Step 1: Detect intent ─────────────────────────────────────────────────
@@ -305,10 +298,8 @@ Responde con JSON:
   } catch (error) {
     console.error("copilot-dispatch error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    const code = message.includes("Créditos") ? "QUOTA_EXCEEDED" : "INTERNAL_ERROR";
     const status = message.includes("Créditos") ? 402 : 500;
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, code, message, status);
   }
 });

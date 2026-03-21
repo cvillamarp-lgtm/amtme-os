@@ -114,6 +114,30 @@ describe("callEdgeFunction — HTTP error", () => {
       callEdgeFunction("clean-text", { body: { raw_text: "x" } }),
     ).rejects.toThrow("clean-text failed: Internal Server Error");
   });
+
+  it("extracts message from normalized { code, message } error body", async () => {
+    mockGetSession.mockResolvedValue({
+      data: { session: { access_token: "fake-token" } },
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        statusText: "Unprocessable Entity",
+        json: () =>
+          Promise.resolve({
+            code: "VALIDATION_ERROR",
+            message: "raw_text es requerido",
+          }),
+      }),
+    );
+
+    await expect(
+      callEdgeFunction("clean-text", { body: { raw_text: "" } }),
+    ).rejects.toThrow("raw_text es requerido");
+  });
 });
 
 describe("callCleanText helper", () => {

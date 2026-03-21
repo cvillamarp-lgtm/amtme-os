@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -10,9 +11,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     // User-scoped client
@@ -24,16 +23,12 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const { publication_id } = await req.json();
     if (!publication_id) {
-      return new Response(JSON.stringify({ error: "publication_id requerido" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "publication_id requerido", 400);
     }
 
     // Fetch the publication (RLS ensures ownership)
@@ -44,9 +39,7 @@ serve(async (req) => {
       .single();
 
     if (pubError || !pub) {
-      return new Response(JSON.stringify({ error: "Publicación no encontrada" }), {
-        status: 404, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "NOT_FOUND", "Publicación no encontrada", 404);
     }
 
     const platformBase = (pub.platform as string).split("_")[0]; // "instagram", "tiktok", "youtube"
@@ -77,9 +70,7 @@ serve(async (req) => {
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
-      return new Response(JSON.stringify({
-        error: "Token expirado. Ve a Cuentas y vuelve a conectar tu cuenta.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "VALIDATION_ERROR", "Token expirado. Ve a Cuentas y vuelve a conectar tu cuenta.",, 400);
     }
 
     const accessToken = account.access_token as string;
@@ -89,17 +80,13 @@ serve(async (req) => {
     if (platformBase === "instagram") {
       const igUserId = account.account_id;
       if (!igUserId) {
-        return new Response(JSON.stringify({ error: "ID de cuenta de Instagram no encontrado. Reconecta la cuenta." }), {
-          status: 400, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "NOT_FOUND", "ID de cuenta de Instagram no encontrado. Reconecta la cuenta.", 400);
       }
 
       const meta = (pub as any).metadata || {};
       const imageUrl = meta.image_url as string | undefined;
       if (!imageUrl) {
-        return new Response(JSON.stringify({
-          error: "Sin imagen para publicar. Agrega una image_url en los metadatos de la publicación.",
-        }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+        return errorResponse(cors, "VALIDATION_ERROR", "Sin imagen para publicar. Agrega una image_url en los metadatos de la publicación.",, 400);
       }
 
       const caption = [
@@ -134,15 +121,11 @@ serve(async (req) => {
 
     // ── YouTube ────────────────────────────────────────────────────────────
     } else if (platformBase === "youtube") {
-      return new Response(JSON.stringify({
-        error: "YouTube requiere subir un archivo de video. Usa 'Marcar como publicado' manualmente después de subir en YouTube Studio.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "VALIDATION_ERROR", "YouTube requiere subir un archivo de video. Usa 'Marcar como publicado' manualmente después de subir en YouTube Studio.",, 400);
 
     // ── TikTok ─────────────────────────────────────────────────────────────
     } else if (platformBase === "tiktok") {
-      return new Response(JSON.stringify({
-        error: "La publicación automática en TikTok requiere un archivo de video. Usa 'Marcar como publicado' manualmente.",
-      }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
+      return errorResponse(cors, "VALIDATION_ERROR", "La publicación automática en TikTok requiere un archivo de video. Usa 'Marcar como publicado' manualmente.",, 400);
 
     } else {
       return new Response(JSON.stringify({
@@ -162,8 +145,6 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("post-publication error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 500);
   }
 });

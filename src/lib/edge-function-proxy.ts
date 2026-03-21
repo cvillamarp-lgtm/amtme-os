@@ -5,6 +5,12 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import type {
+  EdgeFunctionApiError,
+  CleanTextResponse,
+  SemanticMapResponse,
+  GenerateOutputsResponse,
+} from "@/integrations/supabase/edge-function-types";
 
 // Construir URLs de Edge Functions dinámicamente desde VITE_SUPABASE_URL
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -17,7 +23,7 @@ const EDGE_FUNCTION_URLS = {
 
 export interface ProxyRequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
-  body?: Record<string, any>;
+  body?: Record<string, unknown>;
   headers?: Record<string, string>;
 }
 
@@ -25,7 +31,7 @@ export interface ProxyRequestOptions {
  * Llamar a una Edge Function a través del proxy
  * Usa la autenticación de Supabase existente
  */
-export async function callEdgeFunction<T = any>(
+export async function callEdgeFunction<T = unknown>(
   functionName: string,
   options: ProxyRequestOptions = {}
 ): Promise<T> {
@@ -52,9 +58,16 @@ export async function callEdgeFunction<T = any>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    console.error(`Edge Function error: ${functionName}`, error);
-    throw new Error(`Edge Function ${functionName} failed: ${response.statusText}`);
+    let errorMessage = response.statusText;
+    try {
+      const errBody = await response.json() as EdgeFunctionApiError & { error?: string };
+      if (errBody?.message) errorMessage = errBody.message;
+      else if (errBody?.error) errorMessage = errBody.error;
+    } catch {
+      // Not JSON — keep statusText
+    }
+    console.error(`Edge Function error: ${functionName}`, errorMessage);
+    throw new Error(`${functionName} failed: ${errorMessage}`);
   }
 
   return response.json() as Promise<T>;
@@ -63,15 +76,8 @@ export async function callEdgeFunction<T = any>(
 /**
  * Clean Text - Limpia texto usando Claude
  */
-export async function callCleanText(rawText: string): Promise<{
-  cleaned_text: string;
-  original_word_count?: number;
-  raw_word_count?: number;
-  cleaned_word_count: number;
-  reduction_percentage: number;
-  cleaned_text_id?: string;
-}> {
-  return callEdgeFunction("clean-text", {
+export async function callCleanText(rawText: string): Promise<CleanTextResponse> {
+  return callEdgeFunction<CleanTextResponse>("clean-text", {
     body: { raw_text: rawText },
   });
 }
@@ -79,14 +85,8 @@ export async function callCleanText(rawText: string): Promise<{
 /**
  * Semantic Map - Genera análisis semántico
  */
-export async function callSemanticMap(cleanedText: string): Promise<{
-  semantic_json: Record<string, unknown>;
-  suggested_palette_id?: number;
-  suggested_host_image?: "REF_1" | "REF_2";
-  semantic_map_id?: string;
-  range_warnings?: string[];
-}> {
-  return callEdgeFunction("semantic-map", {
+export async function callSemanticMap(cleanedText: string): Promise<SemanticMapResponse> {
+  return callEdgeFunction<SemanticMapResponse>("semantic-map", {
     body: { cleaned_text: cleanedText },
   });
 }
@@ -94,19 +94,8 @@ export async function callSemanticMap(cleanedText: string): Promise<{
 /**
  * Generate Outputs - Genera 10 tipos de contenido en paralelo
  */
-export async function callGenerateOutputs(semanticJson: Record<string, any>): Promise<{
-  outputs: Array<{
-    output_number?: number;
-    type?: string;
-    asset_type?: string;
-    content: string | Record<string, unknown>;
-    word_count?: number;
-    word_counts_json?: Record<string, number>;
-  }>;
-  status?: "pending" | "processing" | "complete" | "partial";
-  savedAssets?: Array<{ outputNumber: number; assetId: string }>;
-}> {
-  return callEdgeFunction("generate-outputs", {
+export async function callGenerateOutputs(semanticJson: Record<string, unknown>): Promise<GenerateOutputsResponse> {
+  return callEdgeFunction<GenerateOutputsResponse>("generate-outputs", {
     body: { semantic_json: semanticJson },
   });
 }

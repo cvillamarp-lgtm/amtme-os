@@ -16,6 +16,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callClaude } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 // ─── Prompt compartido para todos los outputs (§11) ────────────────────────────
 const OUTPUTS_SYSTEM = `Eres el editor de contenido del podcast "A Mí Tampoco Me Explicaron" conducido por Christian Villamar (@yosoyvillamar). Tono: editorial, emocional, íntimo, claro, humano, sobrio. El tarot se usa como autoconocimiento, nunca como predicción. La marca no habla desde superioridad; habla desde verdad, conciencia y experiencia humana. Nunca generes contenido genérico, motivacional vacío, ni frases de coach. Todo debe nacer del mapa semántico proporcionado. Devuelve ÚNICAMENTE JSON válido sin markdown ni explicaciones.`;
@@ -181,10 +182,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const supabase = createClient(
@@ -195,19 +193,13 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
 
     const { semantic_map_id, semantic_json } = await req.json();
 
     if (!semantic_map_id || !semantic_json) {
-      return new Response(
-        JSON.stringify({ error: "semantic_map_id and semantic_json required" }),
-        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
-      );
+      return errorResponse(cors, "VALIDATION_ERROR", "semantic_map_id and semantic_json required", 400);
     }
 
     // Generar los 10 outputs en paralelo
@@ -267,12 +259,7 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error("[generate-outputs] Error:", e);
-    return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } },
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });
 

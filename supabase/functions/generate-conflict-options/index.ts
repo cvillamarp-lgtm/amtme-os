@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 import { resolveAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const AMTME_SYSTEM_PROMPT = `Eres el director editorial del podcast A Mí Tampoco Me Explicaron (AMTME).
 Host: Christian Villamar (@yosoyvillamar). Base: Playa del Carmen, México.
@@ -39,9 +40,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const supabaseClient = createClient(
@@ -51,9 +50,7 @@ serve(async (req) => {
     );
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
 
     const ai = resolveAI();
@@ -61,9 +58,7 @@ serve(async (req) => {
     const { idea_principal, tono } = await req.json();
 
     if (!idea_principal?.trim()) {
-      return new Response(JSON.stringify({ error: "idea_principal is required" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "idea_principal is required", 400);
     }
 
     const userPrompt = `Para un episodio de AMTME con esta idea principal:
@@ -142,14 +137,10 @@ Responde ÚNICAMENTE con este JSON válido, sin markdown, sin backticks, sin tex
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Límite de solicitudes excedido. Intenta en unos segundos." }), {
-          status: 429, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "RATE_LIMIT", "Límite de solicitudes excedido. Intenta en unos segundos.", 429);
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA insuficientes." }), {
-          status: 402, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "QUOTA_EXCEEDED", "Créditos de IA insuficientes.", 402);
       }
       throw new Error(`AI gateway error: ${response.status}`);
     }
@@ -182,9 +173,6 @@ Responde ÚNICAMENTE con este JSON válido, sin markdown, sin backticks, sin tex
     });
   } catch (error) {
     console.error("generate-conflict-options error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", error instanceof Error ? error.message : "Unknown error", 500);
   }
 });

@@ -17,6 +17,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callClaude } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 // ─── Prompt oficial §10 Fase 3 ────────────────────────────────────────────────
 const SEMANTIC_MAP_SYSTEM = `Eres un analista editorial experto. Analiza el texto y devuelve únicamente JSON válido. Extrae exclusivamente lo que exista en el texto. No inventes. Si un campo no tiene datos, devuélvelo vacío. No uses markdown ni explicaciones.`;
@@ -121,9 +122,7 @@ serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const supabase = createClient(
@@ -134,24 +133,23 @@ serve(async (req: Request) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
 
     const { episode_id, raw_input_id, cleaned_text_id, cleaned_text } = await req.json();
 
     if (!cleaned_text || cleaned_text.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "cleaned_text es requerido" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "cleaned_text es requerido", 400);
     }
 
     const wordCount = countWords(cleaned_text);
     if (wordCount < 250) {
-      return new Response(
-        JSON.stringify({ error: `El texto limpio es demasiado corto (${wordCount} palabras — mínimo 250)` }),
-        { status: 422, headers: { ...cors, "Content-Type": "application/json" } },
+      return errorResponse(
+        cors,
+        "VALIDATION_ERROR",
+        `El texto limpio es demasiado corto (${wordCount} palabras — mínimo 250)`,
+        422,
+        { word_count: wordCount, minimum: 250 },
       );
     }
 
@@ -173,10 +171,7 @@ serve(async (req: Request) => {
       semanticJson = JSON.parse(jsonText);
     } catch {
       console.error("[semantic-map] JSON parse error. Raw:", rawResponse.slice(0, 500));
-      return new Response(
-        JSON.stringify({ error: "Claude no devolvió un JSON válido. Intenta de nuevo." }),
-        { status: 502, headers: { ...cors, "Content-Type": "application/json" } },
-      );
+      return errorResponse(cors, "AI_ERROR", "Claude no devolvió un JSON válido. Intenta de nuevo.", 502);
     }
 
     const meta = (semanticJson.episode_metadata ?? {}) as Record<string, string>;
@@ -233,9 +228,6 @@ serve(async (req: Request) => {
     );
   } catch (e) {
     console.error("[semantic-map] Error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } },
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });

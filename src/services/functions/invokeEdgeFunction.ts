@@ -101,8 +101,14 @@ export async function invokeEdgeFunction<T = unknown>(
           statusCode = (error.context as Response)?.status;
           isRetryable = statusCode !== undefined && isRetryableStatus(statusCode);
           try {
-            const errBody = (await (error.context as Response).clone().json()) as { error?: string };
-            if (errBody?.error) message = errBody.error;
+            const errBody = (await (error.context as Response).clone().json()) as {
+              message?: string;
+              error?: string;
+              code?: string;
+            };
+            // Support both normalized { code, message } and legacy { error }
+            if (errBody?.message) message = errBody.message;
+            else if (errBody?.error) message = errBody.error;
           } catch {
             // JSON parse failed — keep the default message
           }
@@ -134,6 +140,10 @@ export async function invokeEdgeFunction<T = unknown>(
       }
 
       if (data?.error) throw makeError(data.error as string, undefined, false, attempt);
+      // Also handle normalized { code, message } returned at HTTP 200 (edge-case safety net)
+      if (data?.code && data?.message && typeof data.message === "string") {
+        throw makeError(data.message, undefined, false, attempt);
+      }
       return data as T;
 
     } catch (e: unknown) {
