@@ -517,7 +517,7 @@ export default function VisualPromptGenerator() {
       const prompt = generarPrompt(pieza, data, fondoImg02);
       const result = await invokeEdgeFunction<{ imageUrl?: string }>(
         "generate-image",
-        { prompt, hostReference: pieza.hostRef, mode: "create" },
+        { prompt, hostReference: pieza.hostRef, mode: "create", rawPrompt: true },
       );
       if (result?.imageUrl) {
         setGeneratedImages((prev) => ({ ...prev, [pieza.id]: result.imageUrl! }));

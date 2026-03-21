@@ -11,10 +11,25 @@ import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import type { VisualPiece, EpisodeInput } from "@/lib/visual-templates";
 import { buildPiecePrompt } from "@/lib/visual-templates";
-import { buildLocalComposite, buildCompositeImage } from "@/lib/canvas-text-overlay";
+import { buildLocalComposite, type CanvasPiece } from "@/lib/canvas-text-overlay";
 import { env } from "@/lib/env";
 import { validatePiece } from "@/lib/piece-validator";
 import { ValidationPanel } from "@/components/factory/ValidationPanel";
+
+/** Map VisualPiece fields to the CanvasPiece shape expected by buildLocalComposite */
+function toCanvasPiece(piece: VisualPiece, withHost: boolean): CanvasPiece {
+  return {
+    id: String(piece.id),
+    width_px: piece.width,
+    height_px: piece.height,
+    bg_color: piece.backgroundVersion === "negro" ? "#0A0A0A" : "#1A1AE6",
+    accent_color: "#F2C84B",
+    text_color: "#F5F0E8",
+    host_image: withHost
+      ? piece.hostReference === "imagen02" ? "REF_2" : "REF_1"
+      : "none",
+  };
+}
 
 interface PieceCardProps {
   piece: VisualPiece;
@@ -56,17 +71,15 @@ export function PieceCard({
     // Always rebuild from the brand system (host photo + solid bg + text).
     // This guarantees Gestalt, hierarchy and brand compliance on every render,
     // regardless of what is stored in the DB.
-    buildLocalComposite(piece, copyLines, episodeInput.number, env.VITE_SUPABASE_URL)
+    buildLocalComposite(toCanvasPiece(piece, includeHost), copyLines, episodeInput.number, env.VITE_SUPABASE_URL)
       .then((url) => {
         compositeRef.current = url;
         setCompositeUrl(url);
       })
       .catch(() => {
-        // Fallback: overlay text on whatever is stored
-        buildCompositeImage(imageUrl, copyLines, piece, episodeInput.number).then((url) => {
-          compositeRef.current = url;
-          setCompositeUrl(url);
-        });
+        // Canvas failed — show raw AI image without overlay
+        compositeRef.current = imageUrl;
+        setCompositeUrl(imageUrl);
       });
   }, [imageUrl, piece.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -76,7 +89,7 @@ export function PieceCard({
       // Build the complete image locally — no AI call needed.
       // Background color + host photo from Supabase Storage + all AMTME text layers.
       const dataUrl = await buildLocalComposite(
-        piece,
+        toCanvasPiece(piece, includeHost),
         copyLines,
         episodeInput.number,
         env.VITE_SUPABASE_URL,

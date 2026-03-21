@@ -483,11 +483,11 @@ export function useContentProduction(episodeId?: string | null) {
         const prompt = buildPiecePrompt(piece, localEpisodeInput, copy);
 
         try {
-          const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
-            "generate-image",
-            { prompt, hostReference: piece.hostReference },
-            { timeoutMs: 120_000, maxRetries: 0 }
-          );
+              const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
+                "generate-image",
+                { prompt, hostReference: piece.hostReference, episodeId, pieceId: piece.id },
+                { timeoutMs: 120_000, maxRetries: 0 }
+              );
           if (imgData?.imageUrl) {
             handleImageGenerated(piece.id, imgData.imageUrl, prompt, episodeId);
           } else {
@@ -515,7 +515,7 @@ export function useContentProduction(episodeId?: string | null) {
               await new Promise((r) => setTimeout(r, 5000)); // extra buffer on retries
               const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
                 "generate-image",
-                { prompt, hostReference: piece.hostReference },
+                { prompt, hostReference: piece.hostReference, episodeId, pieceId: piece.id },
                 { timeoutMs: 120_000, maxRetries: 0 }
               );
               if (imgData?.imageUrl) {

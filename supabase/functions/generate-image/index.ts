@@ -104,7 +104,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
     const body = await req.json();
-    const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference, includeHost } = body;
+    const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference, includeHost, rawPrompt } = body;
 
     if (!prompt && mode !== "edit") throw new Error("Prompt is required");
     const aiChain = resolveImageAIChain();
@@ -142,10 +142,14 @@ serve(async (req) => {
     let messages: any[];
 
     if (mode === "edit" && editImageUrl) {
-      const editText = `${AMTME_BRAND_PROMPT}\n\n${hostContextNote}\n\nEdita esta imagen: ${prompt}`;
+      const editText = rawPrompt
+        ? `${hostContextNote}\n\nEdita esta imagen: ${prompt}`
+        : `${AMTME_BRAND_PROMPT}\n\n${hostContextNote}\n\nEdita esta imagen: ${prompt}`;
       messages = [{ role: "user", content: buildContent(editText, editImageUrl) }];
     } else {
-      const enhancedPrompt = `${AMTME_BRAND_PROMPT}\n\n${hostContextNote}\n\nCrear: ${prompt}`;
+      const enhancedPrompt = rawPrompt
+        ? `${hostContextNote}\n\nCrear: ${prompt}`
+        : `${AMTME_BRAND_PROMPT}\n\n${hostContextNote}\n\nCrear: ${prompt}`;
       messages = [{ role: "user", content: buildContent(enhancedPrompt) }];
     }
 
@@ -257,7 +261,13 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "dall-e-3",
-          prompt: textPrompt.slice(0, 4000),
+          // DALL-E 3 limit: 4000 chars. Skip the full brand prompt (~5400 chars)
+          // and use a condensed version so the piece-specific instructions are not truncated.
+          prompt: [
+            "Fotografía editorial hiperrealista. Podcast 'A Mí Tampoco Me Explicaron'. Fondo sólido cobalt #1A1AE6. Host en zona derecha (X 440–990px), zona izquierda completamente despejada para texto editorial. SIN texto, letras, números, íconos ni logos en la imagen.",
+            hostContextNote,
+            `Crear: ${prompt}`,
+          ].join("\n\n").slice(0, 4000),
           n: 1,
           size: "1024x1024",
           response_format: "b64_json",
