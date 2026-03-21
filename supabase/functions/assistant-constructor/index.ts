@@ -13,6 +13,13 @@ type ProposedChange = {
   reason?: string;
 };
 
+type RiskSimulation = {
+  score: number;
+  level: "low" | "medium" | "high";
+  factors: string[];
+  requires_manual_review: boolean;
+};
+
 const ALLOWED_FIELDS = [
   "working_title",
   "theme",
@@ -68,6 +75,54 @@ function parseModelJson(raw: string): Record<string, unknown> {
     .trim();
   const objMatch = cleaned.match(/\{[\s\S]*\}/);
   return JSON.parse(objMatch?.[0] ?? cleaned);
+}
+
+function estimateRisk(changes: ProposedChange[], warnings: string[], conflicts: string[]): RiskSimulation {
+  let score = 0;
+  const factors: string[] = [];
+
+  const updates = changes.filter((c) => c.status === "update");
+  const criticalUpdates = updates.filter((c) => CRITICAL_FIELDS.has(c.field));
+  const clearOps = updates.filter((c) => c.after === null || String(c.after ?? "").trim() === "");
+  const largeTextOps = updates.filter((c) => {
+    const beforeLen = String(c.before ?? "").trim().length;
+    const afterLen = String(c.after ?? "").trim().length;
+    return Math.abs(afterLen - beforeLen) > 180;
+  });
+
+  if (updates.length > 0) {
+    score += Math.min(20, updates.length * 3);
+    factors.push(`Campos a modificar: ${updates.length}`);
+  }
+  if (criticalUpdates.length > 0) {
+    score += criticalUpdates.length * 12;
+    factors.push(`Campos críticos impactados: ${criticalUpdates.length}`);
+  }
+  if (clearOps.length > 0) {
+    score += clearOps.length * 18;
+    factors.push(`Posibles limpiezas de contenido: ${clearOps.length}`);
+  }
+  if (largeTextOps.length > 0) {
+    score += largeTextOps.length * 8;
+    factors.push(`Cambios largos de texto: ${largeTextOps.length}`);
+  }
+  if (warnings.length > 0) {
+    score += Math.min(20, warnings.length * 5);
+    factors.push(`Warnings del planner: ${warnings.length}`);
+  }
+  if (conflicts.length > 0) {
+    score += conflicts.length * 25;
+    factors.push(`Conflictos detectados: ${conflicts.length}`);
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  const level: RiskSimulation["level"] = score >= 70 ? "high" : score >= 40 ? "medium" : "low";
+  return {
+    score,
+    level,
+    factors,
+    requires_manual_review: level !== "low" || conflicts.length > 0,
+  };
 }
 
 serve(async (req) => {
@@ -315,6 +370,14 @@ Responde JSON exacto:
       warnings.push("La instrucción no produjo cambios válidos sobre campos permitidos.");
     }
 
+    const risk = estimateRisk(changes, warnings, conflicts);
+    const impact = {
+      will_modify: changes.filter((c) => c.status === "update").map((c) => c.field),
+      will_preserve: ALLOWED_FIELDS.filter((f) => !changes.some((c) => c.field === f && c.status === "update")),
+      historical_snapshot: true,
+      potential_conflicts: conflicts.length,
+    };
+
     const { data: run, error: insertErr } = await admin
       .from("assistant_action_runs")
       .insert({
@@ -344,6 +407,8 @@ Responde JSON exacto:
       changes,
       warnings,
       conflicts,
+      risk,
+      impact,
     }, 200, cors);
   } catch (error) {
     console.error("assistant-constructor error:", error);

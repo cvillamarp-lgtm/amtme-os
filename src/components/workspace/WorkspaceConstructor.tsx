@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wand2, Check, X, History, RotateCcw, AlertTriangle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
@@ -30,6 +31,18 @@ interface PlanResult {
   changes: PlanChange[];
   warnings: string[];
   conflicts: string[];
+  risk?: {
+    score: number;
+    level: "low" | "medium" | "high";
+    factors: string[];
+    requires_manual_review: boolean;
+  };
+  impact?: {
+    will_modify: string[];
+    will_preserve: string[];
+    historical_snapshot: boolean;
+    potential_conflicts: number;
+  };
 }
 
 interface ActionHistoryItem {
@@ -66,6 +79,7 @@ export function WorkspaceConstructor({ episode }: Props) {
   const [applying, setApplying] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [rollingBackId, setRollingBackId] = useState<string | null>(null);
+  const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
 
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
@@ -74,6 +88,36 @@ export function WorkspaceConstructor({ episode }: Props) {
     () => (plan?.changes ?? []).some((c) => c.status === "conflict"),
     [plan],
   );
+
+  const requiresExtraConfirmation = useMemo(
+    () => !!plan?.risk && plan.risk.level === "high",
+    [plan],
+  );
+
+  const canApply = !hasBlockingConflicts && (!requiresExtraConfirmation || highRiskConfirmed);
+
+  const renderWordDelta = (before: unknown, after: unknown) => {
+    const beforeWords = String(before ?? "").trim().split(/\s+/).filter(Boolean);
+    const afterWords = String(after ?? "").trim().split(/\s+/).filter(Boolean);
+    const afterSet = new Set(afterWords.map((w) => w.toLowerCase()));
+    const beforeSet = new Set(beforeWords.map((w) => w.toLowerCase()));
+
+    const removed = beforeWords.filter((w) => !afterSet.has(w.toLowerCase())).slice(0, 24);
+    const added = afterWords.filter((w) => !beforeSet.has(w.toLowerCase())).slice(0, 24);
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+        <div className="bg-red-500/5 border border-red-500/10 rounded px-2 py-1.5">
+          <p className="text-[10px] uppercase tracking-wide text-red-700 mb-1">Palabras removidas</p>
+          <p className="text-xs text-red-800/80">{removed.length ? removed.join(" ") : "Sin cambios"}</p>
+        </div>
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded px-2 py-1.5">
+          <p className="text-[10px] uppercase tracking-wide text-emerald-700 mb-1">Palabras agregadas</p>
+          <p className="text-xs text-emerald-800/80">{added.length ? added.join(" ") : "Sin cambios"}</p>
+        </div>
+      </div>
+    );
+  };
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -110,6 +154,7 @@ export function WorkspaceConstructor({ episode }: Props) {
         instruction: text,
       });
       setPlan(data);
+      setHighRiskConfirmed(false);
       toast.success("Propuesta generada. Revisa antes de aplicar.");
       await loadHistory();
     } catch (e: unknown) {
@@ -241,6 +286,28 @@ export function WorkspaceConstructor({ episode }: Props) {
                 <Badge variant="secondary">{plan.plan.operations_count} acción(es)</Badge>
               </div>
               <p className="text-sm text-foreground">{plan.plan.summary}</p>
+              {plan.risk && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div className="border border-border rounded p-2">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Riesgo</p>
+                    <p className="text-sm font-medium">
+                      {plan.risk.score}/100 · {plan.risk.level.toUpperCase()}
+                    </p>
+                  </div>
+                  <div className="border border-border rounded p-2 md:col-span-2">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Factores</p>
+                    <p className="text-xs text-foreground">{plan.risk.factors.join(" · ") || "Sin factores relevantes"}</p>
+                  </div>
+                </div>
+              )}
+              {plan.impact && (
+                <div className="bg-secondary/40 border border-border rounded p-2 space-y-1">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Impacto</p>
+                  <p className="text-xs text-foreground">Modifica: {plan.impact.will_modify.length ? plan.impact.will_modify.join(", ") : "ningún campo"}</p>
+                  <p className="text-xs text-muted-foreground">Conserva: {plan.impact.will_preserve.length} campo(s)</p>
+                  <p className="text-xs text-muted-foreground">Histórico/snapshot: {plan.impact.historical_snapshot ? "sí" : "no"}</p>
+                </div>
+              )}
               {plan.warnings.length > 0 && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2">
                   {plan.warnings.map((w, idx) => (
@@ -267,6 +334,7 @@ export function WorkspaceConstructor({ episode }: Props) {
                     <p className="text-xs text-muted-foreground line-clamp-2">Antes: {String(c.before)}</p>
                   )}
                   <p className="text-xs text-foreground line-clamp-3">Después: {String(c.after)}</p>
+                  {renderWordDelta(c.before, c.after)}
                   {c.reason && <p className="text-[11px] text-muted-foreground mt-1">{c.reason}</p>}
                 </div>
               ))}
@@ -275,22 +343,30 @@ export function WorkspaceConstructor({ episode }: Props) {
         </div>
 
         {plan && (
-          <div className="surface p-4 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="surface p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {hasBlockingConflicts ? (
                 <><AlertTriangle className="h-3.5 w-3.5 text-amber-600" />Hay conflictos: revisa antes de aplicar.</>
               ) : (
                 <><Check className="h-3.5 w-3.5 text-emerald-600" />Propuesta lista para aplicar.</>
               )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleCancel} disabled={applying}>
+                  <X className="h-4 w-4 mr-1" />Cancelar
+                </Button>
+                <Button onClick={handleApply} disabled={applying || !canApply}>
+                  {applying ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Aplicando...</> : <><Check className="h-4 w-4 mr-1" />Aplicar cambios</>}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleCancel} disabled={applying}>
-                <X className="h-4 w-4 mr-1" />Cancelar
-              </Button>
-              <Button onClick={handleApply} disabled={applying || hasBlockingConflicts}>
-                {applying ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Aplicando...</> : <><Check className="h-4 w-4 mr-1" />Aplicar cambios</>}
-              </Button>
-            </div>
+            {requiresExtraConfirmation && (
+              <label className="flex items-center gap-2 text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded p-2">
+                <Checkbox checked={highRiskConfirmed} onCheckedChange={(v) => setHighRiskConfirmed(!!v)} />
+                Confirmo revisión manual y autorizo aplicar cambios de riesgo alto.
+              </label>
+            )}
           </div>
         )}
       </div>
