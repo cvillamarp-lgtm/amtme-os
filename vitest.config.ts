@@ -9,6 +9,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    testTimeout: 10_000,
+    env: {
+      VITE_SUPABASE_URL: "https://test.supabase.co",
+      VITE_SUPABASE_ANON_KEY: "test-anon-key",
+    },
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
