@@ -1,4 +1,4 @@
-/// <reference path="../_shared/deno-shims.d.ts" />
+import "../_shared/deno-shims.d.ts";
 
 /**
  * AMTME — claude-call Edge Function

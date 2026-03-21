@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FlaskConical, Plus, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles } from "lucide-react";
+import { Plus, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
@@ -32,7 +32,7 @@ type InsightWithEpisode = Tables<"insights"> & {
 
 // ── Config ─────────────────────────────────────────────────────────────────
 
-export const INSIGHT_COLUMNS = [
+const INSIGHT_COLUMNS = [
   { id: 'finding', label: 'Observación', sortable: false, visible: true },
   { id: 'confidence_level', label: 'Confianza', sortable: true, visible: true },
   { id: 'status', label: 'Estado', sortable: true, visible: true },
@@ -236,7 +236,7 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
 
   useEffect(() => {
     if (insight) { setForm({ ...insight }); setEditing(false); }
-  }, [insight?.id]);
+  }, [insight]);
 
   function setField<K extends keyof Tables<"insights">>(key: K, val: Tables<"insights">[K]) {
     setForm((p) => ({ ...p, [key]: val }));

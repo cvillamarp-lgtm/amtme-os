@@ -49,7 +49,6 @@ import {
 import { useCreateQuoteCandidate, useQuoteCandidates } from "@/hooks/useQuoteCandidates";
 import { useQueueAudioClipExport } from "@/hooks/useAudioClipExport";
 import { TranscriptViewer } from "@/components/audio/TranscriptViewer";
-import { ReusableSegmentsPanel } from "@/components/audio/ReusableSegmentsPanel";
 import { TextBasedEditor } from "@/components/audio/TextBasedEditor";
 import { AssetCandidatesPanel } from "@/components/audio/AssetCandidatesPanel";
 import { RenderPipelinePanel } from "@/components/audio/RenderPipelinePanel";

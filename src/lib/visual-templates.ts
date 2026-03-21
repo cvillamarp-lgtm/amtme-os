@@ -540,6 +540,7 @@ export function buildPiecePrompt(piece: VisualPiece, input: EpisodeInput, copyLi
 
   // Content lines (non-empty, non-placeholder)
   const contentLines = copyLines
+    .map((l) => l.replace(/XX/g, epNum))
     .filter(l => l.trim() && !l.startsWith("["))
     .slice(0, 4);
 
@@ -551,7 +552,8 @@ ${contentLines.map((l, i) => `  L${i + 1}: ${l}`).join("\n")}`
   return `FORMATO: ${fmt}.
 FONDO: sólido ${bgName}. Sin texturas, sin gradientes, sin patrones, sin elementos extra.
 COMPOSICIÓN: ${textZoneNote}
-EPISODIO: Ep. ${epNum} de "A Mí Tampoco Me Explicaron". Fondo exacto: ${bgHex}.${copySection}
+EPISODIO: Ep. ${epNum} de "A Mí Tampoco Me Explicaron". Fondo exacto: ${bgHex}.
+PALETA MARCA: cobalt #1A1AE6, negro #0A0A0A, cream #F5F0E8, amarillo #F2C84B.${copySection}
 
 INSTRUCCIÓN CRÍTICA: NO incluir ningún texto, número, letra, ícono, logo ni elemento UI en la imagen. El texto se agrega en post-producción vía canvas. Cualquier texto visible hace la imagen inutilizable.`;
 }

@@ -88,8 +88,7 @@ export function useContentProduction(episodeId?: string | null) {
 
       // 1 — Try new system: content_assets.copy_json
       for (const row of rows ?? []) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const copyLines = (row as any).copy_json;
+        const copyLines = (row as { copy_json?: unknown }).copy_json;
         if (row.image_url || row.caption) {
           loadedAssets[row.piece_id] = {
             imageUrl: row.image_url ?? undefined,
@@ -105,10 +104,8 @@ export function useContentProduction(episodeId?: string | null) {
       }
 
       // 2 — Fallback: episodes.derived_copies_json (legacy format — migrate automatically)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const legacyCopy = (ep as any)?.derived_copies_json as PieceCopyMap | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const thesis = (ep as any)?.core_thesis as string ?? "";
+  const legacyCopy = (ep as { derived_copies_json?: PieceCopyMap | null })?.derived_copies_json ?? null;
+  const thesis = (ep as { core_thesis?: string | null })?.core_thesis ?? "";
 
       if (Object.keys(loadedCopy).length === 0 && legacyCopy && Object.keys(legacyCopy).length > 0) {
         // Migrate legacy copy into content_assets.copy_json silently

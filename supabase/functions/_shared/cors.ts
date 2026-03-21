@@ -13,7 +13,7 @@ const ALLOWED_ORIGINS = [
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true;
   // Allow all Vercel preview deployments for this project
-  if (/^https:\/\/amtmeos[a-z0-9\-]*\.vercel\.app$/.test(origin)) return true;
+  if (/^https:\/\/amtmeos[a-z0-9-]*\.vercel\.app$/.test(origin)) return true;
   return false;
 }
 

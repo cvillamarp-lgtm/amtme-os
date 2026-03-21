@@ -23,11 +23,13 @@ const OUTPUT_TYPES = [
   { id: "distribution", label: "Distribución", num: 10 },
 ];
 
+type OutputTabId = (typeof OUTPUT_TYPES)[number]["id"];
+
 export default function ScriptEngineOutputs() {
   const { semanticMapId } = useParams();
   const navigate = useNavigate();
   const { state, loadSemanticMap, generateOutputs } = useScriptEngineOutputs();
-  const [activeTab, setActiveTab] = useState("editorial_summary");
+  const [activeTab, setActiveTab] = useState<OutputTabId>("editorial_summary");
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function ScriptEngineOutputs() {
               {OUTPUT_TYPES.map((type) => (
                 <button
                   key={type.id}
-                  onClick={() => setActiveTab(type.id as any)}
+                  onClick={() => setActiveTab(type.id)}
                   className={`px-4 py-2 rounded-lg whitespace-nowrap text-sm font-medium transition ${
                     activeTab === type.id
                       ? "bg-primary text-primary-foreground"

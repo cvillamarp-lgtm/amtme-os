@@ -9,7 +9,6 @@ import {
   calculateContrastRatio,
   PALETTE_SYSTEM,
   computeFreePalette,
-  suggestHostImageBasedOnTone,
 } from "@/lib/design-utils";
 
 export interface VisualAssetContent {
@@ -82,20 +81,6 @@ export function useVisualOSEditor() {
     }));
   }, []);
 
-  // Actualizar paleta libre (P5)
-  const updateCustomPalette = useCallback(
-    (bg: string, accent: string, text: string) => {
-      const computed = computeFreePalette(bg, accent, text);
-      setState((prev) => ({
-        ...prev,
-        paletteId: 5,
-        customPalette: { bg, accent, text },
-      }));
-      validateContrast(bg, accent, text);
-    },
-    []
-  );
-
   // Validar contraste
   const validateContrast = useCallback((bg?: string, accent?: string, text?: string) => {
     const palette = state.customPalette || PALETTE_SYSTEM[state.paletteId as 1 | 2 | 3 | 4];
@@ -137,6 +122,20 @@ export function useVisualOSEditor() {
     }));
   }, [state.paletteId, state.customPalette, state.content.keyword, state.content.headline, state.hostImage]);
 
+  // Actualizar paleta libre (P5)
+  const updateCustomPalette = useCallback(
+    (bg: string, accent: string, text: string) => {
+      const free = computeFreePalette(bg, accent, text);
+      setState((prev) => ({
+        ...prev,
+        paletteId: 5,
+        customPalette: free,
+      }));
+      validateContrast(bg, accent, text);
+    },
+    [validateContrast]
+  );
+
   // Generar preview en canvas
   const generatePreview = useCallback(async () => {
     // Placeholder: en la práctica, esto llamaría a renderCanvas()
@@ -149,8 +148,6 @@ export function useVisualOSEditor() {
   // Guardar asset
   const saveAsset = useCallback(
     async (episodeId: string) => {
-      if (!supabase) return;
-
       if (state.validations.errors.length > 0) {
         setState((prev) => ({
           ...prev,
@@ -186,7 +183,7 @@ export function useVisualOSEditor() {
         throw err;
       }
     },
-    [supabase, state.content, state.validations]
+    [state.content, state.validations]
   );
 
   return {

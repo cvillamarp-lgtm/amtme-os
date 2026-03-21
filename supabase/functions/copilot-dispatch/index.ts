@@ -258,7 +258,7 @@ Responde con JSON:
     }
 
     // ── Apply patch to DB ────────────────────────────────────────────────────
-    let diff: Record<string, { before: unknown; after: unknown }> = {};
+    const diff: Record<string, { before: unknown; after: unknown }> = {};
     if (Object.keys(patch).length > 0) {
       for (const key of Object.keys(patch)) {
         diff[key] = {

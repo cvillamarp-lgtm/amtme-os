@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import type { EpisodeWithVisual, KeyPhrase, VisualStatus } from "@/lib/visual-os/types";
 
 // ─── Episode list with piece progress ────────────────────────────────────────

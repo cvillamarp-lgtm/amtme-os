@@ -91,8 +91,6 @@ export function useScriptEngineSemantico() {
   // Cargar cleaned_text
   const loadCleanedText = useCallback(
     async (cleanedTextId: string) => {
-      if (!supabase) return;
-
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -128,13 +126,13 @@ export function useScriptEngineSemantico() {
         setState((prev) => ({ ...prev, error: message, loading: false }));
       }
     },
-    [supabase]
+    []
   );
 
   // Generar mapa semántico vía edge function
   const generateSemanticMap = useCallback(
     async (cleanedText: string) => {
-      if (!supabase || !state.episodeId || !state.cleanedTextId) return;
+      if (!state.episodeId || !state.cleanedTextId) return;
 
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
@@ -223,12 +221,12 @@ export function useScriptEngineSemantico() {
         throw err;
       }
     },
-    [supabase, state.episodeId, state.rawInputId, state.cleanedTextId]
+    [state.episodeId, state.rawInputId, state.cleanedTextId]
   );
 
   // Aprobar mapa semántico
   const approveSemanticMap = useCallback(async () => {
-    if (!supabase || !state.semanticMapId) return false;
+    if (!state.semanticMapId) return false;
 
       // Validar que no haya warnings críticos
       if (!state.wordCountsValidation.valid) {
@@ -263,7 +261,7 @@ export function useScriptEngineSemantico() {
         setState((prev) => ({ ...prev, error: message, loading: false }));
         throw err;
       }
-  }, [supabase, state.semanticMapId, state.wordCountsValidation]);
+  }, [state.semanticMapId, state.wordCountsValidation]);
 
   return {
     state,

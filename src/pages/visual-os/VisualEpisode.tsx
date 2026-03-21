@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -91,10 +90,8 @@ function PieceTile({ piece, episodeId }: { piece: VisualPieceRow; episodeId: str
   );
 }
 
-function EmptyPieceTile({ tpl, episodeId, onInit }: {
+function EmptyPieceTile({ tpl }: {
   tpl: { piece_code: string; piece_name: string; background_color: string; format: string; width_px: number; height_px: number };
-  episodeId: string;
-  onInit: () => void;
 }) {
   return (
     <div className="rounded-lg border border-dashed border-border/50 bg-muted/10 p-3 flex flex-col gap-2 opacity-60">
@@ -318,8 +315,6 @@ export default function VisualEpisode() {
               <EmptyPieceTile
                 key={tpl.id}
                 tpl={tpl}
-                episodeId={episodeId!}
-                onInit={handleInitPieces}
               />
             );
           })}

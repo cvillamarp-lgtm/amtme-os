@@ -112,7 +112,7 @@ export function InstagramAnalytics() {
   });
 
   // Media stats (recent posts)
-  const { data: mediaStats = [], isLoading: mediaLoading } = useQuery({
+  const { data: mediaStats = [] } = useQuery({
     queryKey: ["instagram-media-stats"],
     queryFn: async () => {
       const { data, error } = await supabase

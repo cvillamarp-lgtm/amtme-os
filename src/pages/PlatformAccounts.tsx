@@ -730,7 +730,7 @@ export default function PlatformAccounts() {
       toast.error(`Error al conectar: ${decodeURIComponent(oauthError)}`);
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, qc, setSearchParams]);
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["platform-accounts"],
@@ -773,8 +773,6 @@ export default function PlatformAccounts() {
     if (!user) return;
     setConnectingPlatform(platform);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
       // Clear stale token so the account resets cleanly before re-authorizing
       const existingAccount = accounts.find((a) => a.platform === platform);
       if (existingAccount?.oauth_connected) {
@@ -799,7 +797,6 @@ export default function PlatformAccounts() {
     }
   };
 
-  const activeAccounts = accounts.filter((a) => a.is_active);
   const connectedAccounts = accounts.filter((a) => a.oauth_connected);
   const totalFollowers = accounts.reduce((sum, a) => {
     const meta = getMeta(a);

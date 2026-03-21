@@ -4,9 +4,19 @@ import { CheckCircle2, XCircle, AlertTriangle, Info, History, User, Bot, Cpu, Up
 import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { Progress } from "@/components/ui/progress";
 import { useChangelog } from "@/hooks/useChangelog";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface Props {
-  episode: Record<string, any>;
+  episode: Tables<"episodes">;
+}
+
+interface HistoryEntry {
+  id: string;
+  field_name: string;
+  change_origin: string;
+  old_value: string | null;
+  new_value: string | null;
+  changed_at: string;
 }
 
 const ORIGIN_LABELS: Record<string, { label: string; icon: typeof User; color: string }> = {
@@ -30,14 +40,14 @@ export function WorkspaceAudit({ episode }: Props) {
   const audit = auditEpisode(episode);
   const level = getCompletenessLevel(audit.healthScore);
   const { getHistory } = useChangelog();
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (!episode?.id) return;
     setHistoryLoading(true);
     getHistory("episodes", episode.id, 30).then((data) => {
-      setHistory(data);
+      setHistory((data || []) as HistoryEntry[]);
       setHistoryLoading(false);
     });
   }, [episode?.id, getHistory]);

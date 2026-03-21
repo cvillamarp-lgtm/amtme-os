@@ -395,7 +395,7 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
       setChecklist(parseChecklist(pub.checklist_json));
       setEditing(false);
     }
-  }, [pub?.id]);
+  }, [pub]);
 
   function setField<K extends keyof Tables<"publications">>(key: K, val: Tables<"publications">[K]) {
     setForm((p) => ({ ...p, [key]: val }));

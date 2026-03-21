@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Image, Download, CheckCircle2, Trash2, Copy, Check, FileArchive } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { AssetPreviewModal } from "@/components/library/AssetPreviewModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import JSZip from "jszip";
@@ -19,21 +20,11 @@ import {
 } from "@/components/smart-table";
 import type { FilterDef, SortOption, SavedView } from "@/components/smart-table";
 
-interface ContentAsset {
-  id: string;
-  piece_id: number;
-  piece_name: string;
-  image_url: string | null;
-  caption: string | null;
-  hashtags: string | null;
-  status: string | null;
-  created_at: string;
-  episode_id: string | null;
-}
+type ContentAsset = Tables<"content_assets">;
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
-export const LIBRARY_COLUMNS = [
+const LIBRARY_COLUMNS = [
   { id: 'piece_name', label: 'Pieza', sortable: true, visible: true },
   { id: 'status', label: 'Estado', sortable: true, visible: true },
   { id: 'episode_id', label: 'Episodio', sortable: false, visible: true },
@@ -92,15 +83,7 @@ export default function Library() {
         toast.error("Error cargando biblioteca");
         throw error;
       }
-      return (data as any[]) as ContentAsset[];
-    },
-  });
-
-  const { data: episodes = [] } = useQuery({
-    queryKey: ["library-episodes"],
-    queryFn: async () => {
-      const { data } = await supabase.from("episodes").select("id, title, number").order("created_at", { ascending: false });
-      return (data || []) as { id: string; title: string; number: string | null }[];
+      return (data || []) as ContentAsset[];
     },
   });
 
@@ -120,7 +103,7 @@ export default function Library() {
     const episodeId = asset?.episode_id;
     const { error } = await supabase
       .from("content_assets")
-      .update({ status } as any)
+      .update({ status })
       .eq("id", id);
     if (error) {
       toast.error("Error actualizando estado");
@@ -156,7 +139,7 @@ export default function Library() {
     const ids = Array.from(table.selectedIds);
     const { error } = await supabase
       .from("content_assets")
-      .update({ status: 'approved' } as any)
+      .update({ status: "approved" })
       .in("id", ids);
     if (error) {
       toast.error("Error aprobando assets");
@@ -171,7 +154,7 @@ export default function Library() {
     const ids = Array.from(table.selectedIds);
     const { error } = await supabase
       .from("content_assets")
-      .update({ status: 'published' } as any)
+      .update({ status: "published" })
       .in("id", ids);
     if (error) {
       toast.error("Error publicando assets");

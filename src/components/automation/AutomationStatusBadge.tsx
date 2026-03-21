@@ -4,7 +4,7 @@
  * Displays the latest run status for a given automation event_type
  * within an episode. Used inline next to section headers in the workspace.
  */
-import { CheckCircle2, XCircle, Clock, SkipForward, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, SkipForward, Loader2 } from "lucide-react";
 import { useLatestAutomationLog } from "@/hooks/useAutomationLogs";
 import type { AutomationEventType } from "@/services/automation/logAutomation";
 import { cn } from "@/lib/utils";

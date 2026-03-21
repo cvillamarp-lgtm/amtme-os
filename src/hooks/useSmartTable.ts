@@ -114,7 +114,7 @@ export function useSmartTable<T extends { id: string }>(config: SmartTableConfig
     } catch (e) {
       console.error('Failed to save table preferences:', e);
     }
-  }, [prefs, config.persistKey, config.onPreferencesChange]);
+  }, [prefs, config.persistKey, config.onPreferencesChange, config]);
 
   // Persist views
   useEffect(() => {
@@ -124,7 +124,7 @@ export function useSmartTable<T extends { id: string }>(config: SmartTableConfig
     } catch (e) {
       console.error('Failed to save views:', e);
     }
-  }, [views, config.persistKey]);
+  }, [views, config.persistKey, config]);
 
   // Determine search columns
   const searchColumns = useMemo(() => {

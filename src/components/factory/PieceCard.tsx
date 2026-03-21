@@ -83,7 +83,7 @@ export function PieceCard({
       );
       onImageGenerated(piece.id, dataUrl, "local-composite");
       toast.success(`Imagen generada: ${piece.shortName}`);
-    } catch (e: unknown) {
+    } catch (_e: unknown) {
       // Fallback to AI generation if local composite fails
       try {
         const prompt = buildPiecePrompt(piece, episodeInput, copyLines);

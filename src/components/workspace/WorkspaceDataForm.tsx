@@ -21,7 +21,6 @@ import {
   FIELD_LABELS,
   BASE_FIELDS,
 } from "@/lib/block-states";
-import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Episode = Tables<"episodes">;

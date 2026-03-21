@@ -93,11 +93,6 @@ export function seedCopyBlock(
   const [t1, t2, t3] = splitThreeLines(thesis_central);
   const kps = key_phrases;
 
-  // ── Carousel slide index (P07=1 … P14=8) ──────────────────────────────────
-  const slideIdx = parseInt(pieceCode.replace("P", ""), 10) - 7; // 0-based for P07
-  // Each carousel slide (P08–P13) gets its own key phrase from frases_clave
-  const slidePhrase = kp(kps, Math.max(0, slideIdx));
-
   // ── FIXED values ──────────────────────────────────────────────────────────
 
   switch (blockName) {

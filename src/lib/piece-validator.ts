@@ -48,19 +48,6 @@ function classifyLine(raw: string): string {
   return "content";
 }
 
-// Official AMTME palette §02 (lowercase for comparison)
-const AMTME_PALETTE = new Set([
-  "#1a1ae6", "#1212a0",              // Cobalt
-  "#f5f0e8",                          // Cream
-  "#f2c84b",                          // Amarillo
-  "#0a0a0a",                          // Negro editorial
-  "#ffffff",                          // Blanco
-  "#2a2a2a", "#555555", "#999999",   // Grises secundarios
-  "#cccccc", "#888888",               // Tipografía secundaria / firma
-  "#1db954",                          // Spotify green
-  "#fc3c44",                          // Apple Podcasts red
-]);
-
 // ─── Validator ────────────────────────────────────────────────────────────────
 export function validatePiece(
   piece:         VisualPiece,
@@ -147,7 +134,7 @@ export function validatePiece(
   );
 
   // §03-C — No cursivas
-  const hasItalic = copyLines.some(l => /[_*\/]/.test(l));
+  const hasItalic = copyLines.some(l => /[_*/]/.test(l));
   add("no_italics", "critico", "§03-C",
     "Sin cursivas en ningún elemento de marca",
     !hasItalic,

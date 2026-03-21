@@ -19,19 +19,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  Download,
   Eye,
   RotateCcw,
 } from "lucide-react";
 import { useVisualOSEditor } from "@/hooks/useVisualOSEditor";
 import { PALETTE_SYSTEM } from "@/lib/design-utils";
-
-const PALETTE_COLORS: Record<1 | 2 | 3 | 4, string> = {
-  1: "#E4F542 → #020B18", // P1: Lima + Azul noche
-  2: "#D4C7A8 → #2A1810", // P2: Dorado + Marrón
-  3: "#B8D4E8 → #1A3A4A", // P3: Celeste + Azul marino
-  4: "#E85D6E → #3D1C2C", // P4: Rosa + Borgoña
-};
 
 const HOST_IMAGES = [
   { value: "none", label: "🎯 Sin figura", emoji: "🎯" },
@@ -54,7 +46,6 @@ export default function VisualOSEditorPage() {
   } = useVisualOSEditor();
 
   const [showPreview, setShowPreview] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState<"bg" | "accent" | null>(null);
 
   useEffect(() => {
     validateContrast();

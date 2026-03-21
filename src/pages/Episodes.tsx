@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Mic, Plus, Download, Factory, ChevronDown, Loader2,
+  Plus, Download, Factory, ChevronDown, Loader2,
   Sparkles, Trash2, ArrowLeft, RefreshCw, Check, Pencil, History,
 } from "lucide-react";
 import { TruncatedText } from "@/components/ui/text-clamp";
@@ -37,7 +37,7 @@ import type { FilterDef, SortOption, SavedView } from "@/components/smart-table"
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
-export const EPISODE_COLUMNS = [
+const EPISODE_COLUMNS = [
   { id: 'number', label: 'Ep.', sortable: true, visible: true },
   { id: 'title', label: 'Título', sortable: true, visible: true, getValue: (e: any) => e.working_title || e.title || '' },
   { id: 'theme', label: 'Tema', sortable: true, visible: true },

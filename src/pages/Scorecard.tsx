@@ -4,12 +4,24 @@ import { PageHeader } from "@/components/PageHeader";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
-import { Settings, CheckCircle, AlertCircle, Minus } from "lucide-react";
+import { Settings, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface ScoreData {
+  episodes: number;
+  templates: number;
+  audience: number;
+  guests: number;
+  metrics: number;
+  mentions: number;
+  resources: number;
+  tasks: number;
+  brandAssets: number;
+}
 
 interface ScoreItem {
   label: string;
-  check: (data: any) => boolean;
+  check: (data: ScoreData) => boolean;
   category: string;
 }
 

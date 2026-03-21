@@ -21,12 +21,12 @@ import {
   Ruler,
   AlertTriangle,
 } from "lucide-react";
-import { calculateContrast, meetsWCAG, determineBackground, generateFilename } from "@/lib/design-utils";
+import { calculateContrast, meetsWCAG } from "@/lib/design-utils";
 import { usePiezasData } from "@/hooks/usePiezas";
 import type { Pieza } from "@/lib/types/pieza";
 
 export default function DesignStudio() {
-  const { data, isLoading, error } = usePiezasData();
+  const { data, isLoading } = usePiezasData();
   const [selectedPiece, setSelectedPiece] = useState<Pieza | null>(null);
   const [search, setSearch] = useState("");
   const [qaChecks, setQaChecks] = useState<Record<string, boolean>>({});
@@ -57,6 +57,9 @@ export default function DesignStudio() {
     : 0;
 
   const contrastRatio = calculateContrast(contrastFg, contrastBg);
+
+  type NoGoZone = { area: string; condition: string };
+  type Coord = { label: string; x1: number; x2: number; y1: number; y2: number };
 
   if (selectedPiece) {
     return (
@@ -124,7 +127,7 @@ export default function DesignStudio() {
                   <AlertTriangle className="w-3.5 h-3.5" /> No-Go Zones
                 </h4>
                 <div className="space-y-1">
-                  {selectedPiece.dimensiones.noGoZones.map((z: any, i: number) => (
+                  {(selectedPiece.dimensiones.noGoZones as NoGoZone[]).map((z, i: number) => (
                     <div key={i} className="text-xs font-mono text-destructive/80 bg-destructive/5 px-2 py-1 rounded">
                       {z.area}: {z.condition}
                     </div>
@@ -147,7 +150,7 @@ export default function DesignStudio() {
               <div className="surface p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Coordenadas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {Object.entries(selectedPiece.estructura.coordenadas).map(([key, coord]: any) => (
+                  {Object.entries(selectedPiece.estructura.coordenadas as Record<string, Coord>).map(([key, coord]) => (
                     <div key={key} className="bg-secondary rounded-lg p-3 text-xs">
                       <div className="font-medium text-foreground mb-1">{coord.label}</div>
                       <div className="font-mono text-muted-foreground">
@@ -206,7 +209,7 @@ export default function DesignStudio() {
                 ))}
               </div>
               <div className="pt-3 border-t border-border space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Contraste</span><span className="text-foreground">{String((selectedPiece.paleta.contraste as any)?.ratio ?? "")}:1 ({String((selectedPiece.paleta.contraste as any)?.nivel ?? "")})</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Contraste</span><span className="text-foreground">{String((selectedPiece.paleta.contraste as { ratio?: string | number; nivel?: string } | undefined)?.ratio ?? "")}:1 ({String((selectedPiece.paleta.contraste as { ratio?: string | number; nivel?: string } | undefined)?.nivel ?? "")})</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Acentos</span><span className="text-foreground">{selectedPiece.paleta.acentos}</span></div>
               </div>
             </div>

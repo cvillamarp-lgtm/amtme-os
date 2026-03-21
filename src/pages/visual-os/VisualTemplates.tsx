@@ -13,15 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft, ShieldCheck, Palette, Type, Layers, Ruler, BookOpen,
-  ChevronDown, ChevronUp, Eye, Lock, CheckCircle2, XCircle,
+  ChevronDown, ChevronUp, Lock, CheckCircle2, XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useVisualTemplates, useTemplateRules } from "@/hooks/visual-os/useVisualTemplates";
-import type { VisualTemplate, BrandToken, TemplateCopyBlockDef } from "@/lib/visual-os/types";
+import type { VisualTemplate, BrandToken } from "@/lib/visual-os/types";
 import { VOSPalette, TYPOGRAPHY_RULES, ALLOWED_EFFECTS, PROHIBITED_EFFECTS } from "@/lib/visual-os/palette";
 
 // ─── Brand tokens query ───────────────────────────────────────────────────────
@@ -208,7 +207,6 @@ export default function VisualTemplates() {
   const { data: settings  = [] } = useSystemSettings();
 
   const colorTokens  = tokens.filter(t => t.token_type === "color");
-  const typoTokens   = tokens.filter(t => t.token_type === "typography");
   const ruleTokens   = tokens.filter(t => t.token_type === "rule");
 
   const brandColors = colorTokens.filter(t => !t.token_name.startsWith("prohibited"));

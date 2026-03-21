@@ -75,7 +75,7 @@ export function RecoveryAgentProvider({
         userAgent: navigator.userAgent,
       }),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [getEntity, getRecentAutomationLogs, getUserId, queryClient]
   );
 
@@ -163,7 +163,7 @@ export function RecoveryAgentProvider({
         });
       },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [getEntityQueryKeys, queryClient, resolvers, resyncEntity, retryAutomation, supabase]
   );
 

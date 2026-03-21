@@ -38,8 +38,6 @@ export function useScriptEngineClean() {
   // Cargar raw_input
   const loadRawInput = useCallback(
     async (rawInputId: string) => {
-      if (!supabase) return;
-
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -63,14 +61,12 @@ export function useScriptEngineClean() {
         setState((prev) => ({ ...prev, error: message, loading: false }));
       }
     },
-    [supabase]
+    []
   );
 
   // Llamar a edge function para limpiar texto
   const cleanText = useCallback(
     async (rawInputId: string, rawText: string) => {
-      if (!supabase) return;
-
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -104,12 +100,12 @@ export function useScriptEngineClean() {
         throw err;
       }
     },
-    [supabase]
+    []
   );
 
   // Aprobar texto limpio
   const approveCleaned = useCallback(async () => {
-    if (!supabase || !state.rawInputId) return null;
+    if (!state.rawInputId) return null;
 
     // Validaciones
     if (state.cleanedWordCount < 250) {
@@ -175,7 +171,6 @@ export function useScriptEngineClean() {
       throw err;
     }
   }, [
-    supabase,
     state.rawInputId,
     state.cleanedTextId,
     state.cleanedText,

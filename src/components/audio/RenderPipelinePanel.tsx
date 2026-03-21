@@ -10,7 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 interface Props {
   audioTakeId?: string;
   episodeTitle?: string;
-  assetCandidates: any[];
+  assetCandidates: Array<{
+    id: string;
+    platform: string;
+    asset_type: string;
+    body_text?: string | null;
+    title: string;
+    status: string;
+  }>;
   userId?: string;
 }
 
@@ -21,7 +28,7 @@ export function RenderPipelinePanel({ audioTakeId, episodeTitle, assetCandidates
 
   const approved = assetCandidates.filter((c) => c.status === "approved");
 
-  const handleRender = async (candidate: any) => {
+  const handleRender = async (candidate: Props["assetCandidates"][number]) => {
     if (!userId || !audioTakeId) {
       toast.error("Necesitas tener una toma guardada y sesión activa.");
       return;
@@ -66,14 +73,14 @@ export function RenderPipelinePanel({ audioTakeId, episodeTitle, assetCandidates
 
       setRenderedUrls((prev) => ({ ...prev, [candidate.id]: publicUrl }));
       toast.success(`Asset renderizado: ${candidate.title}`);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error renderizando asset");
     } finally {
       setRenderingId(null);
     }
   };
 
-  const handleCopyPrompt = (candidate: any) => {
+  const handleCopyPrompt = (candidate: Props["assetCandidates"][number]) => {
     const prompt = buildVisualPrompt({
       quote_text: candidate.body_text || "",
       platform: candidate.platform,

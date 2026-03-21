@@ -7,11 +7,9 @@ import { useEffect, useRef } from "react";
 import {
   renderCanvas,
   CanvasRenderConfig,
-  calculateSafeZone,
   drawGridOverlay,
   drawSafeZoneOverlay,
 } from "@/lib/canvas-text-overlay";
-import { PALETTE_SYSTEM } from "@/lib/design-utils";
 import { AlertCircle } from "lucide-react";
 
 export interface CanvasPreviewProps {

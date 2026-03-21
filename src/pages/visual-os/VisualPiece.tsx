@@ -14,7 +14,6 @@ import {
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -26,10 +25,8 @@ import { useEpisodePieces, useVisualPiece, usePieceCopyBlocks, usePieceVersions,
 import { useVisualEpisode, useKeyPhrases } from "@/hooks/visual-os/useVisualEpisodes";
 import { useTemplateRules } from "@/hooks/visual-os/useVisualTemplates";
 import { validateVisualPiece } from "@/lib/visual-os/validator";
-import { toCanvasPiece } from "@/lib/visual-os/types";
 import type { CopyBlock, PieceVersion, PieceStatus } from "@/lib/visual-os/types";
 import { STATUS_LABELS, nextStatus } from "@/lib/visual-os/types";
-import { buildFileName } from "@/lib/visual-os/palette";
 
 import { PiecePreviewCanvas } from "@/components/visual-os/PiecePreviewCanvas";
 import { CopyBlockEditor } from "@/components/visual-os/CopyBlockEditor";
@@ -161,10 +158,6 @@ export default function VisualPiece() {
 
   const currentStatus = piece.piece_status as PieceStatus;
   const nextSt        = nextStatus(currentStatus);
-  const copyLines     = localBlocks
-    .sort((a, b) => a.order_index - b.order_index)
-    .map(b => b.block_value);
-
   return (
     <div className="flex h-full overflow-hidden">
 

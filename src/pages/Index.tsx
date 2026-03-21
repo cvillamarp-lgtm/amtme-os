@@ -1,9 +1,11 @@
 import {
   Mic, ListTodo, Image, Zap, AlertTriangle, Lightbulb, ScrollText,
-  Send, FlaskConical, ArrowRight, Quote, Users, Bell, Clock,
+  Send, FlaskConical, ArrowRight, Quote, Bell, Clock,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +53,7 @@ type SmartAlert = {
   title: string;
   message: string;
   link: string;
-  icon: any;
+  icon: LucideIcon;
   daysAgo: number;
 };
 
@@ -183,7 +185,7 @@ function PipelineStage({
   color,
   isLast = false,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   value: number;
   sub: string;
@@ -215,9 +217,13 @@ const Dashboard = () => {
   useNarrativeSkeletonSeed();
   const navigate = useNavigate();
 
+  type EpisodeRow = Tables<"episodes">;
+  type TaskRow = Pick<Tables<"tasks">, "id" | "title" | "priority" | "category" | "episode_id">;
+  type AssetRow = Pick<Tables<"content_assets">, "id" | "piece_name" | "image_url" | "status" | "created_at">;
+
   const { data: counts, isLoading: loadingCounts } = useDashboardCounts();
 
-  const { data: episodes = [], isLoading: loadingEpisodes } = useQuery({
+  const { data: episodes = [], isLoading: loadingEpisodes } = useQuery<EpisodeRow[]>({
     queryKey: ["dashboard-episodes"],
     queryFn: async () => {
       const { data } = await supabase
@@ -225,11 +231,11 @@ const Dashboard = () => {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(5);
-      return data || [];
+      return (data || []) as EpisodeRow[];
     },
   });
 
-  const { data: pendingTasks = [] } = useQuery({
+  const { data: pendingTasks = [] } = useQuery<TaskRow[]>({
     queryKey: ["dashboard-tasks"],
     queryFn: async () => {
       const { data } = await supabase
@@ -238,11 +244,11 @@ const Dashboard = () => {
         .eq("status", "todo")
         .order("created_at", { ascending: false })
         .limit(5);
-      return data || [];
+      return (data || []) as TaskRow[];
     },
   });
 
-  const { data: recentAssets = [] } = useQuery({
+  const { data: recentAssets = [] } = useQuery<AssetRow[]>({
     queryKey: ["dashboard-recent-assets"],
     queryFn: async () => {
       const { data } = await supabase
@@ -250,20 +256,20 @@ const Dashboard = () => {
         .select("id, piece_name, image_url, status, created_at")
         .order("created_at", { ascending: false })
         .limit(6);
-      return data || [];
+      return (data || []) as AssetRow[];
     },
   });
 
   const { data: smartAlerts = [] } = useSmartAlerts();
 
   const auditAlerts = episodes
-    .filter((ep: any) => ep.status !== "published")
-    .map((ep: any) => {
+    .filter((ep) => ep.status !== "published")
+    .map((ep) => {
       const audit = auditEpisode(ep);
       if (audit.blockers.length === 0 && audit.warnings.length === 0) return null;
       return { episode: ep, audit };
     })
-    .filter(Boolean)
+    .filter((item): item is { episode: EpisodeRow; audit: ReturnType<typeof auditEpisode> } => item !== null)
     .slice(0, 3);
 
   return (
@@ -467,7 +473,7 @@ const Dashboard = () => {
             </h2>
           </div>
           <div className="divide-y divide-border">
-            {auditAlerts.map((item: any) => (
+            {auditAlerts.map((item) => (
               <div
                 key={item.episode.id}
                 className="p-4 flex items-center justify-between surface-hover cursor-pointer"
@@ -502,7 +508,7 @@ const Dashboard = () => {
           <EmptyState icon={Mic} message="No hay episodios aún" className="py-12" />
         ) : (
           <div className="divide-y divide-border">
-            {episodes.map((ep: any) => {
+            {episodes.map((ep) => {
               const audit = auditEpisode(ep);
               const level = getCompletenessLevel(audit.healthScore);
               return (
@@ -548,7 +554,7 @@ const Dashboard = () => {
             <EmptyState icon={ListTodo} message="Sin tareas pendientes" className="py-12" />
           ) : (
             <div className="divide-y divide-border">
-              {pendingTasks.map((t: any) => (
+              {pendingTasks.map((t) => (
                 <div key={t.id} className="p-4 flex items-center justify-between surface-hover">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{t.title}</p>
@@ -572,7 +578,7 @@ const Dashboard = () => {
             <EmptyState icon={Image} message="No hay assets generados" className="py-12" />
           ) : (
             <div className="p-4 grid grid-cols-3 gap-2">
-              {recentAssets.map((a: any) => (
+              {recentAssets.map((a) => (
                 <div
                   key={a.id}
                   className="rounded-md overflow-hidden border border-border bg-secondary/30 aspect-square relative group"

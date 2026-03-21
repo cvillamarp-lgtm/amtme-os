@@ -1,4 +1,4 @@
-/// <reference path="../_shared/deno-shims.d.ts" />
+import "../_shared/deno-shims.d.ts";
 
 /**
  * AMTME — generate-outputs Edge Function
@@ -24,7 +24,6 @@ const OUTPUTS_SYSTEM = `Eres el editor de contenido del podcast "A Mí Tampoco M
 
 function getPromptFor(outputNumber: number, semanticJson: Record<string, unknown>): string {
   const meta = (semanticJson.episode_metadata as Record<string, unknown>) || {};
-  const narrative = (semanticJson.narrative_arc as Record<string, unknown>) || {};
 
   switch (outputNumber) {
     case 1:

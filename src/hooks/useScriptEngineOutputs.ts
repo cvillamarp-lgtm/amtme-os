@@ -66,8 +66,6 @@ export function useScriptEngineOutputs() {
   // Cargar mapa semántico
   const loadSemanticMap = useCallback(
     async (semanticMapId: string) => {
-      if (!supabase) return;
-
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
@@ -90,14 +88,12 @@ export function useScriptEngineOutputs() {
         setState((prev) => ({ ...prev, error: message, loading: false }));
       }
     },
-    [supabase]
+    []
   );
 
   // Generar los 10 outputs en paralelo
   const generateOutputs = useCallback(
     async (semanticMapId: string, semanticJson: Record<string, unknown>) => {
-      if (!supabase) return;
-
       setState((prev) => ({ ...prev, loading: true, error: null, progress: 0 }));
 
       try {
@@ -219,7 +215,7 @@ export function useScriptEngineOutputs() {
         throw err;
       }
     },
-    [supabase]
+    []
   );
 
   // Obtener un output específico

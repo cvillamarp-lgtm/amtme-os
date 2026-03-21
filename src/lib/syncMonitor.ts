@@ -14,7 +14,7 @@ interface SyncEvent {
 const syncEvents: SyncEvent[] = [];
 
 // Function to track sync events
-function recordSyncEvent(operation: string, queryKey: string, source: string, duration: number, error?: string): void {
+export function recordSyncEvent(operation: string, queryKey: string, source: string, duration: number, error?: string): void {
     const event: SyncEvent = {
         timestamp: new Date().toISOString(),
         operation,
@@ -27,18 +27,18 @@ function recordSyncEvent(operation: string, queryKey: string, source: string, du
 }
 
 // Function to retrieve events from last N hours
-function getSyncTimeline(hours: number): SyncEvent[] {
+export function getSyncTimeline(hours: number): SyncEvent[] {
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
     return syncEvents.filter(event => new Date(event.timestamp) >= cutoffTime);
 }
 
 // Function to export sync logs as JSON
-function exportSyncLog(): string {
+export function exportSyncLog(): string {
     return JSON.stringify(syncEvents, null, 2);
 }
 
 // Function to analyze sync gaps larger than 5 seconds
-function analyzeSyncGaps(): { source: string; duration: number; }[] {
+export function analyzeSyncGaps(): { source: string; duration: number; }[] {
     const gaps: { source: string; duration: number; }[] = [];
     for (let i = 1; i < syncEvents.length; i++) {
         const prevEvent = syncEvents[i - 1];

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -29,9 +29,10 @@ export function useInsertMutation<T extends Record<string, unknown>>(
   return useMutation({
     mutationFn: async (data: T) => {
       const userId = await requireUserId();
-      const { error } = await supabase
-        .from(table as any)
-        .insert({ ...data, user_id: userId } as any);
+      const tableClient = supabase.from(table as never) as unknown as {
+        insert: (values: T & { user_id: string }) => Promise<{ error: { message: string } | null }>;
+      };
+      const { error } = await tableClient.insert({ ...data, user_id: userId });
       if (error) throw error;
     },
     onSuccess: () => {

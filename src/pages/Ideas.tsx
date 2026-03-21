@@ -187,7 +187,7 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
       setForm({ ...idea });
       setEditing(false);
     }
-  }, [idea?.id]);
+  }, [idea]);
 
   const save = useMutation({
     mutationFn: async (updates: Partial<Tables<"ideas">>) => {

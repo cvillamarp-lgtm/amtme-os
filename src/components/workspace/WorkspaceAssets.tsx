@@ -5,6 +5,7 @@ import { Image, FileArchive, Factory } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import JSZip from "jszip";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface Asset {
   id: string;
@@ -17,7 +18,7 @@ interface Asset {
 }
 
 interface Props {
-  episode: Record<string, any>;
+  episode: Pick<Tables<"episodes">, "id" | "number">;
   assets: Asset[];
 }
 

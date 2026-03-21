@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Copy, Check, X } from "lucide-react";
+import { Download, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 

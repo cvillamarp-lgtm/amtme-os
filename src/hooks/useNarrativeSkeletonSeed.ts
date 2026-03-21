@@ -195,5 +195,5 @@ export function useNarrativeSkeletonSeed() {
     };
 
     seed();
-  }, [isSuccess, existingCount, user]);
+  }, [isSuccess, existingCount, user, qc]);
 }

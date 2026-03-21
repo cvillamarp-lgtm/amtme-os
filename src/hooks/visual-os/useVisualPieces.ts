@@ -320,7 +320,7 @@ export function useUpdatePieceStatus() {
 
   return useMutation({
     mutationFn: async ({
-      pieceId, episodeId, status,
+      pieceId, episodeId: _episodeId, status,
     }: { pieceId: string; episodeId: string; status: PieceStatus }) => {
       const update: Record<string, unknown> = {
         piece_status: status,

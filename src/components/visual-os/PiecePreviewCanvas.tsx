@@ -48,21 +48,21 @@ export function PiecePreviewCanvas({
           .sort((a, b) => a.order_index - b.order_index)
           .map(b => b.block_value);
         const url = await buildLocalComposite(
-          piece as any,
+          piece,
           lines,
           episodeNumber,
           env.VITE_SUPABASE_URL,
         );
         setPreviewUrl(url);
         onPreviewReady?.(url);
-      } catch (e) {
+      } catch (_e) {
         setError("No se pudo generar el preview");
       } finally {
         setLoading(false);
       }
     }, 400);
     return () => clearTimeout(debounceRef.current);
-  }, [template.id, copyBlocks, episodeNumber]);
+  }, [template, copyBlocks, episodeNumber, onPreviewReady]);
 
   const aspectRatio = template.width_px / template.height_px;
 

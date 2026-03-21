@@ -10,7 +10,6 @@ import { Plus, Search, Layers, ChevronRight, Loader2, ImageIcon } from "lucide-r
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useVisualEpisodes } from "@/hooks/visual-os/useVisualEpisodes";

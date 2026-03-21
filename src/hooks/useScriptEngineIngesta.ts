@@ -43,8 +43,6 @@ export function useScriptEngineIngesta() {
   // Crear o actualizar episodio
   const createEpisode = useCallback(
     async (title: string, season?: number, episodeNumber?: number) => {
-      if (!supabase) return;
-
       setState((prev) => ({ ...prev, loading: true, error: null }));
       try {
         const { data, error } = await supabase
@@ -76,7 +74,7 @@ export function useScriptEngineIngesta() {
         throw err;
       }
     },
-    [supabase]
+    []
   );
 
   // Actualizar texto raw y contadores
@@ -98,7 +96,7 @@ export function useScriptEngineIngesta() {
   // Guardar raw_input en Supabase
   const saveRawInput = useCallback(
     async (sourceType: "guion" | "transcripcion" | "notas") => {
-      if (!supabase || !state.episodeId) {
+      if (!state.episodeId) {
         setState((prev) => ({ ...prev, error: "Episode no seleccionado" }));
         return;
       }
@@ -142,7 +140,7 @@ export function useScriptEngineIngesta() {
         throw err;
       }
     },
-    [supabase, state.episodeId, state.rawText, state.wordCount, state.characterCount, state.estimatedDurationSecs]
+    [state.episodeId, state.rawText, state.wordCount, state.characterCount, state.estimatedDurationSecs]
   );
 
   return {

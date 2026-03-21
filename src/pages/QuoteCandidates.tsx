@@ -235,7 +235,7 @@ function QuoteDetailSheet({
   const { user } = useAuth();
 
   const [text, setText] = useState(quote?.text ?? "");
-  const [status, setStatus] = useState(quote?.status ?? "captured");
+  const [status] = useState(quote?.status ?? "captured");
   const [quoteType, setQuoteType] = useState(quote?.quote_type ?? "");
   const [timestampRef, setTimestampRef] = useState(quote?.timestamp_ref ?? "");
   const [assignedFormat, setAssignedFormat] = useState(quote?.assigned_format ?? "");

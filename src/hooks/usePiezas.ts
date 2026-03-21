@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { PiezaData, Pieza } from "@/lib/types/pieza";
+import type { PiezaData } from "@/lib/types/pieza";
 
 export function usePiezasData() {
   return useQuery<PiezaData>({

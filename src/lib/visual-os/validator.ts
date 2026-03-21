@@ -100,10 +100,6 @@ export function validateVisualPiece(
     "Bloques obligatorios con contenido",
     "critico",
     (() => {
-      const required = copyBlocks.filter(b => {
-        const rule = copyBlocks.find(x => x.block_name === b.block_name);
-        return rule?.is_fixed === false;
-      });
       const missing = copyBlocks.filter(b => !b.is_fixed && !b.block_value.trim());
       return missing.length === 0;
     })(),
@@ -145,7 +141,7 @@ export function validateVisualPiece(
   );
 
   // No italics
-  const hasItalic = lines.some(l => /[_*\/]/.test(l));
+  const hasItalic = lines.some(l => /[_*/]/.test(l));
   add("no_italics", "§03-C",
     "Sin cursivas",
     "critico",
@@ -186,7 +182,7 @@ export function validateVisualPiece(
   add("ep_in_copy", "§06-A",
     "Número de episodio referenciado en el copy",
     "advertencia",
-    lines.some(l => /\bEP[\.\s]\s*\d/i.test(l) || /\d{2,}/.test(l)),
+    lines.some(l => /\bEP[.\s]\s*\d/i.test(l) || /\d{2,}/.test(l)),
     "Sin referencia al número de episodio en el copy",
   );
 

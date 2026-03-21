@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/extract-helpers.ts";
 import { callAI } from "../_shared/ai.ts";
 
@@ -104,7 +103,7 @@ Genera copy real basado en el contenido, no uses placeholders.`;
       secBKeys.forEach((key, idx) => {
         const pieceData = parsed.seccionB[key];
         if (pieceData && typeof pieceData === "object") {
-          parsed.pieceCopy[String(idx + 1)] = Object.values(pieceData).filter((v: any) => typeof v === "string");
+          parsed.pieceCopy[String(idx + 1)] = Object.values(pieceData).filter((v: unknown) => typeof v === "string");
         }
       });
     }

@@ -5,7 +5,7 @@
  * Export is blocked unless all critical validation checks pass.
  */
 import { useState } from "react";
-import { Download, FileJson, ImageDown, Lock } from "lucide-react";
+import { FileJson, ImageDown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";

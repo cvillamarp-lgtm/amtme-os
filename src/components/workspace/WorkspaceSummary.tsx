@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Mic, ExternalLink, AlertTriangle, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { cn } from "@/lib/utils";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface Props {
-  episode: Record<string, any>;
+  episode: Tables<"episodes"> & Record<string, string | null | undefined>;
   assetCount: number;
   taskCount: number;
-  onUpdate?: (updates: Record<string, any>) => Promise<void>;
+  onUpdate?: (updates: Record<string, unknown>) => Promise<void>;
 }
 
 // Production pipeline stages

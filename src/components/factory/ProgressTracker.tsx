@@ -1,5 +1,5 @@
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface ProgressTrackerProps {
   currentStep: string;

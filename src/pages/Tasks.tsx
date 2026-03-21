@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ListTodo, Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { TruncatedText } from "@/components/ui/text-clamp";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +29,7 @@ type Task = Tables<"tasks">;
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
-export const TASK_COLUMNS = [
+const TASK_COLUMNS = [
   { id: 'title', label: 'Tarea', sortable: true, visible: true },
   { id: 'category', label: 'Categoría', sortable: true, visible: true },
   { id: 'priority', label: 'Prioridad', sortable: true, visible: true },

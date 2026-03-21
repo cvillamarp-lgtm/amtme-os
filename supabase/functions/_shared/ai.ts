@@ -1,4 +1,4 @@
-/// <reference path="./deno-shims.d.ts" />
+import "./deno-shims.d.ts";
 
 /**
  * Shared AI helpers for AMTME Edge Functions.

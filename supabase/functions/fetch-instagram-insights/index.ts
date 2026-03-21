@@ -364,7 +364,7 @@ serve(async (req) => {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       if (supabaseUrl) {
-        const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
         // We don't have user.id here in the catch scope, so skip the DB update
         // The error will be shown via the response
       }

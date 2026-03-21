@@ -8,7 +8,6 @@ import {
   FileText,
   Database,
   Sparkles,
-  Layers,
   Image,
   Globe,
   Shield,

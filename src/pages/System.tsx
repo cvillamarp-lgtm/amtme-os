@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Image, Palette, Settings, BookOpen } from "lucide-react";
+import { Image, Palette } from "lucide-react";
 import { lazy, Suspense } from "react";
 
 // Lazy load the heavy sub-modules

@@ -177,7 +177,7 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
       setForm({ ...brief });
       setEditing(false);
     }
-  }, [brief?.id]);
+  }, [brief]);
 
   function setField<K extends keyof Tables<"briefs">>(key: K, val: Tables<"briefs">[K]) {
     setForm((p) => ({ ...p, [key]: val }));

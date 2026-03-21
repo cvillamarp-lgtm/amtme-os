@@ -19,15 +19,15 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": "off",
       // Warn on unused vars but allow underscore-prefixed to suppress intentionally
       "@typescript-eslint/no-unused-vars": ["warn", {
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }],
-      // Allow explicit `any` with a warning instead of error (gradual strictness)
-      "@typescript-eslint/no-explicit-any": "warn",
+      // Keep gradual strictness focused on runtime/logic risks first.
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 );

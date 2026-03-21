@@ -13,7 +13,7 @@ import { Sparkles, CheckCircle, XCircle } from "lucide-react";
 interface Props {
   audioTakeId?: string;
   episodeId?: string;
-  quoteCandidates: any[];
+  quoteCandidates: Array<{ id: string } & Record<string, unknown>>;
   userId?: string;
 }
 
@@ -56,8 +56,8 @@ export function AssetCandidatesPanel({ audioTakeId, episodeId, quoteCandidates, 
       );
       await createMutation.mutateAsync(allRecs);
       toast.success(`${allRecs.length} asset candidates generados`);
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error generando assets");
     } finally {
       setGenerating(false);
     }

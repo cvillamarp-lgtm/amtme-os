@@ -228,7 +228,7 @@ export default function ContentFactory() {
       thesis,
       keyPhrases,
     }),
-    [epNumber, thesis, keyPhrases] // eslint-disable-line react-hooks/exhaustive-deps
+    [epNumber, thesis, keyPhrases]  
   );
 
   const handleExtract = () =>
