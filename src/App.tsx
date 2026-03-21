@@ -41,15 +41,10 @@ const Sponsors         = lazyWithRecovery(() => import("./pages/Sponsors"));
 const NotFound         = lazyWithRecovery(() => import("./pages/NotFound"));
 
 // Archived routes (still accessible but not in main nav)
-const Audience              = lazyWithRecovery(() => import("./pages/Audience"));
 const Guests                = lazyWithRecovery(() => import("./pages/Guests"));
-const Mentions              = lazyWithRecovery(() => import("./pages/Mentions"));
-const Scorecard             = lazyWithRecovery(() => import("./pages/Scorecard"));
 const EditorialCalendar     = lazyWithRecovery(() => import("./pages/EditorialCalendar"));
 const BrandStudio           = lazyWithRecovery(() => import("./pages/BrandStudio"));
-const ContentPipeline       = lazyWithRecovery(() => import("./pages/ContentPipeline"));
 const DesignStudio          = lazyWithRecovery(() => import("./pages/DesignStudio"));
-const EpisodeDetail         = lazyWithRecovery(() => import("./pages/EpisodeDetail"));
 const ScriptGenerator       = lazyWithRecovery(() => import("./pages/ScriptGenerator"));
 const PromptBuilder         = lazyWithRecovery(() => import("./pages/PromptBuilder"));
 const VisualPromptGenerator = lazyWithRecovery(() => import("./pages/VisualPromptGenerator"));
@@ -62,7 +57,6 @@ const VisualOS        = lazyWithRecovery(() => import("./pages/visual-os/VisualO
 const VisualEpisode   = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
 const VisualPiece     = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
 const VisualTemplates = lazyWithRecovery(() => import("./pages/visual-os/VisualTemplates"));
-const VisualOSEditor  = lazyWithRecovery(() => import("./pages/VisualOSEditorPage"));
 
 // ── Script Engine ─────────────────────────────────────────────────────────────
 const ScriptEngineIngesta  = lazyWithRecovery(() => import("./pages/ScriptEngineIngesta"));
@@ -229,15 +223,10 @@ const App = () => (
                         <Route path="/sponsors" element={<R C={Sponsors} />} />
 
                         {/* Archived routes (accessible but not in nav) */}
-                        <Route path="/audience" element={<R C={Audience} />} />
                         <Route path="/guests" element={<R C={Guests} />} />
-                        <Route path="/mentions" element={<R C={Mentions} />} />
-                        <Route path="/scorecard" element={<R C={Scorecard} />} />
                         <Route path="/calendar" element={<R C={EditorialCalendar} />} />
                         <Route path="/brand" element={<R C={BrandStudio} />} />
-                        <Route path="/pipeline" element={<R C={ContentPipeline} />} />
                         <Route path="/design" element={<R C={DesignStudio} />} />
-                        <Route path="/episodes/:id/detail" element={<R C={EpisodeDetail} />} />
                         <Route path="/script-generator" element={<R C={ScriptGenerator} />} />
                         <Route path="/prompt-builder" element={<R C={PromptBuilder} />} />
                         <Route path="/visual-prompts" element={<R C={VisualPromptGenerator} />} />
@@ -250,7 +239,6 @@ const App = () => (
                         <Route path="/visual/templates"                               element={<R C={VisualTemplates} />} />
                         <Route path="/visual/episode/:episodeId"                      element={<R C={VisualEpisode} />} />
                         <Route path="/visual/episode/:episodeId/piece/:pieceId"       element={<R C={VisualPiece} />} />
-                        <Route path="/visual/editor/:semanticMapId"                   element={<R C={VisualOSEditor} />} />
 
                         {/* Script Engine */}
                         <Route path="/script-engine/ingesta"                          element={<R C={ScriptEngineIngesta} />} />
