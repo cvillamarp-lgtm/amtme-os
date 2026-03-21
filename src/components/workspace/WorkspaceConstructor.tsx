@@ -123,6 +123,7 @@ export function WorkspaceConstructor({ episode }: Props) {
   const [rollingBackId, setRollingBackId] = useState<string | null>(null);
   const [highRiskConfirmed, setHighRiskConfirmed] = useState(false);
   const [selectedChangeIds, setSelectedChangeIds] = useState<string[]>([]);
+  const [infraWarning, setInfraWarning] = useState<string | null>(null);
 
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
@@ -191,6 +192,26 @@ export function WorkspaceConstructor({ episode }: Props) {
     );
   };
 
+  const handleConstructorError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const normalized = message.toLowerCase();
+
+    if (
+      normalized.includes("assistant-constructor") && normalized.includes("not found")
+      || normalized.includes("could not find the function")
+      || normalized.includes("assistant_action_runs") && normalized.includes("does not exist")
+    ) {
+      setInfraWarning(
+        "Este entorno no tiene desplegado el backend del Constructor IA (edge function o migración). " +
+        "Despliega `supabase/functions/assistant-constructor` y ejecuta migraciones.",
+      );
+      toast.error("Falta despliegue backend del Constructor IA en este entorno");
+      return;
+    }
+
+    showEdgeFunctionError(error instanceof Error ? error : new Error(String(error)));
+  };
+
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
@@ -198,9 +219,10 @@ export function WorkspaceConstructor({ episode }: Props) {
         "assistant-constructor",
         { mode: "history", episode_id: episode.id },
       );
+      setInfraWarning(null);
       setHistory(data.runs || []);
     } catch (e: unknown) {
-      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+      handleConstructorError(e);
     } finally {
       setLoadingHistory(false);
     }
@@ -225,13 +247,14 @@ export function WorkspaceConstructor({ episode }: Props) {
         episode_id: episode.id,
         instruction: text,
       });
+      setInfraWarning(null);
       setPlan(data);
       setHighRiskConfirmed(false);
       setSelectedChangeIds(data.changes.filter((c) => c.status === "update").map((c) => c.change_id));
       toast.success("Propuesta generada. Revisa antes de aplicar.");
       await loadHistory();
     } catch (e: unknown) {
-      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+      handleConstructorError(e);
     } finally {
       setPlanning(false);
     }
@@ -262,7 +285,7 @@ export function WorkspaceConstructor({ episode }: Props) {
       setSelectedChangeIds([]);
       await loadHistory();
     } catch (e: unknown) {
-      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+      handleConstructorError(e);
     } finally {
       setApplying(false);
     }
@@ -281,7 +304,7 @@ export function WorkspaceConstructor({ episode }: Props) {
       setSelectedChangeIds([]);
       await loadHistory();
     } catch (e: unknown) {
-      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+      handleConstructorError(e);
     }
   };
 
@@ -297,7 +320,7 @@ export function WorkspaceConstructor({ episode }: Props) {
       toast.success("Versión restaurada");
       await loadHistory();
     } catch (e: unknown) {
-      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+      handleConstructorError(e);
     } finally {
       setRollingBackId(null);
     }
@@ -311,6 +334,11 @@ export function WorkspaceConstructor({ episode }: Props) {
             <Wand2 className="h-4 w-4 text-primary" />
             <p className="text-sm font-medium">Instrucción en lenguaje natural</p>
           </div>
+          {infraWarning && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2">
+              <p className="text-xs text-amber-700">{infraWarning}</p>
+            </div>
+          )}
           <Textarea
             rows={8}
             value={instruction}
