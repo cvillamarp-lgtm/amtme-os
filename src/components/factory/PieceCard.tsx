@@ -15,6 +15,7 @@ import { buildLocalComposite, type CanvasPiece } from "@/lib/canvas-text-overlay
 import { env } from "@/lib/env";
 import { validatePiece } from "@/lib/piece-validator";
 import { ValidationPanel } from "@/components/factory/ValidationPanel";
+import { buildPieceImagePayload } from "@/lib/image-generation-payload";
 
 /** Map VisualPiece fields to the CanvasPiece shape expected by buildLocalComposite */
 function toCanvasPiece(piece: VisualPiece, withHost: boolean): CanvasPiece {
@@ -102,7 +103,12 @@ export function PieceCard({
         const prompt = buildPiecePrompt(piece, episodeInput, copyLines);
         const data = await invokeEdgeFunction<{ imageUrl?: string }>(
           "generate-image",
-          { prompt, hostReference: piece.hostReference, pieceId: piece.id, includeHost },
+          buildPieceImagePayload({
+            prompt,
+            hostReference: piece.hostReference,
+            pieceId: piece.id,
+            includeHost,
+          }),
           { timeoutMs: 120_000, maxRetries: 0 }
         );
         if (data?.imageUrl) {

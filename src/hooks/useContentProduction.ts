@@ -5,6 +5,7 @@ import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { setProductionLock } from "./useProductionLock";
 import { VISUAL_PIECES, buildPiecePrompt, type EpisodeInput, type VisualPiece } from "@/lib/visual-templates";
+import { buildPieceImagePayload } from "@/lib/image-generation-payload";
 import { toast } from "sonner";
 
 type PieceCopyMap = Record<string, string[]>;
@@ -485,7 +486,12 @@ export function useContentProduction(episodeId?: string | null) {
         try {
               const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
                 "generate-image",
-                { prompt, hostReference: piece.hostReference, episodeId, pieceId: piece.id },
+            buildPieceImagePayload({
+              prompt,
+              hostReference: piece.hostReference,
+              episodeId,
+              pieceId: piece.id,
+            }),
                 { timeoutMs: 120_000, maxRetries: 0 }
               );
           if (imgData?.imageUrl) {
@@ -515,7 +521,12 @@ export function useContentProduction(episodeId?: string | null) {
               await new Promise((r) => setTimeout(r, 5000)); // extra buffer on retries
               const imgData = await invokeEdgeFunction<{ imageUrl?: string }>(
                 "generate-image",
-                { prompt, hostReference: piece.hostReference, episodeId, pieceId: piece.id },
+                buildPieceImagePayload({
+                  prompt,
+                  hostReference: piece.hostReference,
+                  episodeId,
+                  pieceId: piece.id,
+                }),
                 { timeoutMs: 120_000, maxRetries: 0 }
               );
               if (imgData?.imageUrl) {

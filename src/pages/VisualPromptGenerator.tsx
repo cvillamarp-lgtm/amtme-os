@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { buildVisualPromptImagePayload } from "@/lib/image-generation-payload";
 import { useAuth } from "@/hooks/useAuth";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
@@ -517,7 +518,7 @@ export default function VisualPromptGenerator() {
       const prompt = generarPrompt(pieza, data, fondoImg02);
       const result = await invokeEdgeFunction<{ imageUrl?: string }>(
         "generate-image",
-        { prompt, hostReference: pieza.hostRef, mode: "create", rawPrompt: true },
+        buildVisualPromptImagePayload({ prompt, hostReference: pieza.hostRef }),
       );
       if (result?.imageUrl) {
         setGeneratedImages((prev) => ({ ...prev, [pieza.id]: result.imageUrl! }));
