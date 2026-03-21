@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -18,10 +19,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-        status: 401,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing Authorization header", 401);
     }
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -33,20 +31,14 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await userClient.auth.getUser();
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Unauthorized", 401);
     }
 
     const body = await req.json();
     const { audioTakeId, preset = "voice_solo" } = body;
 
     if (!audioTakeId) {
-      return new Response(JSON.stringify({ error: "audioTakeId is required" }), {
-        status: 400,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "audioTakeId is required", 400);
     }
 
     const { data: take, error: takeError } = await adminClient
@@ -57,10 +49,7 @@ serve(async (req) => {
       .single();
 
     if (takeError || !take) {
-      return new Response(JSON.stringify({ error: "Audio take not found" }), {
-        status: 404,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "NOT_FOUND", "Audio take not found", 404);
     }
 
     const jobPayload = {
@@ -80,10 +69,7 @@ serve(async (req) => {
       .single();
 
     if (jobError || !job) {
-      return new Response(JSON.stringify({ error: jobError?.message || "Failed to create job" }), {
-        status: 500,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "INTERNAL_ERROR", jobError?.message || "Failed to create job", 500);
     }
 
     if (workerUrl) {
@@ -101,9 +87,6 @@ serve(async (req) => {
       headers: { ...cors, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
-    );
+    return errorResponse(cors, "INTERNAL_ERROR", error instanceof Error ? error.message : "Unknown error", 500);
   }
 });

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 /**
  * Returns all available image AI keys for the fallback chain.
@@ -96,9 +97,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -220,9 +219,7 @@ serve(async (req) => {
         }
 
         if (res.status === 429) {
-          return new Response(JSON.stringify({ error: "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo." }), {
-            status: 429, headers: { ...cors, "Content-Type": "application/json" },
-          });
+          return errorResponse(cors, "RATE_LIMIT", "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo.", 429);
         }
 
         if (!res.ok) {
@@ -250,9 +247,7 @@ serve(async (req) => {
       }
 
       if (!imageDataUrl && lastGeminiError) {
-        return new Response(JSON.stringify({ error: lastGeminiError }), {
-          status: 400, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "AI_ERROR", lastGeminiError, 400);
       }
     } else {
       // OpenAI DALL-E 3 (paid fallback)
@@ -274,10 +269,10 @@ serve(async (req) => {
         }),
       });
       if (!response.ok) {
-        if (response.status === 429) return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo más tarde." }), { status: 429, headers: { ...cors, "Content-Type": "application/json" } });
+        if (response.status === 429) return errorResponse(cors, "RATE_LIMIT", "Límite de uso alcanzado, intenta de nuevo más tarde.", 429);
         const t = await response.text();
         console.error("OpenAI DALL-E error:", response.status, t);
-        return new Response(JSON.stringify({ error: `Error de OpenAI (${response.status})` }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+        return errorResponse(cors, "AI_ERROR", `Error de OpenAI (${response.status})`, 500, { upstream_status: response.status });
       }
       const data = await response.json();
       const b64 = data.data?.[0]?.b64_json;
@@ -287,9 +282,7 @@ serve(async (req) => {
     } // end for aiChain
 
     if (!imageDataUrl) {
-      return new Response(JSON.stringify({ error: "No se pudo generar la imagen" }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "AI_ERROR", "No se pudo generar la imagen", 500);
     }
 
     // Store in Supabase Storage using service role
@@ -322,9 +315,7 @@ serve(async (req) => {
       const imgRes = await fetch(imageDataUrl);
       if (!imgRes.ok) {
         console.error("Failed to fetch image URL:", imgRes.status);
-        return new Response(JSON.stringify({ error: "No se pudo descargar la imagen generada" }), {
-          status: 500, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "AI_ERROR", "No se pudo descargar la imagen generada", 500);
       }
       const imgBuffer = await imgRes.arrayBuffer();
       binaryData = new Uint8Array(imgBuffer);
@@ -384,8 +375,6 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("generate-image error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });

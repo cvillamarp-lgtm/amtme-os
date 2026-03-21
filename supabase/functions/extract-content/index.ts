@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders } from "../_shared/extract-helpers.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -10,9 +11,7 @@ serve(async (req) => {
     // Require Authorization header (JWT validation handled by --no-verify-jwt gateway flag)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const { script, title, theme } = await req.json();
@@ -24,9 +23,7 @@ serve(async (req) => {
     ].filter(Boolean).join("\n\n");
 
     if (combinedInput.length < 30) {
-      return new Response(JSON.stringify({ error: "El contenido es demasiado corto para analizar" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "El contenido es demasiado corto para analizar", 400);
     }
     const systemPrompt = `Eres un estratega de contenido del podcast "A Mi Tampoco Me Explicaron" (AMTME).
 Tu tarea: analizar un guión/tema de podcast y extraer los datos necesarios para producir 15 piezas visuales.
@@ -81,9 +78,7 @@ Genera copy real basado en el contenido, no uses placeholders.`;
       parsed = JSON.parse(cleaned);
     } catch {
       console.error("JSON parse error. Raw content:", rawContent);
-      return new Response(JSON.stringify({ error: "La IA no devolvió un JSON válido. Intenta de nuevo." }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "AI_ERROR", "La IA no devolvió un JSON válido. Intenta de nuevo.", 500);
     }
 
     // Ensure the response has the expected structure
@@ -113,8 +108,6 @@ Genera copy real basado en el contenido, no uses placeholders.`;
     });
   } catch (e) {
     console.error("extract-content error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });

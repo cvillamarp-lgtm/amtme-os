@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/extract-helpers.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 const AMTME_CONTEXT = `Podcast: "A Mi Tampoco Me Explicaron" (AMTME). Host: Christian Villamar.
 Audiencia: hombres hispanos 28-44 años, LATAM.
@@ -16,9 +17,7 @@ serve(async (req) => {
     // Auth validation
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Missing authorization", 401);
     }
 
     const supabase = createClient(
@@ -29,23 +28,17 @@ serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
     const body = await req.json();
     const { script, mode, episode_title, episode_number } = body;
 
     if (!script || script.trim().length < 50) {
-      return new Response(JSON.stringify({ error: "El guión es demasiado corto" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "El guión es demasiado corto", 400);
     }
 
     if (!["quotes", "insights", "both"].includes(mode)) {
-      return new Response(JSON.stringify({ error: "mode debe ser: quotes, insights, o both" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "mode debe ser: quotes, insights, o both", 400);
     }
 
     const episodeContext = [
@@ -152,9 +145,6 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks):
   } catch (error) {
     console.error("extract-from-script error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", message, 500);
   }
 });

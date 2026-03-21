@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 type Mode = "plan" | "apply" | "cancel" | "history" | "rollback";
 

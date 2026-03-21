@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { callAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 // ── Copy variable types (must mirror visual-templates.ts) ──────────────────
 type CopyGoal      = "AWARENESS" | "SAVE" | "SHARE" | "LISTEN" | "COMMENT" | "CONVERT";
@@ -57,9 +58,7 @@ serve(async (req) => {
     const { episodio, tesis } = body as { episodio?: string; tesis?: string };
 
     if (!episodio || !tesis) {
-      return new Response(JSON.stringify({ error: "Se requiere episodio y tesis" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere episodio y tesis", 400);
     }
 
     // Resolve copy variables with defaults
@@ -233,9 +232,7 @@ Solo el número del episodio en formato corto: "14" o "EP.14". Máximo 2 caracte
       parsed = JSON.parse(cleaned);
     } catch {
       console.error("JSON parse error. Raw:", rawContent);
-      return new Response(JSON.stringify({ error: "La IA no devolvió un JSON válido. Intenta de nuevo." }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "AI_ERROR", "La IA no devolvió un JSON válido. Intenta de nuevo.", 500);
     }
 
     return new Response(JSON.stringify({ copy: parsed }), {
@@ -243,8 +240,6 @@ Solo el número del episodio en formato corto: "14" o "EP.14". Máximo 2 caracte
     });
   } catch (e) {
     console.error("generate-visual-copy error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 500);
   }
 });

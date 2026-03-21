@@ -6,6 +6,7 @@
 // ============================================================
 
 import { toast } from "sonner";
+export type { EdgeFunctionApiError } from "@/integrations/supabase/edge-function-types";
 
 /** Typed error thrown by invokeEdgeFunction */
 export interface EdgeFunctionError extends Error {

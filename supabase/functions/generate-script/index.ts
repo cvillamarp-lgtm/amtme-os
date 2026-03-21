@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 import { resolveAI } from "../_shared/ai.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -13,9 +14,7 @@ serve(async (req) => {
     // Auth validation
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const supabase = createClient(
@@ -26,17 +25,13 @@ serve(async (req) => {
 
     const { data: { user }, error: claimsError } = await supabase.auth.getUser();
     if (claimsError || !user) {
-      return new Response(JSON.stringify({ error: "No autorizado" }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "UNAUTHORIZED", "No autorizado", 401);
     }
 
     const { theme, title, format: epFormat } = await req.json();
 
     if (!theme && !title) {
-      return new Response(JSON.stringify({ error: "Se requiere un tema o título" }), {
-        status: 400, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere un tema o título", 400);
     }
     const ai = resolveAI();
 
@@ -84,20 +79,14 @@ El guión debe seguir los 8 bloques, ser conversacional, auténtico y listo para
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Límite de uso alcanzado, intenta de nuevo más tarde." }), {
-          status: 429, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "RATE_LIMIT", "Límite de uso alcanzado, intenta de nuevo más tarde.", 429);
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos agotados." }), {
-          status: 402, headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return errorResponse(cors, "QUOTA_EXCEEDED", "Créditos agotados.", 402);
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Error del servicio de IA" }), {
-        status: 500, headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return errorResponse(cors, "INTERNAL_ERROR", "Error del servicio de IA", 500);
     }
 
     return new Response(response.body, {
@@ -105,8 +94,6 @@ El guión debe seguir los 8 bloques, ser conversacional, auténtico y listo para
     });
   } catch (e) {
     console.error("generate-script error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
   }
 });
