@@ -1,10 +1,15 @@
 # Deployment Checklist
 
-## Gates de release — verificar antes de cualquier deploy
+## ⛔ Gates de Release — Bloqueo Automático
 
-- [ ] Solo hay un lockfile en el repo (`package-lock.json`). No debe existir `bun.lock`, `bun.lockb`, `yarn.lock` ni `pnpm-lock.yaml`.
-- [ ] El archivo `.env` real **no existe** en el repositorio ni en el paquete/ZIP distributivo (solo `.env.example` con placeholders).
-- [ ] El README refleja el stack real y los comandos de instalación usan exclusivamente `npm`.
+Los siguientes puntos deben verificarse **antes de cualquier release**. Si alguno falla, el release queda **bloqueado**.
+
+| # | Gate | Verificación |
+|---|------|-------------|
+| G1 | **Sin `.env` real en el repo** | `git ls-files '.env*' \| grep -v '.env.example'` debe devolver vacío. Si devuelve algo, **DETENER release y rotar credenciales.** |
+| G2 | **Sin `.env` real en el paquete/ZIP distribuible** | Inspeccionar el artefacto antes de compartir. No debe contener ningún archivo `.env` con valores reales. |
+| G3 | **Solo un lockfile** | Solo debe existir `package-lock.json`. No `bun.lock` ni `bun.lockb`. |
+| G4 | **Documentación actualizada** | README refleja stack real, sin referencias a herramientas no usadas. |
 
 ## Deployment Instructions
 1. Ensure the code is merged into the main branch.

@@ -719,17 +719,35 @@ VALUES (
 
 ## 20. Variables de Entorno y Deploy
 
-### Variables de entorno (.env.local)
+### Variables requeridas
 
-```bash
-# Supabase
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
- 
-# Claude API — SOLO en Supabase Edge Functions, nunca en el frontend
-# Configurar en Supabase Dashboard → Settings → Edge Functions → Secrets
-ANTHROPIC_API_KEY=sk-ant-...
-```
+| Variable | Entorno | Descripción |
+|----------|---------|-------------|
+| `VITE_SUPABASE_URL` | Frontend | URL del proyecto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Anon/publishable key de Supabase |
+| `VITE_SUPABASE_PROJECT_ID` | Frontend | ID del proyecto Supabase |
+| `ANTHROPIC_API_KEY` | Edge Functions | API key de Claude — requerido para Script Engine |
+| `GEMINI_API_KEY` | Edge Functions | API key de Gemini — requerido para imágenes (gratuito en aistudio.google.com) |
+| `OPENAI_API_KEY` | Edge Functions | Opcional — fallback imágenes DALL-E 3 |
+| `GROQ_API_KEY` | Edge Functions | Opcional — texto rápido |
+
+### Dónde configurarlas
+
+- **Desarrollo local:** Copia `.env.example` como `.env.local` y rellena los valores reales.
+  ```bash
+  cp .env.example .env.local
+  ```
+- **Producción (Vercel):** Vercel Dashboard → Project → Settings → Environment Variables.
+- **Edge Functions (Supabase):** Supabase Dashboard → Project → Settings → Edge Functions → Secrets.
+
+### ⛔ Prohibición absoluta de commit de `.env`
+
+**Nunca** se debe commitear un archivo `.env` con valores reales al repositorio.
+
+- El archivo `.gitignore` ignora explícitamente `.env` y `.env.*` (excepción: `.env.example`).
+- Solo existe `.env.example` en el repo, con placeholders únicamente — este sí puede commitearse.
+- Si accidentalmente se commitea un `.env` real, rotar **inmediatamente** todas las credenciales expuestas.
+- El checklist de release incluye un gate explícito que bloquea cualquier release si existe un `.env` real en el repo o en el paquete distribuible.
 
 ### vercel.json
 
