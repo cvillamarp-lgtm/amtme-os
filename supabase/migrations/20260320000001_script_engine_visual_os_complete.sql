@@ -19,8 +19,16 @@ CREATE TABLE IF NOT EXISTS episodes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_episodes_created_by ON episodes(created_by);
-CREATE INDEX idx_episodes_status ON episodes(status);
+ALTER TABLE episodes
+  ADD COLUMN IF NOT EXISTS season INTEGER,
+  ADD COLUMN IF NOT EXISTS episode_number INTEGER,
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS idx_episodes_created_by ON episodes(created_by);
+CREATE INDEX IF NOT EXISTS idx_episodes_status ON episodes(status);
 
 -- Tabla: raw_inputs
 -- Fase 1 — Ingesta: texto original del usuario
@@ -36,8 +44,8 @@ CREATE TABLE IF NOT EXISTS raw_inputs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_raw_inputs_episode ON raw_inputs(episode_id);
-CREATE INDEX idx_raw_inputs_created_by ON raw_inputs(created_by);
+CREATE INDEX IF NOT EXISTS idx_raw_inputs_episode ON raw_inputs(episode_id);
+CREATE INDEX IF NOT EXISTS idx_raw_inputs_created_by ON raw_inputs(created_by);
 
 -- Tabla: cleaned_texts
 -- Fase 2 — Limpieza automática
@@ -53,8 +61,8 @@ CREATE TABLE IF NOT EXISTS cleaned_texts (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_cleaned_texts_raw_input ON cleaned_texts(raw_input_id);
-CREATE INDEX idx_cleaned_texts_approved ON cleaned_texts(approved);
+CREATE INDEX IF NOT EXISTS idx_cleaned_texts_raw_input ON cleaned_texts(raw_input_id);
+CREATE INDEX IF NOT EXISTS idx_cleaned_texts_approved ON cleaned_texts(approved);
 
 -- Tabla: semantic_maps
 -- Fase 3 — Mapa semántico: fuente única de verdad para todos los outputs
@@ -76,9 +84,9 @@ CREATE TABLE IF NOT EXISTS semantic_maps (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_semantic_maps_episode ON semantic_maps(episode_id);
-CREATE INDEX idx_semantic_maps_approved ON semantic_maps(approved);
-CREATE INDEX idx_semantic_maps_palette ON semantic_maps(suggested_palette_id);
+CREATE INDEX IF NOT EXISTS idx_semantic_maps_episode ON semantic_maps(episode_id);
+CREATE INDEX IF NOT EXISTS idx_semantic_maps_approved ON semantic_maps(approved);
+CREATE INDEX IF NOT EXISTS idx_semantic_maps_palette ON semantic_maps(suggested_palette_id);
 
 -- Tabla: generated_assets
 -- Fase 4–11 — Outputs generados (captions, quotes, hooks, visual copy, etc.)
@@ -95,9 +103,19 @@ CREATE TABLE IF NOT EXISTS generated_assets (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_generated_assets_semantic_map ON generated_assets(semantic_map_id);
-CREATE INDEX idx_generated_assets_type ON generated_assets(asset_type);
-CREATE INDEX idx_generated_assets_status ON generated_assets(status);
+ALTER TABLE generated_assets
+  ADD COLUMN IF NOT EXISTS semantic_map_id UUID REFERENCES semantic_maps(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS asset_type TEXT,
+  ADD COLUMN IF NOT EXISTS asset_key TEXT,
+  ADD COLUMN IF NOT EXISTS content_json JSONB DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS word_counts_json JSONB,
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS idx_generated_assets_semantic_map ON generated_assets(semantic_map_id);
+CREATE INDEX IF NOT EXISTS idx_generated_assets_type ON generated_assets(asset_type);
+CREATE INDEX IF NOT EXISTS idx_generated_assets_status ON generated_assets(status);
 
 -- ═════════════════════════════════════════════════════════════════════════════
 -- VISUAL OS TABLES
@@ -136,7 +154,7 @@ CREATE TABLE IF NOT EXISTS visual_specs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_visual_specs_name ON visual_specs(name);
+CREATE INDEX IF NOT EXISTS idx_visual_specs_name ON visual_specs(name);
 
 -- Tabla: palette_assignments
 -- Asignación de paleta a episodio (scope: 'episode') o pieza individual (scope: 'piece')
@@ -153,8 +171,8 @@ CREATE TABLE IF NOT EXISTS palette_assignments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_palette_assignments_episode ON palette_assignments(episode_id);
-CREATE INDEX idx_palette_assignments_scope ON palette_assignments(scope);
+CREATE INDEX IF NOT EXISTS idx_palette_assignments_episode ON palette_assignments(episode_id);
+CREATE INDEX IF NOT EXISTS idx_palette_assignments_scope ON palette_assignments(scope);
 
 -- Tabla: asset_versions
 -- Versiones de assets visuales (pieza + paleta + imagen + contenido)
@@ -174,9 +192,9 @@ CREATE TABLE IF NOT EXISTS asset_versions (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_asset_versions_episode ON asset_versions(episode_id);
-CREATE INDEX idx_asset_versions_visual_spec ON asset_versions(visual_spec_id);
-CREATE INDEX idx_asset_versions_status ON asset_versions(status);
+CREATE INDEX IF NOT EXISTS idx_asset_versions_episode ON asset_versions(episode_id);
+CREATE INDEX IF NOT EXISTS idx_asset_versions_visual_spec ON asset_versions(visual_spec_id);
+CREATE INDEX IF NOT EXISTS idx_asset_versions_status ON asset_versions(status);
 
 -- Tabla: change_log
 -- Registro de auditoría: quién cambió qué, cuándo
@@ -192,8 +210,8 @@ CREATE TABLE IF NOT EXISTS change_log (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_change_log_entity ON change_log(entity_type, entity_id);
-CREATE INDEX idx_change_log_created_at ON change_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_change_log_entity ON change_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_change_log_created_at ON change_log(created_at);
 
 -- ═════════════════════════════════════════════════════════════════════════════
 -- SEED DATA

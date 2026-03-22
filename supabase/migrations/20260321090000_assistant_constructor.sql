@@ -28,21 +28,45 @@ create index if not exists idx_assistant_action_runs_user_created
 
 alter table public.assistant_action_runs enable row level security;
 
-create policy if not exists "Users can view own assistant runs"
-  on public.assistant_action_runs
-  for select
-  using (auth.uid() = user_id);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'assistant_action_runs'
+      and policyname = 'Users can view own assistant runs'
+  ) then
+    create policy "Users can view own assistant runs"
+      on public.assistant_action_runs
+      for select
+      using (auth.uid() = user_id);
+  end if;
 
-create policy if not exists "Users can insert own assistant runs"
-  on public.assistant_action_runs
-  for insert
-  with check (auth.uid() = user_id);
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'assistant_action_runs'
+      and policyname = 'Users can insert own assistant runs'
+  ) then
+    create policy "Users can insert own assistant runs"
+      on public.assistant_action_runs
+      for insert
+      with check (auth.uid() = user_id);
+  end if;
 
-create policy if not exists "Users can update own assistant runs"
-  on public.assistant_action_runs
-  for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'assistant_action_runs'
+      and policyname = 'Users can update own assistant runs'
+  ) then
+    create policy "Users can update own assistant runs"
+      on public.assistant_action_runs
+      for update
+      using (auth.uid() = user_id)
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
 
 create or replace function public.touch_assistant_action_runs_updated_at()
 returns trigger

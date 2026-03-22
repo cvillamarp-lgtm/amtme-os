@@ -12,7 +12,7 @@ ALTER TABLE public.episodes
 
 -- ─── episode_key_phrases ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.episode_key_phrases (
-  id          uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   episode_id  uuid REFERENCES public.episodes(id) ON DELETE CASCADE NOT NULL,
   phrase      text NOT NULL,
   order_index integer NOT NULL DEFAULT 0,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.episode_key_phrases (
 
 -- ─── brand_tokens ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.brand_tokens (
-  id          uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   token_type  text NOT NULL,   -- 'color' | 'typography' | 'rule'
   token_name  text NOT NULL,
   token_value text NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.brand_tokens (
 
 -- ─── host_assets ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.host_assets (
-  id          uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   label       text NOT NULL,
   asset_url   text NOT NULL,
   asset_type  text NOT NULL DEFAULT 'photo',  -- 'photo' | 'illustration' | 'logo'
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.host_assets (
 
 -- ─── visual_system_settings ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.visual_system_settings (
-  id          uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   key         text NOT NULL UNIQUE,
   value_json  jsonb NOT NULL DEFAULT '{}',
   label       text,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.visual_system_settings (
 
 -- ─── visual_templates ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.visual_templates (
-  id                uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id                uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   piece_code        text NOT NULL UNIQUE,   -- 'P01'..'P15'
   piece_name        text NOT NULL,
   width_px          integer NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.visual_templates (
 
 -- ─── visual_template_rules ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.visual_template_rules (
-  id              uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   template_id     uuid REFERENCES public.visual_templates(id) ON DELETE CASCADE NOT NULL,
   rule_type       text NOT NULL,  -- 'copy_block' | 'visual' | 'composition'
   rule_key        text NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.visual_template_rules (
 
 -- ─── visual_pieces ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.visual_pieces (
-  id                 uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id                 uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   episode_id         uuid REFERENCES public.episodes(id) ON DELETE CASCADE NOT NULL,
   template_id        uuid REFERENCES public.visual_templates(id) NOT NULL,
   piece_status       text NOT NULL DEFAULT 'borrador',
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS public.visual_pieces (
 
 -- ─── piece_copy_blocks ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.piece_copy_blocks (
-  id          uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   piece_id    uuid REFERENCES public.visual_pieces(id) ON DELETE CASCADE NOT NULL,
   block_name  text NOT NULL,
   block_value text NOT NULL DEFAULT '',
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS public.piece_copy_blocks (
 
 -- ─── piece_versions ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.piece_versions (
-  id               uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   piece_id         uuid REFERENCES public.visual_pieces(id) ON DELETE CASCADE NOT NULL,
   version_number   integer NOT NULL,
   payload_json     jsonb NOT NULL DEFAULT '{}',  -- snapshot: copy blocks + meta
@@ -126,14 +126,23 @@ CREATE TABLE IF NOT EXISTS public.piece_versions (
 );
 
 -- FK back to visual_pieces (deferred to avoid chicken-and-egg)
-ALTER TABLE public.visual_pieces
-  ADD CONSTRAINT IF NOT EXISTS vos_pieces_current_version_fk
-  FOREIGN KEY (current_version_id) REFERENCES public.piece_versions(id)
-  DEFERRABLE INITIALLY DEFERRED;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'vos_pieces_current_version_fk'
+  ) THEN
+    ALTER TABLE public.visual_pieces
+      ADD CONSTRAINT vos_pieces_current_version_fk
+      FOREIGN KEY (current_version_id) REFERENCES public.piece_versions(id)
+      DEFERRABLE INITIALLY DEFERRED;
+  END IF;
+END $$;
 
 -- ─── approval_checks ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.approval_checks (
-  id               uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   piece_version_id uuid REFERENCES public.piece_versions(id) ON DELETE CASCADE NOT NULL,
   check_id         text NOT NULL,
   check_name       text NOT NULL,
@@ -146,7 +155,7 @@ CREATE TABLE IF NOT EXISTS public.approval_checks (
 
 -- ─── exports ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.exports (
-  id               uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   piece_version_id uuid REFERENCES public.piece_versions(id) ON DELETE CASCADE NOT NULL,
   export_type      text NOT NULL DEFAULT 'png',   -- 'png' | 'jpg' | 'json'
   file_url         text,
@@ -158,7 +167,7 @@ CREATE TABLE IF NOT EXISTS public.exports (
 
 -- ─── change_log ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.change_log (
-  id             uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id             uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   entity_type    text NOT NULL,  -- 'episode' | 'visual_piece' | 'copy_block' | 'version'
   entity_id      uuid NOT NULL,
   action_type    text NOT NULL,  -- 'create' | 'update' | 'approve' | 'export' | 'restore' | 'status_change'
@@ -208,15 +217,37 @@ BEGIN
     'piece_versions','approval_checks','exports','change_log'
   ] LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
-    -- SELECT: all authenticated
-    EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS "vos_sel_%s" ON public.%I FOR SELECT TO authenticated USING (true)', t, t);
-    -- INSERT / UPDATE / DELETE: all authenticated
-    EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS "vos_ins_%s" ON public.%I FOR INSERT TO authenticated WITH CHECK (true)', t, t);
-    EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS "vos_upd_%s" ON public.%I FOR UPDATE TO authenticated USING (true) WITH CHECK (true)', t, t);
-    EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS "vos_del_%s" ON public.%I FOR DELETE TO authenticated USING (true)', t, t);
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = t AND policyname = format('vos_sel_%s', t)
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY "vos_sel_%s" ON public.%I FOR SELECT TO authenticated USING (true)', t, t);
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = t AND policyname = format('vos_ins_%s', t)
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY "vos_ins_%s" ON public.%I FOR INSERT TO authenticated WITH CHECK (true)', t, t);
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = t AND policyname = format('vos_upd_%s', t)
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY "vos_upd_%s" ON public.%I FOR UPDATE TO authenticated USING (true) WITH CHECK (true)', t, t);
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = t AND policyname = format('vos_del_%s', t)
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY "vos_del_%s" ON public.%I FOR DELETE TO authenticated USING (true)', t, t);
+    END IF;
   END LOOP;
 END $$;
