@@ -16,7 +16,7 @@ import "../_shared/deno-shims.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { callClaude } from "../_shared/ai.ts";
+import { callAI } from "../_shared/ai.ts";
 import { errorResponse } from "../_shared/response.ts";
 
 // ─── Prompt oficial §10 Fase 3 ────────────────────────────────────────────────
@@ -153,12 +153,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Llamada a Claude — prompt oficial §10 Fase 3
-    const rawResponse = await callClaude(
-      SEMANTIC_MAP_SYSTEM,
-      SEMANTIC_MAP_USER_TEMPLATE(cleaned_text),
-      8192,
-    );
+    // Llamada a IA editorial — usa fallback configurado (Groq/OpenAI/Lovable)
+    const rawResponse = await callAI([
+      { role: "system", content: SEMANTIC_MAP_SYSTEM },
+      { role: "user", content: SEMANTIC_MAP_USER_TEMPLATE(cleaned_text) },
+    ], 0.1);
 
     // Parseo defensivo — Claude puede retornar con markdown ocasionalmente
     const jsonText = rawResponse

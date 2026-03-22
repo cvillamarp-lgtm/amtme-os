@@ -12,7 +12,7 @@ import "../_shared/deno-shims.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { callClaude } from "../_shared/ai.ts";
+import { callAI } from "../_shared/ai.ts";
 import { errorResponse } from "../_shared/response.ts";
 
 const CLEAN_TEXT_SYSTEM = `Eres un editor profesional. Limpia este texto eliminando timestamps, marcas técnicas irrelevantes, exceso de muletillas, repeticiones innecesarias y errores básicos de puntuación. Reconstruye párrafos legibles. Conserva el tono emocional, íntimo y humano del hablante. No resumas. No inventes. No expliques. Devuelve únicamente el texto limpio.`;
@@ -62,8 +62,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Llamada a Claude — prompt oficial §10 Fase 2
-    const cleanedText = await callClaude(CLEAN_TEXT_SYSTEM, raw_text, 8192);
+    // Llamada a IA editorial — usa fallback configurado (Groq/OpenAI/Lovable)
+    const cleanedText = await callAI([
+      { role: "system", content: CLEAN_TEXT_SYSTEM },
+      { role: "user", content: raw_text },
+    ], 0.2);
 
     const cleanedWordCount = countWords(cleanedText);
 

@@ -15,7 +15,7 @@ import "../_shared/deno-shims.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { callClaude } from "../_shared/ai.ts";
+import { callAI } from "../_shared/ai.ts";
 import { errorResponse } from "../_shared/response.ts";
 
 // ─── Prompt compartido para todos los outputs (§11) ────────────────────────────
@@ -204,7 +204,10 @@ serve(async (req) => {
 
     // Generar los 10 outputs en paralelo
     const outputPromises = Array.from({ length: 10 }, (_, i) =>
-      callClaude(OUTPUTS_SYSTEM, getPromptFor(i + 1, semantic_json), 4096)
+      callAI([
+        { role: "system", content: OUTPUTS_SYSTEM },
+        { role: "user", content: getPromptFor(i + 1, semantic_json) },
+      ], 0.4)
         .then(text => {
           const jsonText = text
             .replace(/^```json?\s*/i, "")
