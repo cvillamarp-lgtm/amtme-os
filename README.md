@@ -1,4 +1,4 @@
-# AMTME — Script Engine + Visual OS
+# AMTME — Script Engine + Visual OS  ·  Instrucción Maestra
 
 Script Engine + Visual OS 
  
@@ -50,7 +50,7 @@ La app no inventa contenido. Todo output deriva exclusivamente del texto real pe
 | **Frontend** | React 18 + Vite + Tailwind CSS |
 | **Backend / DB** | Supabase (PostgreSQL + Auth + Storage) |
 | **IA** | Anthropic Claude — claude-sonnet-4-20250514 vía Supabase Edge Functions |
-| **Estado global** | React Context (auth) + TanStack React Query (server state) + hooks locales (UI) |
+| **Estado global** | Zustand |
 | **Deploy** | Vercel |
 | **Repositorio** | GitHub |
 | **Integraciones futuras** | Google Drive · Google Sheets · Google Calendar · OpenAI Images API |
@@ -63,27 +63,7 @@ No se expone ninguna API key en el frontend. La integración con Anthropic Claud
 
 Espaciado generoso, tipografía clara, interfaces que respiran, sin decoración innecesaria. Cada pantalla tiene una sola función principal visible. El sistema operativo es el producto — no la decoración.
 
-## 4. Instalación y Desarrollo
-
-Este proyecto usa **npm** como gestor de paquetes estándar. Solo debe existir `package-lock.json` en el repositorio.
-
-```bash
-# Instalar dependencias (reproducible, sin modificar lockfile)
-npm ci
-
-# Iniciar servidor de desarrollo
-npm run dev
-
-# Compilar para producción
-npm run build
-
-# Ejecutar tests
-npm run test
-```
-
-> **Importante:** No usar `bun`, `yarn` ni `pnpm`. Solo `npm`.
-
-## 5. Arquitectura de Módulos
+## 4. Arquitectura de Módulos
 
 ```
 AMTME App
@@ -715,6 +695,114 @@ VALUES (
    "ep_badge":{"x":940,"y":40}}',
  'AMTME-S{season}-EP{episode}-P02-V{version}.png · Safe zone: 80px todos los lados'
 );
+```
+
+
+## 18. Pipeline Técnico Completo
+
+```text
+PASO 01 → Guardar raw_input en Supabase con word_count y character_count
+PASO 02 → Supabase Edge Function: limpieza de texto via Claude API
+PASO 03 → Split view con contadores en ambas columnas
+PASO 04 → Aprobar: guardar cleaned_text + reduction_percentage
+PASO 05 → Edge Function: generar mapa semántico JSON via Claude API
+PASO 06 → Parsear JSON · calcular suggested_palette_id + suggested_host_image
+PASO 07 → Guardar semantic_map con word_counts_json
+PASO 08 → Edge Functions: 10 llamadas paralelas para outputs
+PASO 09 → Parsear respuestas · calcular word_count por ítem
+PASO 10 → Guardar en generated_assets, captions, quotes, reel_candidates
+PASO 11 → Mostrar en pestañas con contadores visibles
+PASO 12 → Visual OS: cargar paleta sugerida + imagen sugerida
+PASO 13 → Editor: formulario → Canvas preview en tiempo real
+PASO 14 → Sombra larga generada · fondo negro de fotos eliminado
+PASO 15 → Validaciones automáticas en panel derecho (advertencias, sin bloqueos)
+PASO 16 → Exportar PNG/JPG con naming_convention
+PASO 17 → Validación pre-exportación Script Engine
+PASO 18 → Exportar paquete completo con word_counts en metadata
+PASO 19 → Registrar en change_log
+```
+
+### Wrapper Edge Function — Claude API
+
+```ts
+// supabase/functions/claude-call/index.ts
+import { serve } from "https://deno.land/std/http/server.ts";
+ 
+serve(async (req) => {
+ const { systemPrompt, userPrompt, maxTokens = 1000 } = await req.json();
+ 
+ const res = await fetch("https://api.anthropic.com/v1/messages", {
+   method: "POST",
+   headers: {
+     "Content-Type": "application/json",
+     "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+     "anthropic-version": "2023-06-01"
+   },
+   body: JSON.stringify({
+     model: "claude-sonnet-4-20250514",
+     max_tokens: maxTokens,
+     system: systemPrompt,
+     messages: [{ role: "user", content: userPrompt }]
+   })
+ });
+ 
+ const data = await res.json();
+ return new Response(JSON.stringify({
+   text: data.content?.[0]?.text || ""
+ }));
+});
+```
+
+## 19. Estructura de Carpetas
+
+```text
+amtme-app/
+├── supabase/
+│   ├── functions/
+│   │   ├── claude-call/         ← Edge Function principal
+│   │   ├── clean-text/
+│   │   ├── semantic-map/
+│   │   └── generate-outputs/
+│   └── migrations/
+│       └── 001_initial_schema.sql
+├── src/
+│   ├── components/
+│   │   ├── WordCounter.jsx
+│   │   ├── PipelineSteps.jsx
+│   │   └── SplitView.jsx
+│   ├── modules/
+│   │   ├── Auth/
+│   │   ├── Dashboard/
+│   │   ├── Ingesta/
+│   │   ├── Limpieza/
+│   │   ├── Semantico/
+│   │   ├── Outputs/
+│   │   ├── Validacion/
+│   │   ├── Exportacion/
+│   │   └── VisualOS/
+│   │       ├── Editor.jsx
+│   │       ├── Preview.jsx        ← Canvas rendering en tiempo real
+│   │       ├── PaletteSelector.jsx← P1–P5 + validación contraste
+│   │       ├── HostSelector.jsx   ← REF_1/REF_2 + sugerencia IA
+│   │       ├── Validations.jsx    ← Panel derecho
+│   │       └── TemplateManager.jsx
+│   ├── lib/
+│   │   ├── supabase.js
+│   │   ├── wordCount.js
+│   │   ├── colorUtils.js          ← getContrastRatio · darkenHex
+│   │   ├── canvasRenderer.js      ← drawUnderline · drawShadow · removeBg
+│   │   └── paletteEngine.js       ← resolveEpisodePalette · computeFree
+│   ├── stores/
+│   │   └── episodeStore.js        ← Zustand
+│   └── App.jsx
+├── public/
+│   └── host/
+│       ├── REF_1.png              ← Christian sentado en suelo
+│       └── REF_2.png              ← Christian sentado en silla
+├── schema.sql
+├── .env.example
+├── vite.config.js
+└── package.json
 ```
 
 ## 20. Variables de Entorno y Deploy
