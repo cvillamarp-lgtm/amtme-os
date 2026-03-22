@@ -4,7 +4,7 @@
  * Grid of 15 pieces for one episode.
  * Shows status, validation score, and quick-access to each piece editor.
  */
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Zap, Loader2, Plus, CheckCircle2,
   LayoutGrid, FileText, Clock,
@@ -118,6 +118,9 @@ function EmptyPieceTile({ tpl }: {
 
 export default function VisualEpisode() {
   const { episodeId } = useParams<{ episodeId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const shouldAutoInit = searchParams.get("autoinit") === "1";
+  const [autoInitTriggered, setAutoInitTriggered] = useState(false);
   const { data: episode, isLoading: epLoading } = useVisualEpisode(episodeId);
   const { data: pieces  = [], isLoading: piecesLoading } = useEpisodePieces(episodeId);
   const { data: phrases = [] } = useKeyPhrases(episodeId);
@@ -142,6 +145,63 @@ export default function VisualEpisode() {
       setPhraseList(arr);
     }
   }, [phrases]);
+
+  useEffect(() => {
+    const runAutoInit = async () => {
+      if (
+        !episodeId ||
+        !shouldAutoInit ||
+        autoInitTriggered ||
+        piecesLoading ||
+        templates.length === 0 ||
+        pieces.length > 0
+      ) {
+        return;
+      }
+
+      setAutoInitTriggered(true);
+
+      try {
+        const episodeCtx = episode
+          ? {
+              episode_number: String(episode.number ?? ""),
+              thesis_central: thesis.trim() || episode.thesis_central || "",
+              key_phrases: (phraseList ?? []).filter(Boolean),
+            }
+          : undefined;
+
+        await initPieces.mutateAsync({
+          episodeId,
+          templates: templates.map((t) => ({ id: t.id, piece_code: t.piece_code })),
+          episodeCtx,
+        });
+
+        toast.success("15 piezas inicializadas automáticamente");
+      } catch {
+        toast.error("No se pudieron inicializar las piezas automáticamente");
+      } finally {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("autoinit");
+          return next;
+        }, { replace: true });
+      }
+    };
+
+    void runAutoInit();
+  }, [
+    episodeId,
+    shouldAutoInit,
+    autoInitTriggered,
+    piecesLoading,
+    templates,
+    pieces.length,
+    episode,
+    thesis,
+    phraseList,
+    initPieces,
+    setSearchParams,
+  ]);
 
   const handleSave = async () => {
     if (!episodeId) return;

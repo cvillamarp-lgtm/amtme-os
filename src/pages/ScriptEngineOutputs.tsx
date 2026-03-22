@@ -45,6 +45,14 @@ export default function ScriptEngineOutputs() {
     }
   };
 
+  const handleGoToVisualOS = () => {
+    if (state.episodeId) {
+      navigate(`/visual/episode/${state.episodeId}?autoinit=1`);
+      return;
+    }
+    navigate("/visual");
+  };
+
   const activeOutput = state.outputs.find((o) => o.output_number === OUTPUT_TYPES.find((t) => t.id === activeTab)?.num);
 
   return (
@@ -128,14 +136,15 @@ export default function ScriptEngineOutputs() {
             <div className="bg-card rounded-xl border border-border shadow-sm p-6">
               <h3 className="font-semibold mb-4">Resumen</h3>
               <p className="text-sm text-muted-foreground">
-                {state.outputs.length} outputs generados exitosamente. Todos los assets están disponibles para el Visual OS.
+                {state.outputs.length} outputs generados exitosamente. La tesis central y
+                las frases clave del episodio ya quedaron sembradas para el Visual OS.
               </p>
               <Button
                 className="mt-4"
-                onClick={() => navigate(`/visual/editor/${semanticMapId}`)}
+                onClick={handleGoToVisualOS}
               >
                 <ArrowRight className="mr-2" size={16} />
-                Ir al Visual OS
+                Ir al Visual OS del episodio
               </Button>
             </div>
           </div>

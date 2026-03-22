@@ -31,6 +31,7 @@ export interface GeneratedAsset {
 
 export interface OutputsState {
   semanticMapId: string | null;
+  episodeId: string | null;
   semanticJson: Record<string, unknown> | null;
   outputs: GeneratedAsset[];
   savedAssets: Array<{ outputNumber: number; assetId: string }>;
@@ -40,9 +41,85 @@ export interface OutputsState {
   error: string | null;
 }
 
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
+function extractVisualSeed(semanticJson: Record<string, unknown>) {
+  const episodeMetadata =
+    (semanticJson.episode_metadata as Record<string, unknown> | undefined) ?? {};
+
+  const thesis =
+    typeof episodeMetadata.central_thesis === "string"
+      ? episodeMetadata.central_thesis.trim()
+      : "";
+
+  const directKeyPhrases = asStringArray(semanticJson.key_phrases);
+  const shareablePhrases = asStringArray(semanticJson.shareable_phrases);
+  const memorableLines = asStringArray(semanticJson.memorable_lines);
+  const shortQuotes = asStringArray(semanticJson.short_quotes);
+
+  const phrases = [
+    ...directKeyPhrases,
+    ...shareablePhrases,
+    ...memorableLines,
+    ...shortQuotes,
+  ]
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((value, index, arr) => arr.indexOf(value) === index)
+    .slice(0, 6);
+
+  return { thesis, phrases };
+}
+
+async function syncVisualEpisodeSeed(
+  episodeId: string,
+  semanticJson: Record<string, unknown>
+) {
+  const { thesis, phrases } = extractVisualSeed(semanticJson);
+
+  if (thesis) {
+    const { error: episodeError } = await supabase
+      .from("episodes")
+      .update({
+        thesis_central: thesis,
+        visual_status: "sin_iniciar",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", episodeId);
+
+    if (episodeError) throw episodeError;
+  }
+
+  const { error: deleteError } = await supabase
+    .from("episode_key_phrases")
+    .delete()
+    .eq("episode_id", episodeId);
+
+  if (deleteError) throw deleteError;
+
+  if (phrases.length > 0) {
+    const rows = phrases.map((phrase, index) => ({
+      episode_id: episodeId,
+      phrase,
+      order_index: index,
+    }));
+
+    const { error: insertError } = await supabase
+      .from("episode_key_phrases")
+      .insert(rows);
+
+    if (insertError) throw insertError;
+  }
+}
+
 export function useScriptEngineOutputs() {
   const [state, setState] = useState<OutputsState>({
     semanticMapId: null,
+    episodeId: null,
     semanticJson: null,
     outputs: [],
     savedAssets: [],
@@ -71,7 +148,7 @@ export function useScriptEngineOutputs() {
       try {
         const { data, error } = await supabase
           .from("semantic_maps")
-          .select("*")
+          .select("id, episode_id, semantic_json")
           .eq("id", semanticMapId)
           .single();
 
@@ -80,7 +157,8 @@ export function useScriptEngineOutputs() {
         setState((prev) => ({
           ...prev,
           semanticMapId,
-          semanticJson: data?.semantic_json || null,
+          episodeId: data?.episode_id ?? null,
+          semanticJson: (data?.semantic_json as Record<string, unknown>) || null,
           loading: false,
         }));
       } catch (err) {
@@ -97,6 +175,16 @@ export function useScriptEngineOutputs() {
       setState((prev) => ({ ...prev, loading: true, error: null, progress: 0 }));
 
       try {
+        const { data: semanticMapRow, error: semanticMapError } = await supabase
+          .from("semantic_maps")
+          .select("episode_id")
+          .eq("id", semanticMapId)
+          .single();
+
+        if (semanticMapError) throw semanticMapError;
+
+        const episodeId = semanticMapRow?.episode_id ?? null;
+
         // Simular progreso mientras se generan
         const progressInterval = setInterval(() => {
           setState((prev) => ({
@@ -162,6 +250,10 @@ export function useScriptEngineOutputs() {
           }
         }
 
+        if (episodeId) {
+          await syncVisualEpisodeSeed(episodeId, semanticJson);
+        }
+
         // Mapear outputs por tipo
         const outputsByType: Record<OutputType, GeneratedAsset | null> = {
           editorial_summary: null,
@@ -202,6 +294,7 @@ export function useScriptEngineOutputs() {
         setState((prev) => ({
           ...prev,
           semanticMapId,
+          episodeId,
           semanticJson,
           outputs: mappedOutputs,
           savedAssets,
