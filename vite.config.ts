@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => ({
     include: ["@tanstack/react-query", "react", "react-dom"],
   },
   build: {
+    minify: "terser",
+    terserOptions: {
+      compress: { drop_console: true },
+    },
     rollupOptions: {
       preserveEntrySignatures: "strict",
       output: {

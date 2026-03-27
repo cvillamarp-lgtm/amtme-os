@@ -90,6 +90,7 @@ const EPISODE_FILTER_DEFS: FilterDef[] = [
 ];
 
 const EPISODE_DEFAULT_VIEWS: SavedView[] = [];
+const ITEMS_PER_PAGE = 15;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

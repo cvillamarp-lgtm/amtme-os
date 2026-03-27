@@ -29,6 +29,8 @@ export function useEpisode(id?: string) {
   const queryClient = useQueryClient();
 
   const episodeQuery = useQuery({
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
     queryKey: ["episode", id],
     enabled: !!id,
     staleTime: 3_000,
