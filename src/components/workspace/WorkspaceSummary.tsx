@@ -232,8 +232,7 @@ export function WorkspaceSummary({ episode, assetCount, taskCount, onUpdate }: P
       {episode.summary && (
         <div className="surface p-5">
           <h3 className="text-sm font-medium text-foreground mb-2">Resumen</h3>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{episode.summary?.split('
-').map((line, i) => <div key={i}>{line}</div>) || 'N/A'}</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{episode.summary?.split('\n').map((line, i) => <div key={i}>{line}</div>) || 'N/A'}</p>
         </div>
       )}
 
