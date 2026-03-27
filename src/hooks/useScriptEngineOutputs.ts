@@ -335,3 +335,51 @@ export function useScriptEngineOutputs() {
     getOutputByType,
   };
 }
+
+// Add this to the generateOutputs function to trigger visual asset generation
+export async function triggerVisualAssetGeneration(
+  episodeId: string,
+  semanticJson: Record<string, unknown>
+) {
+  try {
+    const episodeMetadata = (semanticJson.episode_metadata as Record<string, unknown> | undefined) ?? {};
+    
+    const thesis = typeof episodeMetadata.central_thesis === "string"
+      ? episodeMetadata.central_thesis.trim()
+      : "";
+    
+    const theme = typeof episodeMetadata.theme === "string"
+      ? episodeMetadata.theme
+      : "General";
+
+    // Get episode title from database
+    const { data: episode, error: fetchError } = await supabase
+      .from("episodes")
+      .select("title")
+      .eq("id", episodeId)
+      .single();
+
+    if (fetchError || !episode) throw new Error("Episode not found");
+
+    // Call the visual asset generation via Supabase Functions
+    const { error: invokeError } = await supabase.functions.invoke(
+      "generate-visual-assets",
+      {
+        body: {
+          episode_id: episodeId,
+          episode_title: episode.title,
+          central_thesis: thesis,
+          theme: theme,
+        },
+      }
+    );
+
+    if (invokeError) {
+      console.error("Visual asset generation error:", invokeError);
+    } else {
+      console.log("Visual asset generation triggered successfully");
+    }
+  } catch (error) {
+    console.error("Error triggering visual asset generation:", error);
+  }
+}
