@@ -7,6 +7,36 @@ const togetherApiKey = Deno.env.get("TOGETHER_API_KEY")!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const DEFAULT_TIMEOUT_MS = 60_000; // 60 seconds for image generation
+
+/**
+ * Wrap a fetch call with timeout enforcement.
+ * Aborts if the request exceeds the timeout.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options?: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
 interface GenerateAssetsRequest {
   episode_id: string;
   episode_title: string;
@@ -15,21 +45,25 @@ interface GenerateAssetsRequest {
 }
 
 async function generateImageWithTogether(prompt: string): Promise<string> {
-  const response = await fetch("https://api.together.xyz/inference", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${togetherApiKey}`,
-      "Content-Type": "application/json",
+  const response = await fetchWithTimeout(
+    "https://api.together.xyz/inference",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${togetherApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "black-forest-labs/FLUX.1-pro",
+        prompt: prompt,
+        width: 1080,
+        height: 1920,
+        steps: 4,
+        temperature: 0.7,
+      }),
     },
-    body: JSON.stringify({
-      model: "black-forest-labs/FLUX.1-pro",
-      prompt: prompt,
-      width: 1080,
-      height: 1920,
-      steps: 4,
-      temperature: 0.7,
-    }),
-  });
+    DEFAULT_TIMEOUT_MS,
+  );
 
   if (!response.ok) {
     throw new Error(`Together API error: ${response.statusText}`);
@@ -73,7 +107,7 @@ async function generateAssets(req: GenerateAssetsRequest) {
       const imageUrl = await generateImageWithTogether(asset.prompt);
 
       // Download image and upload to Supabase Storage
-      const imageResponse = await fetch(imageUrl);
+      const imageResponse = await fetchWithTimeout(imageUrl, undefined, 30_000);
       const imageBlob = await imageResponse.arrayBuffer();
       const fileName = `${episode_id}/${asset.piece_id}_${Date.now()}.png`;
 

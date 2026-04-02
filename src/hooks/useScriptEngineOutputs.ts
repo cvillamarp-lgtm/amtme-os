@@ -376,8 +376,6 @@ export async function triggerVisualAssetGeneration(
 
     if (invokeError) {
       console.error("Visual asset generation error:", invokeError);
-    } else {
-      console.log("Visual asset generation triggered successfully");
     }
   } catch (error) {
     console.error("Error triggering visual asset generation:", error);

@@ -33,7 +33,6 @@ export function useEpisode(id?: string) {
     gcTime: 1000 * 60 * 10, // 10 minutes
     queryKey: ["episode", id],
     enabled: !!id,
-    staleTime: 3_000,
     queryFn: () => fetchEpisode(id!),
   });
 

@@ -13,6 +13,43 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { errorResponse } from "../_shared/response.ts";
 
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds
+
+/**
+ * Wrap a fetch call with timeout enforcement.
+ * Aborts if the request exceeds the timeout.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Estimate cost in USD based on token counts for Claude Sonnet 4.
+ * Rates: $3 per 1M input, $15 per 1M output (2024 pricing)
+ */
+function calculateCostUSD(inputTokens: number, outputTokens: number): number {
+  return (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+}
 
 serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
@@ -36,20 +73,24 @@ serve(async (req: Request) => {
       return errorResponse(cors, "CONFIGURATION_ERROR", "ANTHROPIC_API_KEY no configurada", 500);
     }
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+    const res = await fetchWithTimeout(
+      "https://api.anthropic.com/v1/messages",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL,
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
       },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: maxTokens,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
+      DEFAULT_TIMEOUT_MS,
+    );
 
     if (!res.ok) {
       const status = res.status;
@@ -60,6 +101,12 @@ serve(async (req: Request) => {
 
     const data = await res.json();
     const text = data.content?.[0]?.text ?? "";
+
+    // Log token usage for cost tracking
+    const inputTokens = data.usage?.input_tokens || 0;
+    const outputTokens = data.usage?.output_tokens || 0;
+    const costUSD = calculateCostUSD(inputTokens, outputTokens);
+    console.log(`[TOKEN_USAGE] model=${CLAUDE_MODEL} in=${inputTokens} out=${outputTokens} cost=$${costUSD.toFixed(4)}`);
 
     return new Response(JSON.stringify({ text }), {
       headers: { ...cors, "Content-Type": "application/json" },
