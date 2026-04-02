@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import hostPhoto from "@/assets/host-reference.png";
+import hostPhotoWebp from "@/assets/host-reference.webp";
 
 const SECTIONS = [
   { id: "subject", label: "Sujeto", options: ["Hombre", "Mujer", "Pareja", "Grupo", "Producto", "Objeto", "Animal", "Personaje", "Figura abstracta"] },
@@ -57,21 +57,26 @@ export default function PromptBuilder() {
   const [hostBase64, setHostBase64] = useState<string>("");
   const queryClient = useQueryClient();
 
-  // Convert host photo to base64 on mount
-  useEffect(() => {
-    const toBase64 = async () => {
-      try {
-        const res = await fetch(hostPhoto);
-        const blob = await res.blob();
+  // Lazy-load host photo to base64 only when generating/editing images
+  const ensureHostBase64 = async () => {
+    if (hostBase64) return hostBase64;
+    try {
+      const res = await fetch(hostPhotoWebp);
+      const blob = await res.blob();
+      return new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => setHostBase64(reader.result as string);
+        reader.onload = () => {
+          const b64 = reader.result as string;
+          setHostBase64(b64);
+          resolve(b64);
+        };
         reader.readAsDataURL(blob);
-      } catch (e) {
-        console.error("Error loading host photo:", e);
-      }
-    };
-    toBase64();
-  }, []);
+      });
+    } catch (e) {
+      console.error("Error loading host photo:", e);
+      return "";
+    }
+  };
 
   const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -143,7 +148,8 @@ export default function PromptBuilder() {
     if (!prompt) { toast.error("Selecciona al menos un parámetro"); return; }
     setGenerating(true);
     try {
-      const allRefs = [hostBase64, ...referenceImages].filter(Boolean);
+      const hostBase64Loaded = await ensureHostBase64();
+      const allRefs = [hostBase64Loaded, ...referenceImages].filter(Boolean);
       const data = await invokeEdgeFunction<{ imageUrl: string }>("generate-image", {
         prompt,
         episodeId: linkEpisodeId || undefined,
@@ -171,7 +177,8 @@ export default function PromptBuilder() {
     if (!selectedImage || !editPrompt.trim()) { toast.error("Selecciona una imagen y describe los cambios"); return; }
     setEditing(true);
     try {
-      const allRefs = [hostBase64, ...referenceImages].filter(Boolean);
+      const hostBase64Loaded = await ensureHostBase64();
+      const allRefs = [hostBase64Loaded, ...referenceImages].filter(Boolean);
       const data = await invokeEdgeFunction<{ imageUrl: string }>("generate-image", {
         prompt: editPrompt,
         mode: "edit",
@@ -282,7 +289,7 @@ export default function PromptBuilder() {
           <div className="flex flex-wrap gap-3 items-start">
             {/* Host - always present */}
             <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-primary shadow-sm">
-              <img src={hostPhoto} alt="Host AMTME" className="w-full h-full object-cover" />
+              <img src={hostPhotoWebp} alt="Host AMTME" className="w-full h-full object-cover" />
               <span className="absolute bottom-0 left-0 right-0 bg-primary text-primary-foreground text-[9px] text-center py-0.5 font-medium flex items-center justify-center gap-0.5">
                 <Crown className="h-2.5 w-2.5" />Host
               </span>

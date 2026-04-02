@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => ({
     terserOptions: {
       compress: { drop_console: true },
     },
+    cssMinify: "lightningcss",
+    cssCodeSplit: true,
     rollupOptions: {
       preserveEntrySignatures: "strict",
       output: {
