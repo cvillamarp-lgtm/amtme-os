@@ -20,6 +20,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { errorResponse } from "../_shared/response.ts";
 import { publishToLinkedIn, publishToLinkedInWithImage } from "../_shared/linkedin.ts";
+import { publishToInstagramReel, publishToInstagramFeed } from "../_shared/instagram.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -191,11 +192,47 @@ serve(async (req) => {
             if (emailResult.error) {
               console.warn(`Email error: ${emailResult.error}`);
             }
-          } else if (
-            platform === "youtube_short" ||
-            platform === "tiktok" ||
-            platform === "instagram_reel"
-          ) {
+          } else if (platform === "instagram_reel") {
+            // Instagram Reels require video URL from atomic_content.video_url
+            const videoUrl = (item.atomic_content as any).video_url;
+            if (videoUrl) {
+              const instagramResult = await publishToInstagramReel(
+                videoUrl,
+                atomicContent.headline,
+                atomicContent.body_copy,
+                atomicContent.cta
+              );
+              if (instagramResult.status === "published" && instagramResult.mediaId) {
+                itemPublishedUrls.instagram_reel = `https://www.instagram.com/reel/${instagramResult.mediaId}`;
+              } else if (instagramResult.error) {
+                console.warn(`Instagram Reel error: ${instagramResult.error}`);
+                failedItems.push(item.piece_id);
+              }
+            } else {
+              console.warn(`[publish] Instagram Reel requires video_url`);
+              failedItems.push(item.piece_id);
+            }
+          } else if (platform === "instagram_feed") {
+            // Instagram Feed posts require image URL
+            const imageUrl = (item.atomic_content as any).image_url;
+            if (imageUrl) {
+              const instagramResult = await publishToInstagramFeed(
+                imageUrl,
+                atomicContent.headline,
+                atomicContent.body_copy,
+                atomicContent.cta
+              );
+              if (instagramResult.status === "published" && instagramResult.mediaId) {
+                itemPublishedUrls.instagram_feed = `https://www.instagram.com/p/${instagramResult.mediaId}`;
+              } else if (instagramResult.error) {
+                console.warn(`Instagram Feed error: ${instagramResult.error}`);
+                failedItems.push(item.piece_id);
+              }
+            } else {
+              console.warn(`[publish] Instagram Feed requires image_url`);
+              failedItems.push(item.piece_id);
+            }
+          } else if (platform === "youtube_short" || platform === "tiktok") {
             // Requires video asset; queue for async processing
             console.log(`[publish] ${platform} queued for async video processing`);
           }
