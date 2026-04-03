@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { errorResponse } from "../_shared/response.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -99,61 +101,67 @@ async function generateAssets(req: GenerateAssetsRequest) {
     },
   };
 
-  const generatedAssets = [];
+  // Generate all assets in parallel
+  const generatedAssets = await Promise.allSettled(
+    Object.entries(assets).map(async ([key, asset]) => {
+      try {
+        console.log(`Generating ${key}...`);
+        const imageUrl = await generateImageWithTogether(asset.prompt);
 
-  for (const [key, asset] of Object.entries(assets)) {
-    try {
-      console.log(`Generating ${key}...`);
-      const imageUrl = await generateImageWithTogether(asset.prompt);
+        // Download image and upload to Supabase Storage
+        const imageResponse = await fetchWithTimeout(imageUrl, undefined, 30_000);
+        const imageBlob = await imageResponse.arrayBuffer();
+        const fileName = `${episode_id}/${asset.piece_id}_${Date.now()}.png`;
 
-      // Download image and upload to Supabase Storage
-      const imageResponse = await fetchWithTimeout(imageUrl, undefined, 30_000);
-      const imageBlob = await imageResponse.arrayBuffer();
-      const fileName = `${episode_id}/${asset.piece_id}_${Date.now()}.png`;
+        const { error: uploadError } = await supabase.storage
+          .from("episode-assets")
+          .upload(fileName, imageBlob, {
+            contentType: "image/png",
+            upsert: false,
+          });
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from("episode-assets")
-        .upload(fileName, imageBlob, {
-          contentType: "image/png",
-          upsert: false,
-        });
+        if (uploadError) throw uploadError;
 
-      if (uploadError) throw uploadError;
+        // Get public URL
+        const { data: publicUrl } = supabase.storage
+          .from("episode-assets")
+          .getPublicUrl(fileName);
 
-      // Get public URL
-      const { data: publicUrl } = supabase.storage
-        .from("episode-assets")
-        .getPublicUrl(fileName);
+        // Save asset metadata to database
+        const { error: insertError } = await supabase
+          .from("generated_assets")
+          .insert({
+            episode_id,
+            piece_id: asset.piece_id,
+            piece_name: asset.piece_name,
+            image_url: publicUrl.publicUrl,
+            prompt: asset.prompt,
+            source: "visual_auto_generator",
+          });
 
-      // Save asset metadata to database
-      const { error: insertError } = await supabase
-        .from("generated_assets")
-        .insert({
-          episode_id,
+        if (insertError) throw insertError;
+
+        console.log(`✅ Generated ${key}`);
+        return {
           piece_id: asset.piece_id,
-          piece_name: asset.piece_name,
-          image_url: publicUrl.publicUrl,
-          prompt: asset.prompt,
-          source: "visual_auto_generator",
-        });
+          url: publicUrl.publicUrl,
+        };
+      } catch (error) {
+        console.error(`Error generating ${key}:`, error);
+        throw error;
+      }
+    })
+  );
 
-      if (insertError) throw insertError;
-
-      generatedAssets.push({
-        piece_id: asset.piece_id,
-        url: publicUrl.publicUrl,
-      });
-
-      console.log(`✅ Generated ${key}`);
-    } catch (error) {
-      console.error(`Error generating ${key}:`, error);
-    }
-  }
-
-  return generatedAssets;
+  // Filter successful results
+  return generatedAssets
+    .filter(r => r.status === 'fulfilled')
+    .map(r => r.value);
 }
 
 serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   try {
     const body: GenerateAssetsRequest = await req.json();
 
@@ -168,21 +176,14 @@ serve(async (req) => {
         message: `Generated ${assets.length} visual assets`,
       }),
       {
-        headers: { "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       }
     );
   } catch (error) {
-    console.error("Error:", error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-      }),
-      {
-        headers: { "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    console.error("[generate-visual-assets] Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const code = message.includes("timeout") ? "TIMEOUT" : "INTERNAL_ERROR";
+    return errorResponse(cors, code, message, 500);
   }
 });

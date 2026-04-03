@@ -234,14 +234,12 @@ export async function callAI(
             if (attempt < MAX_RETRIES) continue; // Retry with this provider
             break; // Max retries exhausted, try next provider
           }
-          // Don't retry on 401 or 402, move to next provider immediately
-          if (status === 401) {
-            console.warn(`[AI] ${provider.name} invalid key, trying next provider`);
-            lastError = new Error(`${provider.name} invalid key`);
+          // Move to next provider on insufficient credits or invalid key
+          if (status === 401 || status === 402) {
+            const msg = status === 401 ? "invalid key" : "insufficient credits";
+            console.warn(`[AI] ${provider.name} ${msg}, trying next provider`);
+            lastError = new Error(`${provider.name} ${msg}`);
             break;
-          }
-          if (status === 402) {
-            throw new Error("Créditos de IA insuficientes.");
           }
           throw new Error(`AI error ${status}`);
         }
@@ -258,10 +256,6 @@ export async function callAI(
         return content;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        // Re-throw fatal errors immediately without retry
-        if (msg.includes("Créditos") || msg.includes("Insufficient credits")) {
-          throw e;
-        }
         // Timeout or transient error: retry this provider
         if (msg.includes("timeout") && attempt < MAX_RETRIES) {
           lastError = e instanceof Error ? e : new Error(msg);

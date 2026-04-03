@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { errorResponse } from "../_shared/response.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -172,6 +174,8 @@ ${imageUrl}`;
 }
 
 serve(async (req) => {
+  const cors = getCorsHeaders(req);
+
   try {
     const body: RefineRequest = await req.json();
     const { imageUrl, intensity, focus, episodeId } = body;
@@ -215,21 +219,14 @@ serve(async (req) => {
         message: "Visual composition refined successfully",
       }),
       {
-        headers: { "Content-Type": "application/json" },
+        headers: { ...cors, "Content-Type": "application/json" },
         status: 200,
       }
     );
   } catch (error) {
-    console.error("Refinement error:", error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        headers: { "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    console.error("[refine-visual-composition] Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const code = message.includes("timeout") ? "TIMEOUT" : "INTERNAL_ERROR";
+    return errorResponse(cors, code, message, 500);
   }
 });

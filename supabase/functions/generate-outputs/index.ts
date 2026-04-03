@@ -221,7 +221,13 @@ serve(async (req) => {
         })),
     );
 
-    const outputs = await Promise.all(outputPromises);
+    const settled = await Promise.allSettled(outputPromises);
+    const outputs = settled.map(result =>
+      result.status === 'fulfilled' ? result.value : {
+        outputNumber: 0,
+        error: 'Promise rejected',
+      }
+    );
 
     // Guardar cada output en generated_assets
     const savedAssets = [];
