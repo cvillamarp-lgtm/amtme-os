@@ -13,6 +13,7 @@ import { retryAutomation as retryAutomationFn } from "@/services/automation/retr
 import { RecoveryAgentProvider, RouteErrorBoundary, lazyWithRecovery } from "@/recovery";
 import type { RecoveryEntityContext } from "@/recovery";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 
 // Eager load auth (small, critical path)
 import Auth from "./pages/Auth";
@@ -258,6 +259,7 @@ const App = () => (
       </AuthProvider>
     </RecoveryAgentProvider>
     <SpeedInsights />
+    <Analytics />
   </QueryClientProvider>
 );
 
