@@ -11,11 +11,15 @@ import { Suspense, type ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { retryAutomation as retryAutomationFn } from "@/services/automation/retryAutomation";
 import { RecoveryAgentProvider, RouteErrorBoundary, lazyWithRecovery } from "@/recovery";
+import { isAuthError } from "@/services/functions/edgeFunctionErrors";
 import type { RecoveryEntityContext } from "@/recovery";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Eager load auth (small, critical path)
 import Auth from "./pages/Auth";
+
+// Public pages (not protected)
+const Pricing = lazyWithRecovery(() => import("./pages/Pricing"));
 
 // ── Lazy pages (with chunk-error recovery) ────────────────────────────────────
 const Index            = lazyWithRecovery(() => import("./pages/Index"));
@@ -69,7 +73,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      // Never retry auth errors — they require user action, not repetition.
+      retry: (failureCount, error) => !isAuthError(error) && failureCount < 1,
       staleTime: 1000 * 60 * 2,
     },
   },
@@ -196,6 +201,7 @@ const App = () => (
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/pricing" element={<R C={Pricing} />} />
                 <Route path="*" element={
                   <ProtectedRoute>
                     <AppLayout>

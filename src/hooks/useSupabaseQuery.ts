@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isAuthError, showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 
 /**
  * Reusable hook to get the current user ID.
@@ -40,6 +41,12 @@ export function useInsertMutation<T extends Record<string, unknown>>(
       options?.onClose?.();
       toast.success(options?.onSuccessMessage ?? "Guardado");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      if (isAuthError(e)) {
+        showEdgeFunctionError(e);
+        return;
+      }
+      toast.error(e.message);
+    },
   });
 }

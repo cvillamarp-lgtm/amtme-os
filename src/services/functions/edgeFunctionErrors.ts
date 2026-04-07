@@ -19,6 +19,28 @@ export interface EdgeFunctionError extends Error {
 }
 
 /**
+ * Single source of truth for detecting auth/session errors across the app.
+ * Covers: 401 HTTP status, JWT expired, token invalid, "No autenticado", etc.
+ * Use this before any generic error handler to route auth errors consistently.
+ */
+export function isAuthError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  const err = e as EdgeFunctionError;
+  if (err.statusCode === 401) return true;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("sesión expirada") ||
+    msg.includes("session expired") ||
+    msg.includes("jwt expired") ||
+    msg.includes("invalid token") ||
+    msg.includes("token expired") ||
+    msg.includes("no autenticado") ||
+    msg.includes("not authenticated") ||
+    msg.includes("unauthorized")
+  );
+}
+
+/**
  * Returns a human-readable, Spanish UI message for an EdgeFunctionError.
  * Falls back to `error.message` for unknown status codes.
  */
