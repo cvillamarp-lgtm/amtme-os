@@ -83,7 +83,7 @@ export function useVisualOSEditor() {
 
   // Validar contraste
   const validateContrast = useCallback((bg?: string, accent?: string, text?: string) => {
-    const palette = state.customPalette || PALETTE_SYSTEM[state.paletteId as 1 | 2 | 3 | 4];
+    const palette = state.customPalette || PALETTE_SYSTEM[state.paletteId as 1 | 2 | 3 | 4] || PALETTE_SYSTEM[1];
 
     const bgColor = bg || palette.bg;
     const accentColor = accent || palette.accent;
@@ -159,10 +159,12 @@ export function useVisualOSEditor() {
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       try {
+        const { data: { user } } = await supabase.auth.getUser();
         const { data, error } = await supabase
           .from("asset_versions")
           .insert({
             episode_id: episodeId,
+            created_by: user?.id,
             content_json: state.content,
             status: "draft",
           })
