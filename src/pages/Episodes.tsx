@@ -485,7 +485,7 @@ export default function Episodes() {
       if (isAuthError(e)) {
         // Guard against infinite recovery loops
         if (sessionRecovery.recovering) {
-          toast.error("Error de autenticación. Por favor, inicia sesión nuevamente.");
+          showEdgeFunctionError(e);
           return;
         }
         // Save modal state before attempting recovery

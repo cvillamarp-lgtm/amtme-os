@@ -68,6 +68,19 @@ const _shownAt = new Map<string, number>();
 const DEDUPE_TTL_MS = 30_000;
 
 /**
+ * Convenience: shows the canonical session-expired toast without an error object.
+ * Use when a manual session guard detects no session (pre-flight check).
+ */
+export function showSessionExpiredToast(): void {
+  const err = Object.assign(new Error("Sesión expirada, inicia sesión nuevamente"), {
+    statusCode: 401,
+    isRetryable: false,
+    attempt: 0,
+  }) as EdgeFunctionError;
+  showEdgeFunctionError(err);
+}
+
+/**
  * Show a toast.error deduped by message key.
  * If the same message was shown within DEDUPE_TTL_MS, it is suppressed.
  */

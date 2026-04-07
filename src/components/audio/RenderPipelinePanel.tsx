@@ -6,6 +6,7 @@ import { buildVisualPrompt } from "@/lib/visual-prompt-builder";
 import { useCreateRenderedAsset } from "@/hooks/useRenderedAssets";
 import { Layers, Download, Loader2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { showSessionExpiredToast } from "@/services/functions/edgeFunctionErrors";
 
 interface Props {
   audioTakeId?: string;
@@ -29,8 +30,9 @@ export function RenderPipelinePanel({ audioTakeId, episodeTitle, assetCandidates
   const approved = assetCandidates.filter((c) => c.status === "approved");
 
   const handleRender = async (candidate: Props["assetCandidates"][number]) => {
-    if (!userId || !audioTakeId) {
-      toast.error("Necesitas tener una toma guardada y sesión activa.");
+    if (!userId) { showSessionExpiredToast(); return; }
+    if (!audioTakeId) {
+      toast.error("Necesitas tener una toma guardada antes de renderizar.");
       return;
     }
     setRenderingId(candidate.id);

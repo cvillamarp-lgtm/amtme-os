@@ -17,6 +17,7 @@ import { executeImport, importEpisodes } from "@/lib/import-engine";
 import type { ImportSummary, ImportResult } from "@/lib/import-engine";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isAuthError, showEdgeFunctionError, showSessionExpiredToast } from "@/services/functions/edgeFunctionErrors";
 
 type Step = "load" | "preview" | "importing" | "results";
 
@@ -85,10 +86,7 @@ export default function ImportPage() {
     setIsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Debes iniciar sesión");
-        return;
-      }
+      if (!session) { showSessionExpiredToast(); return; }
 
       // Upsert: delete old and insert new
       await supabase
@@ -110,7 +108,8 @@ export default function ImportPage() {
       processDocument(text);
       toast.success("Documento guardado y analizado");
       setPasteMode(false);
-    } catch (e) {
+    } catch (e: unknown) {
+      if (isAuthError(e)) { showEdgeFunctionError(e); return; }
       toast.error(e instanceof Error ? e.message : "Error al guardar");
     } finally {
       setIsLoading(false);

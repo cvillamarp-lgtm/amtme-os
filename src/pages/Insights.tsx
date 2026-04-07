@@ -11,7 +11,7 @@ import { Plus, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, S
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
+import { isAuthError, showEdgeFunctionError, showSessionExpiredToast } from "@/services/functions/edgeFunctionErrors";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { useSmartTable } from "@/hooks/useSmartTable";
@@ -451,7 +451,7 @@ export default function Insights() {
       }
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error("No autenticado"); return; }
+      if (!session) { showSessionExpiredToast(); return; }
 
       const result = await invokeEdgeFunction<{
         insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
@@ -493,7 +493,8 @@ export default function Insights() {
       setOpenExtract(false);
       setExtractEpisodeId("");
     } catch (e: unknown) {
-      toast.error(getEdgeFunctionErrorMessage(e));
+      if (isAuthError(e)) { showEdgeFunctionError(e); return; }
+      toast.error(e instanceof Error ? e.message : "Error al extraer insights");
     } finally {
       setIsExtracting(false);
     }
