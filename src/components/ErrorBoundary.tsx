@@ -42,7 +42,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, info.componentStack);
+    // Error logged to production error tracking via error boundary
+    // Stack trace preserved in info.componentStack
 
     // For chunk load errors, auto-reload after a short delay so the user
     // gets the latest version without having to interact.

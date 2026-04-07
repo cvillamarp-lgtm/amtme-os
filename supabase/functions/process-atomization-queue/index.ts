@@ -23,8 +23,9 @@ interface ProcessQueueRequest {
   max_retries?: number;
 }
 
-async function invokeAtomizationFunction(episodeId: string): Promise<{ success: boolean; pieces: number }> {
-  // Call the atomize-episode-content Edge Function
+async function invokeAtomizationFunction(
+  episodeId: string
+): Promise<{ success: boolean; pieces: number }> {
   const atomizeUrl = `${supabaseUrl}/functions/v1/atomize-episode-content`;
 
   try {
@@ -36,8 +37,8 @@ async function invokeAtomizationFunction(episodeId: string): Promise<{ success: 
       },
       body: JSON.stringify({
         episode_id: episodeId,
-        source_type: "transcript"
-      })
+        source_type: "transcript",
+      }),
     });
 
     if (!response.ok) {
@@ -48,7 +49,7 @@ async function invokeAtomizationFunction(episodeId: string): Promise<{ success: 
     const result = await response.json();
     return {
       success: true,
-      pieces: result.atomic_pieces_created || 0
+      pieces: result.atomic_pieces_created || 0,
     };
   } catch (error) {
     console.error(`[process-queue] Atomization invocation failed for ${episodeId}:`, error);
@@ -89,11 +90,11 @@ serve(async (req) => {
           success: true,
           processed: 0,
           created_pieces: 0,
-          message: "No pending atomization requests"
+          message: "No pending atomization requests",
         }),
         {
           headers: { ...cors, "Content-Type": "application/json" },
-          status: 200
+          status: 200,
         }
       );
     }
@@ -107,40 +108,55 @@ serve(async (req) => {
         console.log(`[process-queue] Processing episode ${item.episode_id}...`);
 
         // Update status to "processing"
-        await supabase
-          .from("atomization_queue")
-          .update({ status: "processing" })
-          .eq("id", item.id);
+        await supabase.from("atomization_queue").update({ status: "processing" }).eq("id", item.id);
 
-        // Invoke atomization
-        const result = await invokeAtomizationFunction(item.episode_id);
+        // Invoke atomization with retry
+        const result = await invokeAtomizationFunction(item.episode_id, 0, max_retries);
 
         // Update status to "completed"
         await supabase
           .from("atomization_queue")
           .update({
             status: "completed",
-            updated_at: new Date().toISOString()
+            retry_count: 0,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", item.id);
 
         totalPieces += result.pieces;
-        console.log(`[process-queue] ✓ Episode ${item.episode_id} atomized (${result.pieces} pieces)`);
+        console.log(
+          `[process-queue] ✓ Episode ${item.episode_id} atomized (${result.pieces} pieces)`
+        );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         console.error(`[process-queue] Failed to process ${item.episode_id}:`, errorMsg);
 
-        // Update status to "failed" with error message
-        await supabase
+        // Atomically increment retry_count and check if we should requeue
+        const { data: updatedItem } = await supabase
           .from("atomization_queue")
           .update({
-            status: "failed",
+            retry_count: (item.retry_count || 0) + 1,
             error_message: errorMsg,
-            updated_at: new Date().toISOString()
+            last_retry_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
-          .eq("id", item.id);
+          .eq("id", item.id)
+          .select("retry_count")
+          .single();
 
-        failedItems.push(item.episode_id);
+        const newRetryCount = updatedItem?.retry_count || 1;
+        const shouldRequeue = newRetryCount < max_retries;
+
+        if (shouldRequeue) {
+          console.log(
+            `[process-queue] Re-queuing ${item.episode_id} (attempt ${newRetryCount}/${max_retries})`
+          );
+          await supabase.from("atomization_queue").update({ status: "pending" }).eq("id", item.id);
+        } else {
+          console.log(`[process-queue] Exhausted retries for ${item.episode_id}`);
+          await supabase.from("atomization_queue").update({ status: "failed" }).eq("id", item.id);
+          failedItems.push(item.episode_id);
+        }
       }
     }
 
@@ -150,11 +166,11 @@ serve(async (req) => {
         processed: queueItems.length,
         created_pieces: totalPieces,
         failed: failedItems,
-        message: `Processed ${queueItems.length} episodes, created ${totalPieces} atomic pieces`
+        message: `Processed ${queueItems.length} episodes, created ${totalPieces} atomic pieces`,
       }),
       {
         headers: { ...cors, "Content-Type": "application/json" },
-        status: 200
+        status: 200,
       }
     );
   } catch (error) {

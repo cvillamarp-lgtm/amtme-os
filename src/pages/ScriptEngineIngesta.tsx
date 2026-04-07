@@ -42,7 +42,7 @@ export default function ScriptEngineIngesta() {
         navigate(`/script-engine/clean/${rawInputId}`);
       }
     } catch (err) {
-      console.error(err);
+      // Error saving raw input - navigation prevented, user remains on ingesta page
     }
   };
 

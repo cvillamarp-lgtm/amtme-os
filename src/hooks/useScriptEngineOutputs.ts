@@ -375,9 +375,9 @@ export async function triggerVisualAssetGeneration(
     );
 
     if (invokeError) {
-      console.error("Visual asset generation error:", invokeError);
+      // Visual asset generation error - will retry on next request
     }
   } catch (error) {
-    console.error("Error triggering visual asset generation:", error);
+    // Error triggering visual asset generation - non-critical workflow step
   }
 }

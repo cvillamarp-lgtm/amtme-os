@@ -101,7 +101,7 @@ export function useSmartTable<T extends { id: string }>(config: SmartTableConfig
         setViews(parsedViews);
       }
     } catch (e) {
-      console.error('Failed to load table preferences:', e);
+      // Error loading table preferences - will use defaults
     }
   }, [config.persistKey]);
 
@@ -112,7 +112,7 @@ export function useSmartTable<T extends { id: string }>(config: SmartTableConfig
       localStorage.setItem(config.persistKey, JSON.stringify(prefs));
       config.onPreferencesChange?.(prefs);
     } catch (e) {
-      console.error('Failed to save table preferences:', e);
+      // Error saving preferences to localStorage - preferences still function in-memory
     }
   }, [prefs, config.persistKey, config.onPreferencesChange, config]);
 
@@ -122,7 +122,7 @@ export function useSmartTable<T extends { id: string }>(config: SmartTableConfig
     try {
       localStorage.setItem(`${config.persistKey}:views`, JSON.stringify(views));
     } catch (e) {
-      console.error('Failed to save views:', e);
+      // Error persisting views - views still available in-memory
     }
   }, [views, config.persistKey, config]);
 

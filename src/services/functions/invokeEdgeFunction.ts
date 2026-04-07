@@ -123,7 +123,6 @@ export async function invokeEdgeFunction<T = unknown>(
               throw makeError("Sesión expirada, inicia sesión nuevamente", 401, false, attempt);
             }
             // Refresh succeeded — loop will re-run with the fresh token
-            console.warn(`[invokeEdgeFunction] "${name}" 401, session refreshed — retrying…`);
             continue;
           }
           // Out of retries
@@ -133,7 +132,6 @@ export async function invokeEdgeFunction<T = unknown>(
         lastError = makeError(message, statusCode, isRetryable, attempt);
 
         if (isRetryable && attempt < maxRetries) {
-          console.warn(`[invokeEdgeFunction] "${name}" failed with ${statusCode ?? "error"}, retrying (${attempt + 1}/${maxRetries})…`);
           continue;
         }
         throw lastError;
@@ -154,7 +152,6 @@ export async function invokeEdgeFunction<T = unknown>(
             ? edgeErr
             : makeError(edgeErr.message, edgeErr.statusCode, true, attempt);
           if (attempt < maxRetries) {
-            console.warn(`[invokeEdgeFunction] "${name}" retryable error, retrying (${attempt + 1}/${maxRetries})…`);
             continue;
           }
           throw lastError;
@@ -166,7 +163,6 @@ export async function invokeEdgeFunction<T = unknown>(
         ) {
           lastError = makeError(e.message, undefined, true, attempt);
           if (attempt < maxRetries) {
-            console.warn(`[invokeEdgeFunction] "${name}" network error, retrying (${attempt + 1}/${maxRetries})…`);
             continue;
           }
           throw lastError;

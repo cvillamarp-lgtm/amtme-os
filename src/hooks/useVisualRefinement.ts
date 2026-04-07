@@ -71,7 +71,7 @@ export function useVisualRefinement() {
         if (insertError) throw insertError;
         return true;
       } catch (err) {
-        console.error("Error saving refinement:", err);
+        // Error saving refinement to database - refinement still cached locally
         return false;
       }
     },
@@ -89,7 +89,7 @@ export function useVisualRefinement() {
       if (error) throw error;
       return data || [];
     } catch (err) {
-      console.error("Error fetching refinements:", err);
+      // Error fetching refinements - will return empty list
       return [];
     }
   }, []);

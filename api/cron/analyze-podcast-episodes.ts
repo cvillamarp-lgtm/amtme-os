@@ -1,7 +1,8 @@
 /**
- * Vercel Cron: Process atomization queue
- * Route: /api/cron/process-atomization-queue
+ * Vercel Cron: Analyze podcast episodes
+ * Route: /api/cron/analyze-podcast-episodes
  * Schedule: Hourly (0 * * * *)
+ * Purpose: Fetch ready episodes → queue for atomization
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -35,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/process-atomization-queue`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/analyze-podcast-episodes`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${supabaseKey}`,
@@ -43,7 +44,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         body: JSON.stringify({
           batch_size: 10,
-          max_retries: 3,
         }),
         signal: controller.signal,
       });
@@ -61,9 +61,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const response = await executeWithTimeout();
       const result = await response.json();
 
-      console.log("[cron:atomize] Result:", {
-        processed: result.processed,
-        created_pieces: result.created_pieces,
+      console.log("[cron:podcast-analysis] Result:", {
+        queued: result.queued,
+        skipped: result.skipped,
         failed: result.failed?.length || 0,
       });
 
@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const isTimeout = error instanceof Error && error.message.includes("abort");
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
 
-      console.error(`[cron:atomize] Attempt ${attempt}/${maxAttempts} failed:`, {
+      console.error(`[cron:podcast-analysis] Attempt ${attempt}/${maxAttempts} failed:`, {
         error: errorMsg,
         isTimeout,
       });

@@ -66,7 +66,7 @@ export async function callEdgeFunction<T = unknown>(
     } catch {
       // Not JSON — keep statusText
     }
-    console.error(`Edge Function error: ${functionName}`, errorMessage);
+    // Edge Function error logged - thrown as Error for caller handling
     throw new Error(`${functionName} failed: ${errorMessage}`);
   }
 

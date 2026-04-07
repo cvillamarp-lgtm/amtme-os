@@ -1,7 +1,7 @@
 /**
  * Vercel Cron: Publish atomic content to distribution platforms
  * Route: /api/cron/publish-atomic-content
- * Schedule: Every 30 minutes (*/30 * * * *)
+ * Schedule: Every 30 minutes
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";

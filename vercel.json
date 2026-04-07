@@ -20,16 +20,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/process-atomization-queue",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/track-distribution-metrics",
-      "schedule": "0 15 * * *"
-    },
-    {
-      "path": "/api/cron/publish-atomic-content",
-      "schedule": "0 12 * * *"
+      "path": "/api/cron/distribution",
+      "schedule": "0 0 * * *"
     }
   ]
 }

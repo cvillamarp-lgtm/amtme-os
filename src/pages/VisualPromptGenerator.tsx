@@ -597,7 +597,7 @@ export default function VisualPromptGenerator() {
       toast.success(`ZIP con ${entries.length} imágenes descargado`);
     } catch (e) {
       toast.error("Error al crear el ZIP");
-      console.error(e);
+      // ZIP creation error - user already notified via toast
     } finally {
       setZipping(false);
     }
