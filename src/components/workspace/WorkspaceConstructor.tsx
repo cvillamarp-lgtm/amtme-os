@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +114,35 @@ const HIGH_IMPACT_EPISODE_FIELDS = new Set([
   "cta",
 ]);
 
+// ── Proposal persistence (survives re-login in same browser) ─────────────────
+const planKey = (episodeId: string) => `constructor_plan_${episodeId}`;
+
+function savePlan(episodeId: string, plan: PlanResult): void {
+  try {
+    localStorage.setItem(planKey(episodeId), JSON.stringify(plan));
+  } catch {
+    // Storage quota exceeded or private mode — silently ignore.
+  }
+}
+
+function loadSavedPlan(episodeId: string): PlanResult | null {
+  try {
+    const raw = localStorage.getItem(planKey(episodeId));
+    return raw ? (JSON.parse(raw) as PlanResult) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearSavedPlan(episodeId: string): void {
+  try {
+    localStorage.removeItem(planKey(episodeId));
+  } catch {
+    // ignore
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function WorkspaceConstructor({ episode }: Props) {
   const queryClient = useQueryClient();
   const [instruction, setInstruction] = useState("");
@@ -212,7 +241,7 @@ export function WorkspaceConstructor({ episode }: Props) {
     showEdgeFunctionError(error instanceof Error ? error : new Error(String(error)));
   };
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
       const data = await invokeEdgeFunction<{ runs: ActionHistoryItem[] }>(
@@ -220,18 +249,36 @@ export function WorkspaceConstructor({ episode }: Props) {
         { mode: "history", episode_id: episode.id },
       );
       setInfraWarning(null);
-      setHistory(data.runs || []);
+      const runs = data.runs || [];
+      setHistory(runs);
+
+      // Restore a pending proposal if the user re-logged in mid-flow.
+      const pendingRun = runs.find((r) => r.status === "planned");
+      if (pendingRun) {
+        setPlan((current) => {
+          if (current) return current; // already in state, keep it
+          const saved = loadSavedPlan(episode.id);
+          if (saved && saved.run_id === pendingRun.id) {
+            setSelectedChangeIds(
+              saved.changes.filter((c) => c.status === "update").map((c) => c.change_id),
+            );
+            toast.info("Propuesta pendiente restaurada. Revisa y aplica cuando estés listo.");
+            return saved;
+          }
+          return null;
+        });
+      }
     } catch (e: unknown) {
       handleConstructorError(e);
     } finally {
       setLoadingHistory(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [episode.id]);
 
   useEffect(() => {
     void loadHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episode.id]);
+  }, [loadHistory]);
 
   const handlePlan = async () => {
     const text = instruction.trim();
@@ -249,6 +296,7 @@ export function WorkspaceConstructor({ episode }: Props) {
       });
       setInfraWarning(null);
       setPlan(data);
+      savePlan(episode.id, data);
       setHighRiskConfirmed(false);
       setSelectedChangeIds(data.changes.filter((c) => c.status === "update").map((c) => c.change_id));
       toast.success("Propuesta generada. Revisa antes de aplicar.");
@@ -281,6 +329,7 @@ export function WorkspaceConstructor({ episode }: Props) {
         `${data.updated_publications ?? 0} updates publicación`,
       ].join(" · ");
       toast.success(`Cambios aplicados: ${summary}`);
+      clearSavedPlan(episode.id);
       setPlan(null);
       setSelectedChangeIds([]);
       await loadHistory();
@@ -300,6 +349,7 @@ export function WorkspaceConstructor({ episode }: Props) {
         run_id: plan.run_id,
       });
       toast.success("Propuesta cancelada");
+      clearSavedPlan(episode.id);
       setPlan(null);
       setSelectedChangeIds([]);
       await loadHistory();

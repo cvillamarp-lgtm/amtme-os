@@ -1,75 +1,20 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { isProductionLocked } from "./useProductionLock";
-
-const TIMEOUT_MS = 2 * 60 * 1000;       // 2 min → sign out
-const WARNING_MS = TIMEOUT_MS - 20_000; // 1:40 → warn user
-
-const ACTIVITY_EVENTS = [
-  "mousemove", "mousedown", "keydown",
-  "touchstart", "scroll", "visibilitychange",
-] as const;
-
-export function useInactivityLogout() {
-  const navigate = useNavigate();
-  const logoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const warnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const warnToastId = useRef<string | number | null>(null);
-
-  useEffect(() => {
-    const clearTimers = () => {
-      if (logoutTimer.current) clearTimeout(logoutTimer.current);
-      if (warnTimer.current) clearTimeout(warnTimer.current);
-    };
-
-    const dismissWarning = () => {
-      if (warnToastId.current !== null) {
-        toast.dismiss(warnToastId.current);
-        warnToastId.current = null;
-      }
-    };
-
-    const scheduleLogout = () => {
-      clearTimers();
-      dismissWarning();
-
-      warnTimer.current = setTimeout(() => {
-        warnToastId.current = toast.warning(
-          "Cerrando sesión en 20 segundos por inactividad",
-          { duration: 20_000 },
-        );
-      }, WARNING_MS);
-
-      logoutTimer.current = setTimeout(async () => {
-        if (isProductionLocked()) {
-          // Production in progress — reschedule instead of signing out
-          scheduleLogout();
-          return;
-        }
-        dismissWarning();
-        await supabase.auth.signOut();
-        navigate("/auth", { replace: true });
-        toast.info("Sesión cerrada por inactividad");
-      }, TIMEOUT_MS);
-    };
-
-    const onActivity = () => scheduleLogout();
-
-    // Start on mount
-    scheduleLogout();
-
-    for (const ev of ACTIVITY_EVENTS) {
-      window.addEventListener(ev, onActivity, { passive: true });
-    }
-
-    return () => {
-      clearTimers();
-      dismissWarning();
-      for (const ev of ACTIVITY_EVENTS) {
-        window.removeEventListener(ev, onActivity);
-      }
-    };
-  }, [navigate]);
+/**
+ * useInactivityLogout — DISABLED
+ *
+ * The artificial frontend idle timer was removed because it interrupted active
+ * user operations (AI generation, save, apply-changes) causing data loss (QA-001).
+ *
+ * Session lifecycle is now handled exclusively by Supabase's native token refresh
+ * (autoRefreshToken: true in the client config). This is the correct layer for
+ * session management — the frontend should never force logout during active use.
+ *
+ * If idle logout is re-introduced in the future, requirements are:
+ *   - Minimum timeout: 30 minutes (not 2 minutes)
+ *   - Must check pendingRequestsCount > 0 before executing logout
+ *   - Must check isProcessing flag set by critical flows (AI, save, publish)
+ *   - Must reset timer on any Supabase query/mutation, not just DOM events
+ *   - Must show a cancellable countdown of at least 60 seconds before acting
+ */
+export function useInactivityLogout(): void {
+  // No-op: session management delegated to Supabase native refresh.
 }
