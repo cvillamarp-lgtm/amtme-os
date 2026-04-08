@@ -473,6 +473,7 @@ export default function Episodes() {
     mutationFn: doCreateEpisode,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["episodes"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       sessionRecovery.clearRecoveryState();
       clearModalUIState();
       setOpen(false);

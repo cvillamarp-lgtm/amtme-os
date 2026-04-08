@@ -745,6 +745,7 @@ export default function Publications() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       setOpenCreate(false);
       toast.success("Publicación creada con checklist");
     },
@@ -760,6 +761,7 @@ export default function Publications() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Estado actualizado");
     },
     onError: (e) => toast.error(e.message),
@@ -772,6 +774,7 @@ export default function Publications() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       table.clearSelection();
       toast.success("Publicaciones aprobadas");
     },

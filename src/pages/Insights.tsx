@@ -554,6 +554,7 @@ export default function Insights() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["insights"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       setOpenCreate(false);
       toast.success("Insight capturado");
     },
@@ -567,6 +568,7 @@ export default function Insights() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["insights"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Estado actualizado");
     },
     onError: (e) => toast.error(e.message),
@@ -579,6 +581,7 @@ export default function Insights() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["insights"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       table.clearSelection();
       toast.success("Insights descartados");
     },

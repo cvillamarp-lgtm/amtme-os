@@ -530,6 +530,7 @@ export default function QuoteCandidates() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Cita capturada");
       setCreateOpen(false);
       setNewText("");
@@ -547,6 +548,7 @@ export default function QuoteCandidates() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       table.clearSelection();
       toast.success("Citas aprobadas");
     },
@@ -560,6 +562,7 @@ export default function QuoteCandidates() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       table.clearSelection();
       toast.success("Citas descartadas");
     },

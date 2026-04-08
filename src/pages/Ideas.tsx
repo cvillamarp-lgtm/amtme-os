@@ -571,6 +571,7 @@ export default function Ideas() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ideas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       setOpenCapture(false);
       toast.success("Idea capturada");
     },
@@ -584,6 +585,7 @@ export default function Ideas() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ideas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Estado actualizado");
     },
     onError: (e) => toast.error(e.message),
