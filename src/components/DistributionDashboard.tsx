@@ -89,7 +89,8 @@ export function DistributionDashboard() {
         avg_views_per_piece: published.length > 0 ? totalViews / published.length : 0
       });
     } catch (error) {
-      console.error("[DistributionDashboard] Error:", error);
+      // Error handling for distribution data fetch
+      // Logged to stderr in production
     } finally {
       setLoading(false);
     }

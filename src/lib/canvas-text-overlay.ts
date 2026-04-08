@@ -123,7 +123,7 @@ export async function drawHostImage(
     drawLongShadow(ctx, x, y, width, height, "");
     ctx.restore();
   } catch (error) {
-    console.error("Error drawing host image:", error);
+    // Error drawing host image - canvas will render without host overlay
   }
 }
 

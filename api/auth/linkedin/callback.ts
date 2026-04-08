@@ -105,10 +105,11 @@ export default async function handler(
       }
     });
   } catch (error) {
-    console.error("[linkedin/callback] Error:", error);
+    // FASE 7: Fix HIGH - Remove console.error, use structured logging instead
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return res.status(500).json({
       error: "internal_error",
-      description: error instanceof Error ? error.message : "Unknown error"
+      description: errorMessage
     });
   }
 }

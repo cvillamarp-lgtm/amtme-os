@@ -14,9 +14,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // On sign-out, clear any persisted modal state so stale form data doesn't
+      // survive into a new session or appear as a ghost restore prompt.
+      if (event === "SIGNED_OUT") {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("modal_state_"))
+          .forEach((k) => localStorage.removeItem(k));
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {

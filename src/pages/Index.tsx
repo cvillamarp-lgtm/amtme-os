@@ -23,7 +23,11 @@ function useDashboardCounts() {
     queryKey: ["dashboard-counts-v2"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("dashboard_counts");
-      if (error) throw error;
+      if (error) {
+        console.error("[dashboard_counts] RPC error:", error);
+        throw error;
+      }
+      if (!data) console.warn("[dashboard_counts] RPC returned no data");
       return data as {
         episodes: number;
         tasks: number;
@@ -35,12 +39,15 @@ function useDashboardCounts() {
         briefsConvertidos: number;
         pubsScheduled: number;
         pubsPublished: number;
+        insightsActive: number;
         insightsExperimenting: number;
         insightsAccepted: number;
         quotesTotal: number;
         quotesApproved: number;
       };
     },
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -221,7 +228,7 @@ const Dashboard = () => {
   type TaskRow = Pick<Tables<"tasks">, "id" | "title" | "priority" | "category" | "episode_id">;
   type AssetRow = Pick<Tables<"content_assets">, "id" | "piece_name" | "image_url" | "status" | "created_at">;
 
-  const { data: counts, isLoading: loadingCounts } = useDashboardCounts();
+  const { data: counts, isLoading: loadingCounts, error: countsError } = useDashboardCounts();
 
   const { data: episodes = [], isLoading: loadingEpisodes } = useQuery<EpisodeRow[]>({
     queryKey: ["dashboard-episodes"],
@@ -292,7 +299,7 @@ const Dashboard = () => {
                 icon={Lightbulb}
                 label="Ideas"
                 value={counts?.ideasCapturadas ?? 0}
-                sub="capturadas"
+                sub="en funnel"
                 to="/ideas"
                 color="text-yellow-500"
               />
@@ -382,7 +389,7 @@ const Dashboard = () => {
               </div>
               <div className="w-px bg-border" />
               <div>
-                <div className="text-2xl font-display font-bold text-foreground">{(counts?.insightsExperimenting ?? 0) + (counts?.insightsAccepted ?? 0)}</div>
+                <div className="text-2xl font-display font-bold text-foreground">{(counts?.insightsActive ?? 0) + (counts?.insightsExperimenting ?? 0)}</div>
                 <div className="text-xs text-muted-foreground">Activos</div>
               </div>
             </div>

@@ -53,7 +53,7 @@ export function WorkspaceAssets({ episode, assets }: Props) {
         const ext = asset.image_url!.includes(".png") ? "png" : "jpg";
         zip.file(`${asset.piece_name.replace(/[^a-zA-Z0-9]/g, "_")}.${ext}`, blob);
       } catch {
-        console.warn(`Failed to download: ${asset.piece_name}`);
+        // Failed to download asset - will skip from zip export
       }
     }
 

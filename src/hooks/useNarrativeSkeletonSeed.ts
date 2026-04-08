@@ -187,7 +187,7 @@ export function useNarrativeSkeletonSeed() {
 
       const { error } = await supabase.from("narrative_skeletons").insert(records);
       if (error) {
-        console.error("[useNarrativeSkeletonSeed] seed failed:", error.message);
+        // Seeding failed - user will create skeletons manually
         return; // don't invalidate if insert failed — avoids infinite retry
       }
       qc.invalidateQueries({ queryKey: ["narrative_skeletons"] });

@@ -75,7 +75,7 @@ export function useEpisode(id?: string) {
       queryClient.invalidateQueries({ queryKey: ["episodes"] });
     },
     onError: (error: Error) => {
-      console.error("Error updating episode:", error);
+      // Error updating episode - reported via mutation state
     },
   });
 

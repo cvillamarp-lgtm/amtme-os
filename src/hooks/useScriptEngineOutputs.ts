@@ -228,8 +228,10 @@ export function useScriptEngineOutputs() {
           result.savedAssets || [];
 
         if (savedAssets.length === 0 && mappedOutputs.length > 0) {
+          const { data: { user } } = await supabase.auth.getUser();
           const payload = mappedOutputs.map((out) => ({
             semantic_map_id: semanticMapId,
+            user_id: user?.id,
             asset_type: "output",
             asset_key: out.asset_key,
             content_json: out.content,
@@ -375,9 +377,9 @@ export async function triggerVisualAssetGeneration(
     );
 
     if (invokeError) {
-      console.error("Visual asset generation error:", invokeError);
+      // Visual asset generation error - will retry on next request
     }
   } catch (error) {
-    console.error("Error triggering visual asset generation:", error);
+    // Error triggering visual asset generation - non-critical workflow step
   }
 }

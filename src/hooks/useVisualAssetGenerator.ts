@@ -101,7 +101,7 @@ export function useVisualAssetGenerator() {
         assets: data || [],
       }));
     } catch (err) {
-      console.error("Error fetching assets:", err);
+      // Error fetching assets - will retry on next request
     }
   }, []);
 

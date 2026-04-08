@@ -3,7 +3,7 @@ import "./deno-shims.d.ts";
 /**
  * Shared AI helpers for AMTME Edge Functions.
  * Primary: Anthropic Claude (claude-sonnet-4-20250514) via native API.
- * Fallback: GROQ → OpenAI — for non-critical or high-volume calls.
+ * Fallback: Grok → GROQ → OpenAI → Lovable — for non-critical or high-volume calls.
  *
  * ⚠️ SECURITY: ANTHROPIC_API_KEY is NEVER exposed to the frontend.
  *    All Claude calls go exclusively through Supabase Edge Functions.
@@ -22,7 +22,7 @@ const MAX_RETRIES = 2;
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -59,10 +59,12 @@ function logTokenUsage(
   provider: string,
   inputTokens: number,
   outputTokens: number,
-  model: string,
+  model: string
 ): void {
   const costUSD = calculateCostUSD(provider, inputTokens, outputTokens, model);
-  console.log(`[TOKEN_USAGE] provider=${provider} model=${model} in=${inputTokens} out=${outputTokens} cost=$${costUSD.toFixed(4)}`);
+  console.log(
+    `[TOKEN_USAGE] provider=${provider} model=${model} in=${inputTokens} out=${outputTokens} cost=$${costUSD.toFixed(4)}`
+  );
 }
 
 /**
@@ -73,11 +75,15 @@ function calculateCostUSD(
   provider: string,
   inputTokens: number,
   outputTokens: number,
-  model: string,
+  model: string
 ): number {
   // Claude Sonnet 4 pricing: $3 per 1M input, $15 per 1M output
   if (provider === "claude" && model === "claude-sonnet-4-20250514") {
     return (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  }
+  // Grok pricing: $2 per 1M input, $2 per 1M output
+  if (provider === "grok") {
+    return (inputTokens * 2 + outputTokens * 2) / 1_000_000;
   }
   // GROQ Llama pricing: ~free tier, $0.35 per 1M input, $0.35 per 1M output
   if (provider === "groq") {
@@ -85,7 +91,7 @@ function calculateCostUSD(
   }
   // OpenAI GPT-4o mini pricing: $0.15 per 1M input, $0.60 per 1M output
   if (provider === "openai" && model === "gpt-4o-mini") {
-    return (inputTokens * 0.15 + outputTokens * 0.60) / 1_000_000;
+    return (inputTokens * 0.15 + outputTokens * 0.6) / 1_000_000;
   }
   return 0; // Unknown provider
 }
@@ -109,7 +115,7 @@ const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 export async function callClaude(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 4096,
+  maxTokens = 4096
 ): Promise<string> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured in Edge Function secrets.");
@@ -130,7 +136,7 @@ export async function callClaude(
         messages: [{ role: "user", content: userPrompt }],
       }),
     },
-    DEFAULT_TIMEOUT_MS,
+    DEFAULT_TIMEOUT_MS
   );
 
   if (!res.ok) {
@@ -173,33 +179,57 @@ export function resolveAI(): AIConfig {
       model: "gpt-4o-mini",
     };
   }
-  throw new Error(
-    "No fallback AI key configured. Set GROQ_API_KEY or OPENAI_API_KEY.",
-  );
+  throw new Error("No fallback AI key configured. Set GROQ_API_KEY or OPENAI_API_KEY.");
 }
 
 /** Builds the ordered list of OpenAI-compatible providers available */
 function getProviders(): (AIConfig & { name: string })[] {
   const list: (AIConfig & { name: string })[] = [];
+  const grokKey = Deno.env.get("GROK_API_KEY");
+  if (grokKey)
+    list.push({
+      name: "grok",
+      url: "https://api.x.ai/v1/chat/completions",
+      key: grokKey,
+      model: "grok-2",
+    });
   const groqKey = Deno.env.get("GROQ_API_KEY");
-  if (groqKey) list.push({ name: "groq", url: "https://api.groq.com/openai/v1/chat/completions", key: groqKey, model: "llama-3.1-8b-instant" });
+  if (groqKey)
+    list.push({
+      name: "groq",
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      key: groqKey,
+      model: "llama-3.1-8b-instant",
+    });
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) list.push({ name: "openai", url: "https://api.openai.com/v1/chat/completions", key: openaiKey, model: "gpt-4o-mini" });
+  if (openaiKey)
+    list.push({
+      name: "openai",
+      url: "https://api.openai.com/v1/chat/completions",
+      key: openaiKey,
+      model: "gpt-4o-mini",
+    });
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-  if (lovableKey) list.push({ name: "lovable", url: "https://ai.gateway.lovable.dev/v1/chat/completions", key: lovableKey, model: "openai/gpt-4o-mini" });
+  if (lovableKey)
+    list.push({
+      name: "lovable",
+      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+      key: lovableKey,
+      model: "openai/gpt-4o-mini",
+    });
   if (list.length === 0) throw new Error("No AI API key configured.");
   return list;
 }
 
 /**
  * Call AI with automatic runtime fallback across OpenAI-compatible providers.
- * GROQ → OpenAI → Lovable. On 429 / 5xx / timeout, tries the next one.
+ * Grok → GROQ → OpenAI → Lovable. On 429 / 5xx / timeout, tries the next one.
  * Enforces timeout per provider and implements exponential backoff.
  * Use callClaude() for Script Engine pipeline calls (Claude is primary).
  */
 export async function callAI(
   messages: { role: "system" | "user" | "assistant"; content: string }[],
-  temperature = 0.7,
+  temperature = 0.7
 ): Promise<string> {
   const providers = getProviders();
   let lastError: Error = new Error("All AI providers failed");
@@ -211,32 +241,35 @@ export async function callAI(
         if (attempt > 0) {
           const delayMs = getBackoffDelayMs(attempt - 1);
           console.log(`[AI] Retry attempt ${attempt} for ${provider.name} after ${delayMs}ms`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
         const res = await fetchWithTimeout(
           provider.url,
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json" },
+            headers: {
+              Authorization: `Bearer ${provider.key}`,
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify({ model: provider.model, messages, temperature }),
           },
-          DEFAULT_TIMEOUT_MS,
+          DEFAULT_TIMEOUT_MS
         );
 
         if (!res.ok) {
           const status = res.status;
           // Retry on these status codes
-          if (status === 429 || (status >= 500 && status <= 599)) {
+          if (status === 429 || status === 402 || (status >= 500 && status <= 599)) {
             const msg = `${provider.name} returned ${status}`;
             console.warn(`[AI] ${msg}, will retry...`);
             lastError = new Error(msg);
             if (attempt < MAX_RETRIES) continue; // Retry with this provider
             break; // Max retries exhausted, try next provider
           }
-          // Move to next provider on insufficient credits or invalid key
-          if (status === 401 || status === 402) {
-            const msg = status === 401 ? "invalid key" : "insufficient credits";
+          // Move to next provider on invalid key
+          if (status === 401) {
+            const msg = "invalid key";
             console.warn(`[AI] ${provider.name} ${msg}, trying next provider`);
             lastError = new Error(`${provider.name} ${msg}`);
             break;

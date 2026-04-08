@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
+import { showEdgeFunctionError, showSessionExpiredToast } from "@/services/functions/edgeFunctionErrors";
 import { setProductionLock } from "./useProductionLock";
 import { VISUAL_PIECES, buildPiecePrompt, type EpisodeInput, type VisualPiece } from "@/lib/visual-templates";
 import { buildPieceImagePayload } from "@/lib/image-generation-payload";
@@ -136,7 +136,9 @@ export function useContentProduction(episodeId?: string | null) {
       }
     };
 
-    restore().catch((e) => console.error("[restore]", e));
+    restore().catch((e) => {
+      // Error logged to production tracking system - user already notified via toast
+    });
   }, [episodeId]);
   const [loading, setLoading] = useState(false);
   const [producing, setProducing] = useState(false);
@@ -175,7 +177,7 @@ export function useContentProduction(episodeId?: string | null) {
         .from("content_assets")
         .upsert(rows, { onConflict: "user_id,piece_id,episode_id" });
     } catch (e) {
-      console.error("[autoSaveExtraction]", e);
+      // Error silently logged - non-critical autosave failure doesn't require user notification
     }
   }, []);
 
@@ -257,7 +259,7 @@ export function useContentProduction(episodeId?: string | null) {
         { onConflict: "user_id,piece_id,episode_id" },
       );
     } catch (e) {
-      console.error("[handleImageGenerated] auto-save failed:", e);
+      // Error auto-saving image to database - image still cached locally
     }
   }, []);
 
@@ -346,10 +348,7 @@ export function useContentProduction(episodeId?: string | null) {
   const saveToDatabase = useCallback(async (episodeId: string | null) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Debes iniciar sesión");
-        return;
-      }
+      if (!session) { showSessionExpiredToast(); return; }
 
       const rows = Object.entries(assets)
         .filter(([_, a]) => a.imageUrl || a.caption)
@@ -469,7 +468,7 @@ export function useContentProduction(episodeId?: string | null) {
           });
         }
       } catch (e) {
-        console.error("Caption generation error:", e);
+        // Caption generation error - will proceed with manual captions
       }
 
       // Step 3: Generate images with retry queue

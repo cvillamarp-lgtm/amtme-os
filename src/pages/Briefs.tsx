@@ -585,6 +585,7 @@ export default function Briefs() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["briefs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       setOpenCreate(false);
       toast.success("Brief creado");
     },
@@ -598,6 +599,7 @@ export default function Briefs() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["briefs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Estado actualizado");
     },
     onError: (e) => toast.error(e.message),

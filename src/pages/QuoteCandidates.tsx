@@ -32,6 +32,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { isAuthError, showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { Plus, Quote, Star, CheckCircle2, Archive, Sparkles, Clock, Mic, Loader2, Wand2 } from "lucide-react";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useSmartTable } from "@/hooks/useSmartTable";
@@ -424,9 +425,6 @@ export default function QuoteCandidates() {
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error("No autenticado"); return; }
-
       const result = await invokeEdgeFunction<{
         quotes?: Array<{ text: string; quote_type: string; timestamp_hint: string }>;
       }>("extract-from-script", {
@@ -469,8 +467,9 @@ export default function QuoteCandidates() {
       toast.success(`${rows.length} citas extraídas del guión`);
       setExtractOpen(false);
       setExtractEpisodeId("");
-    } catch (e: any) {
-      toast.error(e.message || "Error al extraer citas");
+    } catch (e: unknown) {
+      if (isAuthError(e)) { showEdgeFunctionError(e); return; }
+      toast.error(e instanceof Error ? e.message : "Error al extraer citas");
     } finally {
       setIsExtracting(false);
     }
@@ -531,6 +530,7 @@ export default function QuoteCandidates() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Cita capturada");
       setCreateOpen(false);
       setNewText("");
@@ -548,6 +548,7 @@ export default function QuoteCandidates() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       table.clearSelection();
       toast.success("Citas aprobadas");
     },
@@ -561,6 +562,7 @@ export default function QuoteCandidates() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quote-candidates"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       table.clearSelection();
       toast.success("Citas descartadas");
     },

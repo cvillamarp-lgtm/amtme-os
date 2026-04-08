@@ -73,7 +73,7 @@ export default function PromptBuilder() {
         reader.readAsDataURL(blob);
       });
     } catch (e) {
-      console.error("Error loading host photo:", e);
+      // Error loading host photo - generation will proceed without host base64
       return "";
     }
   };
@@ -166,7 +166,7 @@ export default function PromptBuilder() {
         toast.success("¡Imagen generada exitosamente!");
       }
     } catch (e: unknown) {
-      console.error("Image generation error:", e);
+      // Image generation error - user notified via toast with specific error message
       toast.error(getEdgeFunctionErrorMessage(e));
     } finally {
       setGenerating(false);
@@ -194,7 +194,7 @@ export default function PromptBuilder() {
       if (linkEpisodeId) queryClient.invalidateQueries({ queryKey: ["episodes"] });
       toast.success("¡Imagen editada exitosamente!");
     } catch (e: unknown) {
-      console.error("Image edit error:", e);
+      // Image edit error - user notified via toast with specific error message
       toast.error(getEdgeFunctionErrorMessage(e));
     } finally {
       setEditing(false);

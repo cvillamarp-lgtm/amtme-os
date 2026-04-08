@@ -5,15 +5,13 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { errorResponse } from "../_shared/response.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const cors = getCorsHeaders(req);
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
     const supabase = createClient(
@@ -24,10 +22,7 @@ serve(async (req) => {
     const { episode_id, title, script_base, user_id } = await req.json();
 
     if (!episode_id || !title) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+      return errorResponse(cors, "MISSING_FIELDS", "Missing required fields", 400);
     }
 
     // Get episode
@@ -41,7 +36,7 @@ serve(async (req) => {
     if (!content || content.length < 50) {
       return new Response(JSON.stringify({ warning: "Not enough content to process" }), {
         status: 200,
-        headers: corsHeaders,
+        headers: cors,
       });
     }
 
@@ -75,16 +70,14 @@ serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    return new Response(
-      JSON.stringify({ success: true, episode_id, fields_updated: 6 }),
-      { status: 200, headers: corsHeaders }
-    );
+    return new Response(JSON.stringify({ success: true, episode_id, fields_updated: 6 }), {
+      status: 200,
+      headers: cors,
+    });
   } catch (error) {
     console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return errorResponse(cors, "PROCESS_FAILED", message, 500);
   }
 });
 

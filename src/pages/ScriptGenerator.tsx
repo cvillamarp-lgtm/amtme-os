@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, Copy, Check, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { isAuthError, showEdgeFunctionError, showSessionExpiredToast } from "@/services/functions/edgeFunctionErrors";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
   ?? "https://vudvgfdoeciurejtbzbw.supabase.co";
@@ -31,10 +32,7 @@ export default function ScriptGenerator() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error("Debes iniciar sesión");
-        return;
-      }
+      if (!session?.access_token) { showSessionExpiredToast(); return; }
 
       const resp = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-script`,
@@ -87,8 +85,9 @@ export default function ScriptGenerator() {
           }
         }
       }
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e: unknown) {
+      if (isAuthError(e)) { showEdgeFunctionError(e); return; }
+      toast.error(e instanceof Error ? e.message : "Error al generar guión");
     } finally {
       setLoading(false);
     }

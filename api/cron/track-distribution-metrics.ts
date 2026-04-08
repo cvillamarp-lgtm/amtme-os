@@ -1,7 +1,7 @@
 /**
  * Vercel Cron: Track distribution metrics
  * Route: /api/cron/track-distribution-metrics
- * Schedule: Every 6 hours (0 */6 * * *)
+ * Schedule: Every 6 hours
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";

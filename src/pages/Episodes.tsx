@@ -3,27 +3,58 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Plus, Download, Factory, ChevronDown, Loader2,
-  Sparkles, Trash2, ArrowLeft, RefreshCw, Check, Pencil, History,
+  Plus,
+  Download,
+  Factory,
+  ChevronDown,
+  Loader2,
+  Sparkles,
+  Trash2,
+  ArrowLeft,
+  RefreshCw,
+  Check,
+  Pencil,
+  History,
 } from "lucide-react";
 import { TruncatedText } from "@/components/ui/text-clamp";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { isAuthError, showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { toast } from "sonner";
 import { useEpisodes } from "@/hooks/useEpisode";
 import { auditEpisode, getCompletenessLevel } from "@/lib/episode-validation";
 import { initBlockStatesFromAI } from "@/lib/block-states";
-import { useEpisodeDraft } from "@/hooks/useEpisodeDraft";
+import {
+  useEpisodeDraft,
+  saveModalUIState,
+  loadModalUIState,
+  clearModalUIState,
+  type ModalUIState,
+} from "@/hooks/useEpisodeDraft";
 import type { ConflictOption } from "@/hooks/useEpisodeDraft";
+import { useSessionRecovery } from "@/hooks/useSessionRecovery";
+import { SessionExpiredDialog } from "@/components/SessionExpiredDialog";
 import type { Json } from "@/integrations/supabase/types";
 import { useSmartTable } from "@/hooks/useSmartTable";
 import {
@@ -38,59 +69,64 @@ import type { FilterDef, SortOption, SavedView } from "@/components/smart-table"
 // ─── Config ────────────────────────────────────────────────────────────────
 
 const EPISODE_COLUMNS = [
-  { id: 'number', label: 'Ep.', sortable: true, visible: true },
-  { id: 'title', label: 'Título', sortable: true, visible: true, getValue: (e: any) => e.working_title || e.title || '' },
-  { id: 'theme', label: 'Tema', sortable: true, visible: true },
-  { id: 'health_score', label: 'Salud', sortable: true, visible: true },
-  { id: 'status', label: 'Estado', sortable: true, visible: true },
-  { id: 'nivel_completitud', label: 'Nivel', sortable: true, visible: false },
-  { id: 'release_date', label: 'Fecha', sortable: true, visible: false },
-  { id: 'updated_at', label: 'Actualizado', sortable: true, visible: false },
+  { id: "number", label: "Ep.", sortable: true, visible: true },
+  {
+    id: "title",
+    label: "Título",
+    sortable: true,
+    visible: true,
+    getValue: (e: any) => e.working_title || e.title || "",
+  },
+  { id: "theme", label: "Tema", sortable: true, visible: true },
+  { id: "health_score", label: "Salud", sortable: true, visible: true },
+  { id: "status", label: "Estado", sortable: true, visible: true },
+  { id: "nivel_completitud", label: "Nivel", sortable: true, visible: false },
+  { id: "release_date", label: "Fecha", sortable: true, visible: false },
+  { id: "updated_at", label: "Actualizado", sortable: true, visible: false },
 ];
 
 const EPISODE_SORT_OPTIONS: SortOption[] = [
-  { value: 'number', label: 'Número' },
-  { value: 'title', label: 'Título' },
-  { value: 'theme', label: 'Tema' },
-  { value: 'health_score', label: 'Salud' },
-  { value: 'status', label: 'Estado' },
-  { value: 'updated_at', label: 'Actualizado' },
+  { value: "number", label: "Número" },
+  { value: "title", label: "Título" },
+  { value: "theme", label: "Tema" },
+  { value: "health_score", label: "Salud" },
+  { value: "status", label: "Estado" },
+  { value: "updated_at", label: "Actualizado" },
 ];
 
 const EPISODE_FILTER_DEFS: FilterDef[] = [
   {
-    field: 'status',
-    label: 'Estado',
-    type: 'select',
+    field: "status",
+    label: "Estado",
+    type: "select",
     options: [
-      { value: 'draft', label: 'Borrador' },
-      { value: 'recording', label: 'Grabando' },
-      { value: 'editing', label: 'En edición' },
-      { value: 'published', label: 'Publicado' },
+      { value: "draft", label: "Borrador" },
+      { value: "recording", label: "Grabando" },
+      { value: "editing", label: "En edición" },
+      { value: "published", label: "Publicado" },
     ],
   },
   {
-    field: 'nivel_completitud',
-    label: 'Nivel de completitud',
-    type: 'select',
+    field: "nivel_completitud",
+    label: "Nivel de completitud",
+    type: "select",
     options: [
-      { value: 'A', label: 'A — Completo' },
-      { value: 'B', label: 'B' },
-      { value: 'C', label: 'C' },
-      { value: 'D', label: 'D — Básico' },
+      { value: "A", label: "A — Completo" },
+      { value: "B", label: "B" },
+      { value: "C", label: "C" },
+      { value: "D", label: "D — Básico" },
     ],
   },
   {
-    field: 'health_score',
-    label: 'Salud (%)',
-    type: 'number_range',
+    field: "health_score",
+    label: "Salud (%)",
+    type: "number_range",
     min: 0,
     max: 100,
   },
 ];
 
 const EPISODE_DEFAULT_VIEWS: SavedView[] = [];
-const ITEMS_PER_PAGE = 15;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,30 +138,53 @@ interface GeneratedOptions {
 // ─── Option Card ──────────────────────────────────────────────────────────────
 
 const TYPE_STYLES: Record<string, { badge: string; ring: string }> = {
-  emocional_interno:       { badge: "bg-orange-500/15 text-orange-400",  ring: "border-orange-400/60 bg-orange-500/5" },
-  relacional_vincular:     { badge: "bg-rose-500/15 text-rose-400",      ring: "border-rose-400/60 bg-rose-500/5" },
-  identitario_existencial: { badge: "bg-purple-500/15 text-purple-400",  ring: "border-purple-400/60 bg-purple-500/5" },
-  insight:                 { badge: "bg-blue-500/15 text-blue-400",      ring: "border-blue-400/60 bg-blue-500/5" },
-  validacion:              { badge: "bg-teal-500/15 text-teal-400",      ring: "border-teal-400/60 bg-teal-500/5" },
-  transformacion:          { badge: "bg-emerald-500/15 text-emerald-400",ring: "border-emerald-400/60 bg-emerald-500/5" },
+  emocional_interno: {
+    badge: "bg-orange-500/15 text-orange-400",
+    ring: "border-orange-400/60 bg-orange-500/5",
+  },
+  relacional_vincular: {
+    badge: "bg-rose-500/15 text-rose-400",
+    ring: "border-rose-400/60 bg-rose-500/5",
+  },
+  identitario_existencial: {
+    badge: "bg-purple-500/15 text-purple-400",
+    ring: "border-purple-400/60 bg-purple-500/5",
+  },
+  insight: { badge: "bg-blue-500/15 text-blue-400", ring: "border-blue-400/60 bg-blue-500/5" },
+  validacion: { badge: "bg-teal-500/15 text-teal-400", ring: "border-teal-400/60 bg-teal-500/5" },
+  transformacion: {
+    badge: "bg-emerald-500/15 text-emerald-400",
+    ring: "border-emerald-400/60 bg-emerald-500/5",
+  },
 };
 
 function OptionCard({
-  option, selected, onSelect,
+  option,
+  selected,
+  onSelect,
 }: {
-  option: ConflictOption; selected: boolean; onSelect: () => void;
+  option: ConflictOption;
+  selected: boolean;
+  onSelect: () => void;
 }) {
-  const styles = TYPE_STYLES[option.tipo] ?? { badge: "bg-secondary text-muted-foreground", ring: "border-primary/60 bg-primary/5" };
+  const styles = TYPE_STYLES[option.tipo] ?? {
+    badge: "bg-secondary text-muted-foreground",
+    ring: "border-primary/60 bg-primary/5",
+  };
   return (
     <button
       type="button"
       onClick={onSelect}
       className={`w-full text-left p-4 rounded-xl border-2 transition-all space-y-2 ${
-        selected ? styles.ring + " border-2" : "border-border hover:border-primary/30 hover:bg-secondary/40"
+        selected
+          ? styles.ring + " border-2"
+          : "border-border hover:border-primary/30 hover:bg-secondary/40"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${styles.badge}`}>
+        <span
+          className={`text-xs font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${styles.badge}`}
+        >
           {option.label}
         </span>
         {selected && (
@@ -158,17 +217,18 @@ export default function Episodes() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const sessionRecovery = useSessionRecovery();
   const { data: episodes = [], isLoading } = useEpisodes();
 
   const table = useSmartTable({
     data: episodes as any[],
     columns: EPISODE_COLUMNS,
-    searchFields: ['title', 'number', 'theme', 'working_title'],
-    defaultSort: [{ field: 'number', direction: 'desc' }],
+    searchFields: ["title", "number", "theme", "working_title"],
+    defaultSort: [{ field: "number", direction: "desc" }],
     defaultViews: EPISODE_DEFAULT_VIEWS,
-    persistKey: 'amtme:list:episodes:v1',
+    persistKey: "amtme:list:episodes:v1",
     pageSize: 50,
-    defaultViewType: 'table',
+    defaultViewType: "table",
   });
 
   useEffect(() => {
@@ -205,6 +265,23 @@ export default function Episodes() {
     }
   }, [open]);
 
+  // Restore modal UI state and reopen after successful login
+  useEffect(() => {
+    if (!sessionRecovery.showLoginRequired && sessionRecovery.pending) {
+      const modalUIState = loadModalUIState();
+      if (modalUIState) {
+        // Restore UI state
+        setGeneratingOptions(modalUIState.generatingOptions ?? false);
+        setAdvancedOpen(modalUIState.advancedOpen ?? false);
+        setManualMode(modalUIState.manualMode ?? false);
+        if (modalUIState.manualConflicto) setManualConflicto(modalUIState.manualConflicto);
+        if (modalUIState.manualIntencion) setManualIntencion(modalUIState.manualIntencion);
+        // Reopen modal
+        setOpen(true);
+      }
+    }
+  }, [sessionRecovery.showLoginRequired, sessionRecovery.pending]);
+
   const conflictOptions = draft.conflict_options_json as GeneratedOptions | null;
   const finalConflicto = manualMode ? manualConflicto : (draft.selected_conflicto?.texto ?? "");
   const finalIntencion = manualMode ? manualIntencion : (draft.selected_intencion?.texto ?? "");
@@ -217,16 +294,19 @@ export default function Episodes() {
     setManualConflicto("");
     setManualIntencion("");
     setHasDraftToRestore(false);
-    await saveDraft({
-      idea_principal: "",
-      tono: "íntimo",
-      restricciones: "",
-      release_date: "",
-      conflict_options_json: null,
-      selected_conflicto: null,
-      selected_intencion: null,
-      step: 1,
-    }, { immediate: true });
+    await saveDraft(
+      {
+        idea_principal: "",
+        tono: "íntimo",
+        restricciones: "",
+        release_date: "",
+        conflict_options_json: null,
+        selected_conflicto: null,
+        selected_intencion: null,
+        step: 1,
+      },
+      { immediate: true }
+    );
   };
 
   const generateOptions = async () => {
@@ -235,16 +315,26 @@ export default function Episodes() {
     try {
       const data = await invokeEdgeFunction<{ options?: ConflictOption[] }>(
         "generate-conflict-options",
-        { idea_principal: draft.idea_principal, tono: draft.tono || "íntimo" },
+        { idea_principal: draft.idea_principal, tono: draft.tono || "íntimo" }
       );
       if (data?.options) {
         await saveDraft(
-          { conflict_options_json: data.options, selected_conflicto: null, selected_intencion: null, step: 2 },
+          {
+            conflict_options_json: data.options,
+            selected_conflicto: null,
+            selected_intencion: null,
+            step: 2,
+          },
           { immediate: true }
         );
         setManualMode(false);
       }
     } catch (e) {
+      if (isAuthError(e)) {
+        // Auth errors must NOT fall into manual-mode — user needs to re-authenticate first
+        showEdgeFunctionError(e);
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Error al generar opciones";
       if (msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("not configured")) {
         toast.warning("IA no disponible. Puedes escribir el conflicto manualmente.");
@@ -258,114 +348,168 @@ export default function Episodes() {
     }
   };
 
-  const createEpisode = useMutation({
-    mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No autenticado");
+  const doCreateEpisode = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("No autenticado");
 
-      const { data: numData, error: numError } = await supabase
-        .rpc("next_episode_number", { p_user_id: user.id });
-      if (numError) throw numError;
-      if (typeof numData !== "string") throw new Error("next_episode_number returned unexpected type");
-      const nextNumber = numData;
+    const { data: numData, error: numError } = await supabase.rpc("next_episode_number", {
+      p_user_id: user.id,
+    });
+    if (numError) throw numError;
+    if (typeof numData !== "string")
+      throw new Error("next_episode_number returned unexpected type");
+    const nextNumber = numData;
 
-      const { data: episode, error: insertError } = await supabase
-        .from("episodes")
-        .insert({
-          user_id: user.id,
-          title: draft.idea_principal.slice(0, 100),
+    const { data: episode, error: insertError } = await supabase
+      .from("episodes")
+      .insert({
+        user_id: user.id,
+        title: draft.idea_principal.slice(0, 100),
+        idea_principal: draft.idea_principal,
+        conflicto_central: finalConflicto || null,
+        intencion_del_episodio: finalIntencion || null,
+        selected_conflicto_tipo: draft.selected_conflicto?.tipo ?? null,
+        selected_intencion_tipo: draft.selected_intencion?.tipo ?? null,
+        tono: draft.tono || "íntimo",
+        restricciones: draft.restricciones || null,
+        release_date: draft.release_date || null,
+        fecha_es_estimada: !!draft.release_date,
+        status: "draft",
+        estado_produccion: "draft",
+        nivel_completitud: "D",
+        number: nextNumber,
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+
+    setIsGenerating(true);
+    try {
+      const fnData = await invokeEdgeFunction<{
+        fields?: Record<string, string>;
+        metadata?: unknown;
+      }>(
+        "generate-episode-fields",
+        {
           idea_principal: draft.idea_principal,
-          conflicto_central: finalConflicto || null,
-          intencion_del_episodio: finalIntencion || null,
-          selected_conflicto_tipo: draft.selected_conflicto?.tipo ?? null,
-          selected_intencion_tipo: draft.selected_intencion?.tipo ?? null,
+          conflicto_central: finalConflicto || undefined,
+          intencion_del_episodio: finalIntencion || undefined,
           tono: draft.tono || "íntimo",
-          restricciones: draft.restricciones || null,
-          release_date: draft.release_date || null,
-          fecha_es_estimada: !!draft.release_date,
-          status: "draft",
-          estado_produccion: "draft",
-          nivel_completitud: "D",
-          number: nextNumber,
-        })
-        .select("id")
-        .single();
-      if (insertError) throw insertError;
+          restricciones: draft.restricciones || undefined,
+          episode_number: nextNumber,
+        },
+        { timeoutMs: 60_000 }
+      );
 
-      setIsGenerating(true);
-      try {
-        const fnData = await invokeEdgeFunction<{ fields?: Record<string, string>; metadata?: unknown }>(
-          "generate-episode-fields",
-          {
-            idea_principal: draft.idea_principal,
-            conflicto_central: finalConflicto || undefined,
-            intencion_del_episodio: finalIntencion || undefined,
-            tono: draft.tono || "íntimo",
-            restricciones: draft.restricciones || undefined,
-            episode_number: nextNumber,
-          },
-          { timeoutMs: 60_000 },
-        );
+      if (fnData?.fields) {
+        const fields = fnData.fields;
+        const { error: updateError } = await supabase
+          .from("episodes")
+          .update({
+            working_title: fields.working_title || null,
+            theme: fields.theme || null,
+            core_thesis: fields.core_thesis || null,
+            summary: fields.summary || null,
+            hook: fields.hook || null,
+            cta: fields.cta || null,
+            quote: fields.quote || null,
+            descripcion_spotify: fields.descripcion_spotify || null,
+            title: fields.working_title || draft.idea_principal.slice(0, 100),
+            generation_metadata: (fnData.metadata ?? null) as Json | null,
+            block_states: initBlockStatesFromAI() as unknown as Json,
+          })
+          .eq("id", episode.id);
+        if (updateError) {
+          // Silently skip AI fields if update fails; episode core is already created
+        }
 
-        if (fnData?.fields) {
-          const fields = fnData.fields;
-          const { error: updateError } = await supabase
-            .from("episodes")
-            .update({
-              working_title: fields.working_title || null,
-              theme: fields.theme || null,
-              core_thesis: fields.core_thesis || null,
-              summary: fields.summary || null,
-              hook: fields.hook || null,
-              cta: fields.cta || null,
-              quote: fields.quote || null,
-              descripcion_spotify: fields.descripcion_spotify || null,
-              title: fields.working_title || draft.idea_principal.slice(0, 100),
-              generation_metadata: (fnData.metadata ?? null) as Json | null,
-              block_states: initBlockStatesFromAI() as unknown as Json,
-            })
-            .eq("id", episode.id);
-          if (updateError) console.warn("AI fields update error:", updateError.message);
-
-          const session = await supabase.auth.getSession();
-          const userId = session.data.session?.user?.id;
-          if (userId) {
-            const aiFields = ["working_title", "theme", "core_thesis", "summary", "hook", "cta", "quote", "descripcion_spotify"];
-            const historyRows = aiFields
-              .filter((f) => fields[f])
-              .map((f) => ({
-                user_id: userId,
-                table_name: "episodes",
-                record_id: episode.id,
-                field_name: f,
-                old_value: null,
-                new_value: String(fields[f]),
-                change_origin: "ai",
-              }));
-            if (historyRows.length > 0) {
-              supabase.from("change_history").insert(historyRows).then(() => {});
-            }
+        const session = await supabase.auth.getSession();
+        const userId = session.data.session?.user?.id;
+        if (userId) {
+          const aiFields = [
+            "working_title",
+            "theme",
+            "core_thesis",
+            "summary",
+            "hook",
+            "cta",
+            "quote",
+            "descripcion_spotify",
+          ];
+          const historyRows = aiFields
+            .filter((f) => fields[f])
+            .map((f) => ({
+              user_id: userId,
+              table_name: "episodes",
+              record_id: episode.id,
+              field_name: f,
+              old_value: null,
+              new_value: String(fields[f]),
+              change_origin: "ai",
+            }));
+          if (historyRows.length > 0) {
+            supabase
+              .from("change_history")
+              .insert(historyRows)
+              .then(() => {});
           }
         }
-      } catch (aiError) {
-        console.error("AI generation failed:", aiError);
-        toast.warning("Episodio creado. Los campos se pueden generar desde el workspace.");
-      } finally {
-        setIsGenerating(false);
       }
+    } catch (aiError) {
+      // AI generation is optional; continue with episode creation
+      toast.warning("Episodio creado. Los campos se pueden generar desde el workspace.");
+    } finally {
+      setIsGenerating(false);
+    }
 
-      await markConverted(episode.id);
+    await markConverted(episode.id);
 
-      return episode;
-    },
+    return episode;
+  };
+
+  const createEpisode = useMutation({
+    mutationFn: doCreateEpisode,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["episodes"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
+      sessionRecovery.clearRecoveryState();
+      clearModalUIState();
       setOpen(false);
       resetForm();
       toast.success("Episodio creado");
       if (data?.id) navigate(`/episodes/${data.id}`);
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => {
+      const error = e as Error;
+      if (isAuthError(e)) {
+        // Guard against infinite recovery loops
+        if (sessionRecovery.recovering) {
+          showEdgeFunctionError(e);
+          return;
+        }
+        // Save modal state before attempting recovery
+        saveModalUIState({
+          generatingOptions,
+          advancedOpen,
+          manualMode,
+          manualConflicto,
+          manualIntencion,
+        });
+        // Trigger session recovery with retry capability
+        sessionRecovery.handleAuthError({
+          name: "createEpisode",
+          execute: async () => {
+            // Create a new mutation to avoid infinite loop
+            return doCreateEpisode();
+          },
+          onError: (recoveryError) => toast.error(recoveryError.message),
+        });
+        return;
+      }
+      toast.error(error.message);
+    },
   });
 
   const deleteEpisode = useMutation({
@@ -378,23 +522,41 @@ export default function Episodes() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Episodio eliminado");
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => {
+      if (isAuthError(e)) {
+        showEdgeFunctionError(e);
+        return;
+      }
+      toast.error((e as Error).message);
+    },
   });
 
   const exportCSV = () => {
-    const selectedEpisodes = table.selectedIds.size > 0
-      ? (episodes as any[]).filter((ep: any) => table.selectedIds.has(ep.id))
-      : table.filtered;
+    const selectedEpisodes =
+      table.selectedIds.size > 0
+        ? (episodes as any[]).filter((ep: any) => table.selectedIds.has(ep.id))
+        : table.filtered;
 
     if (!selectedEpisodes.length) return;
-    const headers = ["number", "title", "theme", "status", "nivel_completitud", "release_date", "health_score"];
+    const headers = [
+      "number",
+      "title",
+      "theme",
+      "status",
+      "nivel_completitud",
+      "release_date",
+      "health_score",
+    ];
     const rows = selectedEpisodes.map((ep: any) =>
       headers.map((h) => {
         const val = ep[h];
         return val === null || val === undefined ? "" : String(val).replace(/"/g, '""');
       })
     );
-    const csv = [headers.join(","), ...rows.map((r: string[]) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const csv = [
+      headers.join(","),
+      ...rows.map((r: string[]) => r.map((v) => `"${v}"`).join(",")),
+    ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -406,10 +568,14 @@ export default function Episodes() {
 
   const statusLabel = (s: string | null) => {
     switch (s) {
-      case "published": return "Publicado";
-      case "recording": return "Grabando";
-      case "editing": return "En edición";
-      default: return "Borrador";
+      case "published":
+        return "Publicado";
+      case "recording":
+        return "Grabando";
+      case "editing":
+        return "En edición";
+      default:
+        return "Borrador";
     }
   };
 
@@ -420,7 +586,9 @@ export default function Episodes() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="page-title">Episodios</h1>
-          <p className="page-subtitle">Fuente de verdad. Haz click en un episodio para abrir su Workspace.</p>
+          <p className="page-subtitle">
+            Fuente de verdad. Haz click en un episodio para abrir su Workspace.
+          </p>
         </div>
       </div>
 
@@ -433,13 +601,13 @@ export default function Episodes() {
         isIndeterminate={table.isIndeterminate}
         actions={[
           {
-            label: 'Exportar CSV',
+            label: "Exportar CSV",
             icon: <Download className="h-3.5 w-3.5" />,
             onClick: exportCSV,
           },
           {
-            label: 'Archivar',
-            onClick: () => toast.info('Próximamente'),
+            label: "Archivar",
+            onClick: () => toast.info("Próximamente"),
           },
         ]}
       />
@@ -457,15 +625,30 @@ export default function Episodes() {
         totalCount={table.totalCount}
         filteredCount={table.filteredCount}
         filtersOpen={filtersOpen}
-        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        onFiltersToggle={() => setFiltersOpen((v) => !v)}
         showViewToggle={false}
       >
-        <Button variant="outline" onClick={exportCSV} disabled={!(episodes as any[]).length} size="sm">
-          <Download className="h-4 w-4 mr-2" />CSV
+        <Button
+          variant="outline"
+          onClick={exportCSV}
+          disabled={!(episodes as any[]).length}
+          size="sm"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          CSV
         </Button>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+        <Dialog
+          open={open}
+          onOpenChange={(v) => {
+            setOpen(v);
+            if (!v) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nuevo Episodio</Button>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Episodio
+            </Button>
           </DialogTrigger>
 
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -490,8 +673,12 @@ export default function Episodes() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
-                  <div className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 1 ? "bg-primary" : "bg-border"}`} />
-                  <div className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 2 ? "bg-primary" : "bg-border"}`} />
+                  <div
+                    className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 1 ? "bg-primary" : "bg-border"}`}
+                  />
+                  <div
+                    className={`h-1.5 w-8 rounded-full transition-colors ${draft.step >= 2 ? "bg-primary" : "bg-border"}`}
+                  />
                 </div>
               </div>
             </DialogHeader>
@@ -537,7 +724,9 @@ export default function Episodes() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="íntimo">Íntimo — como un amigo honesto</SelectItem>
-                      <SelectItem value="confrontador">Confrontador — verdad directa e incómoda</SelectItem>
+                      <SelectItem value="confrontador">
+                        Confrontador — verdad directa e incómoda
+                      </SelectItem>
                       <SelectItem value="reflexivo">Reflexivo — espacio para pensar</SelectItem>
                     </SelectContent>
                   </Select>
@@ -545,9 +734,15 @@ export default function Episodes() {
 
                 <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-between text-muted-foreground hover:text-foreground"
+                    >
                       Opciones adicionales
-                      <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+                      />
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-3">
@@ -581,9 +776,15 @@ export default function Episodes() {
                   disabled={!draft.idea_principal.trim() || generatingOptions}
                 >
                   {generatingOptions ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generando opciones...</>
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generando opciones...
+                    </>
                   ) : (
-                    <><Sparkles className="h-4 w-4 mr-2" />Generar 3 opciones de conflicto e intención</>
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generar 3 opciones de conflicto e intención
+                    </>
                   )}
                 </Button>
               </div>
@@ -597,7 +798,9 @@ export default function Episodes() {
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           ⚡ Conflicto central
-                          <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
+                          <span className="text-xs font-normal text-muted-foreground ml-2">
+                            Elige 1
+                          </span>
                         </h3>
                         {draft.selected_conflicto && (
                           <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
@@ -611,7 +814,9 @@ export default function Episodes() {
                             key={opt.tipo}
                             option={opt}
                             selected={draft.selected_conflicto?.tipo === opt.tipo}
-                            onSelect={() => saveDraft({ selected_conflicto: opt }, { immediate: true })}
+                            onSelect={() =>
+                              saveDraft({ selected_conflicto: opt }, { immediate: true })
+                            }
                           />
                         ))}
                       </div>
@@ -621,7 +826,9 @@ export default function Episodes() {
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           🎯 Intención del episodio
-                          <span className="text-xs font-normal text-muted-foreground ml-2">Elige 1</span>
+                          <span className="text-xs font-normal text-muted-foreground ml-2">
+                            Elige 1
+                          </span>
                         </h3>
                         {draft.selected_intencion && (
                           <span className="text-xs text-emerald-500 font-medium flex items-center gap-1">
@@ -635,7 +842,9 @@ export default function Episodes() {
                             key={opt.tipo}
                             option={opt}
                             selected={draft.selected_intencion?.tipo === opt.tipo}
-                            onSelect={() => saveDraft({ selected_intencion: opt }, { immediate: true })}
+                            onSelect={() =>
+                              saveDraft({ selected_intencion: opt }, { immediate: true })
+                            }
                           />
                         ))}
                       </div>
@@ -649,9 +858,11 @@ export default function Episodes() {
                         onClick={generateOptions}
                         disabled={generatingOptions || isPending}
                       >
-                        {generatingOptions
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <RefreshCw className="h-3.5 w-3.5" />}
+                        {generatingOptions ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
                         Regenerar opciones
                       </Button>
                       <button
@@ -668,7 +879,9 @@ export default function Episodes() {
                       <div className="flex-1" />
                       <Button
                         onClick={() => createEpisode.mutate()}
-                        disabled={!draft.selected_conflicto || !draft.selected_intencion || isPending}
+                        disabled={
+                          !draft.selected_conflicto || !draft.selected_intencion || isPending
+                        }
                         className="gap-1.5"
                       >
                         {isPending ? (
@@ -677,7 +890,10 @@ export default function Episodes() {
                             {isGenerating ? "Generando episodio..." : "Creando..."}
                           </>
                         ) : (
-                          <><Sparkles className="h-4 w-4" />Crear episodio</>
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Crear episodio
+                          </>
                         )}
                       </Button>
                     </div>
@@ -726,9 +942,11 @@ export default function Episodes() {
                           disabled={generatingOptions || isPending}
                           className="gap-1.5 text-xs"
                         >
-                          {generatingOptions
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <Sparkles className="h-3.5 w-3.5" />}
+                          {generatingOptions ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
                           Generar opciones de IA
                         </Button>
                       )}
@@ -743,7 +961,10 @@ export default function Episodes() {
                             {isGenerating ? "Generando episodio..." : "Creando..."}
                           </>
                         ) : (
-                          <><Sparkles className="h-4 w-4" />Crear episodio</>
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Crear episodio
+                          </>
                         )}
                       </Button>
                     </div>
@@ -759,6 +980,12 @@ export default function Episodes() {
             )}
           </DialogContent>
         </Dialog>
+
+        <SessionExpiredDialog
+          open={sessionRecovery.showLoginRequired && !sessionRecovery.recovering}
+          onRetry={sessionRecovery.retryAfterLogin}
+          onLoginComplete={() => setOpen(true)}
+        />
       </ListingToolbar>
 
       <FiltersPanel
@@ -781,7 +1008,9 @@ export default function Episodes() {
 
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse bg-muted rounded-lg" />)}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 animate-pulse bg-muted rounded-lg" />
+          ))}
         </div>
       ) : table.filteredCount === 0 ? (
         <SmartEmptyState
@@ -791,7 +1020,8 @@ export default function Episodes() {
           description="Crea tu primer episodio para empezar"
           action={
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />Nuevo Episodio
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Episodio
             </Button>
           }
         />
@@ -804,7 +1034,9 @@ export default function Episodes() {
                   <th className="px-3 py-3 w-10">
                     <Checkbox
                       checked={table.isAllSelected}
-                      onCheckedChange={() => table.isAllSelected ? table.clearSelection() : table.selectAll()}
+                      onCheckedChange={() =>
+                        table.isAllSelected ? table.clearSelection() : table.selectAll()
+                      }
                     />
                   </th>
                   <th className="px-4 py-3 font-medium">Episodio</th>
@@ -822,7 +1054,7 @@ export default function Episodes() {
                   return (
                     <tr
                       key={ep.id}
-                      className={`surface-hover cursor-pointer group ${table.selectedIds.has(ep.id) ? 'bg-primary/5' : ''}`}
+                      className={`surface-hover cursor-pointer group ${table.selectedIds.has(ep.id) ? "bg-primary/5" : ""}`}
                       onClick={() => navigate(`/episodes/${ep.id}`)}
                     >
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -837,7 +1069,9 @@ export default function Episodes() {
                             {ep.final_title || ep.working_title || ep.title}
                           </TruncatedText>
                           {ep.number && (
-                            <span className="text-xs text-muted-foreground mt-0.5">#{ep.number}</span>
+                            <span className="text-xs text-muted-foreground mt-0.5">
+                              #{ep.number}
+                            </span>
                           )}
                         </div>
                       </td>
@@ -847,11 +1081,15 @@ export default function Episodes() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Progress value={audit.healthScore} className="h-1.5 w-16" />
-                          <span className={`text-xs font-medium ${level.color}`}>{audit.healthScore}%</span>
+                          <span className={`text-xs font-medium ${level.color}`}>
+                            {audit.healthScore}%
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs text-muted-foreground">{statusLabel(ep.status)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {statusLabel(ep.status)}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={`text-xs font-bold ${level.color}`}>
@@ -869,7 +1107,8 @@ export default function Episodes() {
                               navigate(`/factory?episode_id=${ep.id}`);
                             }}
                           >
-                            <Factory className="h-3.5 w-3.5 mr-1" />Producir
+                            <Factory className="h-3.5 w-3.5 mr-1" />
+                            Producir
                           </Button>
                           <Button
                             size="sm"
@@ -877,7 +1116,11 @@ export default function Episodes() {
                             className="h-7 w-7 p-0 text-destructive opacity-0 group-hover:opacity-100 hover:bg-destructive/10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm(`¿Eliminar "${ep.final_title || ep.working_title || ep.title}"? Esta acción no se puede deshacer.`)) {
+                              if (
+                                confirm(
+                                  `¿Eliminar "${ep.final_title || ep.working_title || ep.title}"? Esta acción no se puede deshacer.`
+                                )
+                              ) {
                                 deleteEpisode.mutate(ep.id);
                               }
                             }}
