@@ -3,15 +3,41 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Mic, TrendingUp, CheckCircle2, XCircle, Beaker, Wand2, Loader2, Sparkles } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Plus,
+  Mic,
+  TrendingUp,
+  CheckCircle2,
+  XCircle,
+  Beaker,
+  Wand2,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { isAuthError, showEdgeFunctionError, showSessionExpiredToast } from "@/services/functions/edgeFunctionErrors";
+import {
+  isAuthError,
+  showEdgeFunctionError,
+  showSessionExpiredToast,
+} from "@/services/functions/edgeFunctionErrors";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { useSmartTable } from "@/hooks/useSmartTable";
@@ -33,41 +59,41 @@ type InsightWithEpisode = Tables<"insights"> & {
 // ── Config ─────────────────────────────────────────────────────────────────
 
 const INSIGHT_COLUMNS = [
-  { id: 'finding', label: 'Observación', sortable: false, visible: true },
-  { id: 'confidence_level', label: 'Confianza', sortable: true, visible: true },
-  { id: 'status', label: 'Estado', sortable: true, visible: true },
-  { id: 'category', label: 'Categoría', sortable: true, visible: false },
-  { id: 'created_at', label: 'Fecha', sortable: true, visible: false },
+  { id: "finding", label: "Observación", sortable: false, visible: true },
+  { id: "confidence_level", label: "Confianza", sortable: true, visible: true },
+  { id: "status", label: "Estado", sortable: true, visible: true },
+  { id: "category", label: "Categoría", sortable: true, visible: false },
+  { id: "created_at", label: "Fecha", sortable: true, visible: false },
 ];
 
 const INSIGHT_SORT_OPTIONS: SortOption[] = [
-  { value: 'confidence_level', label: 'Confianza' },
-  { value: 'status', label: 'Estado' },
-  { value: 'category', label: 'Categoría' },
-  { value: 'created_at', label: 'Fecha' },
+  { value: "confidence_level", label: "Confianza" },
+  { value: "status", label: "Estado" },
+  { value: "category", label: "Categoría" },
+  { value: "created_at", label: "Fecha" },
 ];
 
 const INSIGHT_FILTER_DEFS: FilterDef[] = [
   {
-    field: 'status',
-    label: 'Estado',
-    type: 'select',
+    field: "status",
+    label: "Estado",
+    type: "select",
     options: [
-      { value: 'active', label: 'Activo' },
-      { value: 'experimenting', label: 'Experimentando' },
-      { value: 'accepted', label: 'Aceptado' },
-      { value: 'discarded', label: 'Descartado' },
+      { value: "active", label: "Activo" },
+      { value: "experimenting", label: "Experimentando" },
+      { value: "accepted", label: "Aceptado" },
+      { value: "discarded", label: "Descartado" },
     ],
   },
   {
-    field: 'confidence_level',
-    label: 'Confianza',
-    type: 'select',
+    field: "confidence_level",
+    label: "Confianza",
+    type: "select",
     options: [
-      { value: 'low', label: 'Baja' },
-      { value: 'medium', label: 'Media' },
-      { value: 'high', label: 'Alta' },
-      { value: 'confirmed', label: 'Confirmada' },
+      { value: "low", label: "Baja" },
+      { value: "medium", label: "Media" },
+      { value: "high", label: "Alta" },
+      { value: "confirmed", label: "Confirmada" },
     ],
   },
 ];
@@ -75,17 +101,33 @@ const INSIGHT_FILTER_DEFS: FilterDef[] = [
 const INSIGHT_DEFAULT_VIEWS: SavedView[] = [];
 
 const STATUS_CONFIG = {
-  active:        { label: "Activo",         cls: "text-blue-400 bg-blue-400/10 border-blue-400/20",     icon: TrendingUp },
-  experimenting: { label: "Experimentando", cls: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Beaker },
-  accepted:      { label: "Aceptado",       cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle2 },
-  discarded:     { label: "Descartado",     cls: "text-muted-foreground/50 bg-muted/30 border-border/40",  icon: XCircle },
+  active: {
+    label: "Activo",
+    cls: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+    icon: TrendingUp,
+  },
+  experimenting: {
+    label: "Experimentando",
+    cls: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
+    icon: Beaker,
+  },
+  accepted: {
+    label: "Aceptado",
+    cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+    icon: CheckCircle2,
+  },
+  discarded: {
+    label: "Descartado",
+    cls: "text-muted-foreground/50 bg-muted/30 border-border/40",
+    icon: XCircle,
+  },
 } as const;
 
 const CONFIDENCE_CONFIG = {
-  low:       { label: "Baja",      cls: "text-muted-foreground",  bar: "bg-muted-foreground/30", pct: 25 },
-  medium:    { label: "Media",     cls: "text-yellow-400",         bar: "bg-yellow-400",          pct: 50 },
-  high:      { label: "Alta",      cls: "text-orange-400",         bar: "bg-orange-400",          pct: 75 },
-  confirmed: { label: "Confirmada",cls: "text-emerald-400",        bar: "bg-emerald-400",         pct: 100 },
+  low: { label: "Baja", cls: "text-muted-foreground", bar: "bg-muted-foreground/30", pct: 25 },
+  medium: { label: "Media", cls: "text-yellow-400", bar: "bg-yellow-400", pct: 50 },
+  high: { label: "Alta", cls: "text-orange-400", bar: "bg-orange-400", pct: 75 },
+  confirmed: { label: "Confirmada", cls: "text-emerald-400", bar: "bg-emerald-400", pct: 100 },
 } as const;
 
 function statusCfg(s: string | null) {
@@ -120,17 +162,31 @@ interface InsightCardProps {
   onToggleSelect?: () => void;
 }
 
-function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect }: InsightCardProps) {
+function InsightCard({
+  insight,
+  onOpen,
+  onStatusChange,
+  selected,
+  onToggleSelect,
+}: InsightCardProps) {
   const sc = statusCfg(insight.status);
   const cc = confidenceCfg(insight.confidence_level);
   const StatusIcon = sc.icon;
 
   return (
-    <Card className={`cursor-pointer hover:border-primary/30 transition-colors ${selected ? 'border-primary/50 bg-primary/5' : ''}`} onClick={onOpen}>
+    <Card
+      className={`cursor-pointer hover:border-primary/30 transition-colors ${selected ? "border-primary/50 bg-primary/5" : ""}`}
+      onClick={onOpen}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start gap-2">
           {onToggleSelect && (
-            <div onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect();
+              }}
+            >
               <input
                 type="checkbox"
                 checked={selected}
@@ -144,7 +200,9 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium leading-snug line-clamp-2">{insight.finding}</p>
           </div>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
+          <span
+            className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}
+          >
             {sc.label}
           </span>
         </div>
@@ -172,7 +230,10 @@ function InsightCard({ insight, onOpen, onStatusChange, selected, onToggleSelect
             <span className={`text-xs font-medium ${cc.cls}`}>{cc.label}</span>
           </div>
           <div className="h-1 bg-muted rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${cc.bar}`} style={{ width: `${cc.pct}%` }} />
+            <div
+              className={`h-full rounded-full transition-all ${cc.bar}`}
+              style={{ width: `${cc.pct}%` }}
+            />
           </div>
         </div>
 
@@ -230,12 +291,21 @@ interface InsightDetailProps {
   onStatusChange: (id: string, status: string) => void;
 }
 
-function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange }: InsightDetailProps) {
+function InsightDetailSheet({
+  insight,
+  open,
+  onClose,
+  onUpdated,
+  onStatusChange,
+}: InsightDetailProps) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Tables<"insights">>>({});
 
   useEffect(() => {
-    if (insight) { setForm({ ...insight }); setEditing(false); }
+    if (insight) {
+      setForm({ ...insight });
+      setEditing(false);
+    }
   }, [insight]);
 
   function setField<K extends keyof Tables<"insights">>(key: K, val: Tables<"insights">[K]) {
@@ -248,7 +318,11 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
       const { error } = await supabase.from("insights").update(updates).eq("id", insight.id);
       if (error) throw error;
     },
-    onSuccess: () => { onUpdated(); setEditing(false); toast.success("Insight actualizado"); },
+    onSuccess: () => {
+      onUpdated();
+      setEditing(false);
+      toast.success("Insight actualizado");
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -258,33 +332,53 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
   const StatusIcon = sc.icon;
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{children}</p>
+    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+      {children}
+    </p>
   );
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-0 gap-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2 flex-1">
               <StatusIcon className={`h-5 w-5 shrink-0 mt-0.5 ${sc.cls.split(" ")[0]}`} />
-              <SheetTitle className="text-sm font-medium leading-snug">{insight.finding}</SheetTitle>
+              <SheetTitle className="text-sm font-medium leading-snug">
+                {insight.finding}
+              </SheetTitle>
             </div>
-            <Button variant="ghost" size="sm" className="shrink-0 -mt-1" onClick={() => setEditing(!editing)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 -mt-1"
+              onClick={() => setEditing(!editing)}
+            >
               {editing ? "Cancelar" : "Editar"}
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>{sc.label}</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
+              {sc.label}
+            </span>
             <span className={`text-xs font-medium ${cc.cls}`}>Confianza: {cc.label}</span>
             {insight.source === "auto_detected" && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Auto-detectado</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                Auto-detectado
+              </span>
             )}
           </div>
           {insight.episodes && (
             <div className="flex items-center gap-1 mt-1">
               <Mic className="h-3 w-3 text-muted-foreground/40" />
-              <span className="text-xs text-muted-foreground">{episodeLabel(insight.episodes)}</span>
+              <span className="text-xs text-muted-foreground">
+                {episodeLabel(insight.episodes)}
+              </span>
             </div>
           )}
         </SheetHeader>
@@ -294,25 +388,54 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">Hallazgo / Observación *</Label>
-                <Textarea className="mt-1" rows={2} placeholder="¿Qué observaste concretamente?" value={form.finding ?? ""} onChange={(e) => setField("finding", e.target.value)} />
+                <Textarea
+                  className="mt-1"
+                  rows={2}
+                  placeholder="¿Qué observaste concretamente?"
+                  value={form.finding ?? ""}
+                  onChange={(e) => setField("finding", e.target.value)}
+                />
               </div>
               <div>
                 <Label className="text-xs">Hipótesis</Label>
-                <Textarea className="mt-1" rows={2} placeholder="¿Por qué crees que ocurre esto?" value={form.hypothesis ?? ""} onChange={(e) => setField("hypothesis", e.target.value)} />
+                <Textarea
+                  className="mt-1"
+                  rows={2}
+                  placeholder="¿Por qué crees que ocurre esto?"
+                  value={form.hypothesis ?? ""}
+                  onChange={(e) => setField("hypothesis", e.target.value)}
+                />
               </div>
               <div>
                 <Label className="text-xs">Recomendación</Label>
-                <Textarea className="mt-1" rows={2} placeholder="¿Qué cambiarías en el próximo episodio?" value={form.recommendation ?? ""} onChange={(e) => setField("recommendation", e.target.value)} />
+                <Textarea
+                  className="mt-1"
+                  rows={2}
+                  placeholder="¿Qué cambiarías en el próximo episodio?"
+                  value={form.recommendation ?? ""}
+                  onChange={(e) => setField("recommendation", e.target.value)}
+                />
               </div>
               <div>
                 <Label className="text-xs">Evidencia</Label>
-                <Textarea className="mt-1" rows={2} placeholder="Datos, comentarios, métricas que lo sustentan..." value={form.evidence ?? ""} onChange={(e) => setField("evidence", e.target.value)} />
+                <Textarea
+                  className="mt-1"
+                  rows={2}
+                  placeholder="Datos, comentarios, métricas que lo sustentan..."
+                  value={form.evidence ?? ""}
+                  onChange={(e) => setField("evidence", e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Confianza</Label>
-                  <Select value={form.confidence_level ?? "medium"} onValueChange={(v) => setField("confidence_level", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={form.confidence_level ?? "medium"}
+                    onValueChange={(v) => setField("confidence_level", v)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Baja</SelectItem>
                       <SelectItem value="medium">Media</SelectItem>
@@ -323,8 +446,13 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
                 </div>
                 <div>
                   <Label className="text-xs">Estado</Label>
-                  <Select value={form.status ?? "active"} onValueChange={(v) => setField("status", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={form.status ?? "active"}
+                    onValueChange={(v) => setField("status", v)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Activo</SelectItem>
                       <SelectItem value="experimenting">Experimentando</SelectItem>
@@ -334,7 +462,11 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
                   </Select>
                 </div>
               </div>
-              <Button className="w-full" onClick={() => save.mutate(form)} disabled={save.isPending}>
+              <Button
+                className="w-full"
+                onClick={() => save.mutate(form)}
+                disabled={save.isPending}
+              >
                 {save.isPending ? "Guardando..." : "Guardar cambios"}
               </Button>
             </div>
@@ -366,7 +498,10 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
                     <span className={`text-xs font-medium ${cc.cls}`}>{cc.label}</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${cc.bar}`} style={{ width: `${cc.pct}%` }} />
+                    <div
+                      className={`h-full rounded-full transition-all ${cc.bar}`}
+                      style={{ width: `${cc.pct}%` }}
+                    />
                   </div>
                 </div>
 
@@ -382,22 +517,53 @@ function InsightDetailSheet({ insight, open, onClose, onUpdated, onStatusChange 
                 <SectionLabel>Acciones</SectionLabel>
                 <div className="grid grid-cols-2 gap-2">
                   {insight.status === "active" && (
-                    <Button variant="outline" size="sm" onClick={() => { onStatusChange(insight.id, "experimenting"); onClose(); }}>
-                      <Beaker className="h-3.5 w-3.5 mr-1.5" />Experimentar
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onStatusChange(insight.id, "experimenting");
+                        onClose();
+                      }}
+                    >
+                      <Beaker className="h-3.5 w-3.5 mr-1.5" />
+                      Experimentar
                     </Button>
                   )}
                   {insight.status === "experimenting" && (
                     <>
-                      <Button size="sm" onClick={() => { onStatusChange(insight.id, "accepted"); onClose(); }}>
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Confirmar
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          onStatusChange(insight.id, "accepted");
+                          onClose();
+                        }}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                        Confirmar
                       </Button>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { onStatusChange(insight.id, "discarded"); onClose(); }}>
-                        <XCircle className="h-3.5 w-3.5 mr-1.5" />Descartar
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={() => {
+                          onStatusChange(insight.id, "discarded");
+                          onClose();
+                        }}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Descartar
                       </Button>
                     </>
                   )}
                   {insight.status === "discarded" && (
-                    <Button variant="outline" size="sm" onClick={() => { onStatusChange(insight.id, "active"); onClose(); }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onStatusChange(insight.id, "active");
+                        onClose();
+                      }}
+                    >
                       Reactivar
                     </Button>
                   )}
@@ -450,8 +616,13 @@ export default function Insights() {
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { showSessionExpiredToast(); return; }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        showSessionExpiredToast();
+        return;
+      }
 
       const result = await invokeEdgeFunction<{
         insights?: Array<{ hypothesis: string; category: string; potential_action: string }>;
@@ -493,7 +664,10 @@ export default function Insights() {
       setOpenExtract(false);
       setExtractEpisodeId("");
     } catch (e: unknown) {
-      if (isAuthError(e)) { showEdgeFunctionError(e); return; }
+      if (isAuthError(e)) {
+        showEdgeFunctionError(e);
+        return;
+      }
       toast.error(e instanceof Error ? e.message : "Error al extraer insights");
     } finally {
       setIsExtracting(false);
@@ -527,17 +701,19 @@ export default function Insights() {
   const table = useSmartTable({
     data: insights,
     columns: INSIGHT_COLUMNS,
-    searchFields: ['finding', 'hypothesis', 'recommendation'],
-    defaultSort: [{ field: 'created_at', direction: 'desc' }],
+    searchFields: ["finding", "hypothesis", "recommendation"],
+    defaultSort: [{ field: "created_at", direction: "desc" }],
     defaultViews: INSIGHT_DEFAULT_VIEWS,
-    persistKey: 'amtme:list:insights:v1',
+    persistKey: "amtme:list:insights:v1",
     pageSize: 50,
-    defaultViewType: 'grid',
+    defaultViewType: "grid",
   });
 
   const createInsight = useMutation({
     mutationFn: async (fd: FormData) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
       const episodeId = fd.get("episode_id") as string;
       const { error } = await supabase.from("insights").insert({
@@ -576,7 +752,10 @@ export default function Insights() {
 
   const discardBulk = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase.from("insights").update({ status: 'discarded' }).in("id", ids);
+      const { error } = await supabase
+        .from("insights")
+        .update({ status: "discarded" })
+        .in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -604,7 +783,8 @@ export default function Insights() {
           <Dialog open={openExtract} onOpenChange={setOpenExtract}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
-                <Wand2 className="h-4 w-4" />Extraer del guión
+                <Wand2 className="h-4 w-4" />
+                Extraer del guión
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-sm">
@@ -613,27 +793,49 @@ export default function Insights() {
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <p className="text-sm text-muted-foreground">
-                  Selecciona un episodio con guión generado. La IA identificará hipótesis de aprendizaje y acciones para validarlas.
+                  Selecciona un episodio con guión generado. La IA identificará hipótesis de
+                  aprendizaje y acciones para validarlas.
                 </p>
                 <div className="space-y-1.5">
                   <Label>Episodio *</Label>
                   <Select value={extractEpisodeId} onValueChange={setExtractEpisodeId}>
-                    <SelectTrigger className="text-xs"><SelectValue placeholder="Seleccionar episodio..." /></SelectTrigger>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Seleccionar episodio..." />
+                    </SelectTrigger>
                     <SelectContent>
                       {episodes.map((ep) => (
                         <SelectItem key={ep.id} value={ep.id} className="text-xs">
-                          {ep.number ? `#${ep.number} ` : ""}{ep.working_title || ep.title}
+                          {ep.number ? `#${ep.number} ` : ""}
+                          {ep.working_title || ep.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setOpenExtract(false)} disabled={isExtracting}>Cancelar</Button>
-                  <Button onClick={extractFromScript} disabled={!extractEpisodeId || isExtracting} className="gap-2">
-                    {isExtracting
-                      ? <><Loader2 className="h-4 w-4 animate-spin" />Extrayendo...</>
-                      : <><Sparkles className="h-4 w-4" />Extraer</>}
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenExtract(false)}
+                    disabled={isExtracting}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={extractFromScript}
+                    disabled={!extractEpisodeId || isExtracting}
+                    className="gap-2"
+                  >
+                    {isExtracting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Extrayendo...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Extraer
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -642,33 +844,58 @@ export default function Insights() {
 
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nuevo insight</Button>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo insight
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Capturar insight</DialogTitle>
               </DialogHeader>
               <form
-                onSubmit={(e) => { e.preventDefault(); createInsight.mutate(new FormData(e.currentTarget)); }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createInsight.mutate(new FormData(e.currentTarget));
+                }}
                 className="space-y-4"
               >
                 <div>
                   <Label>Hallazgo *</Label>
-                  <Textarea name="finding" placeholder="¿Qué observaste?" rows={2} required autoFocus className="mt-1" />
+                  <Textarea
+                    name="finding"
+                    placeholder="¿Qué observaste?"
+                    rows={2}
+                    required
+                    autoFocus
+                    className="mt-1"
+                  />
                 </div>
                 <div>
-                  <Label>Hipótesis <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-                  <Textarea name="hypothesis" placeholder="¿Por qué crees que ocurre esto?" rows={2} className="mt-1" />
+                  <Label>
+                    Hipótesis <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
+                  <Textarea
+                    name="hypothesis"
+                    placeholder="¿Por qué crees que ocurre esto?"
+                    rows={2}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
-                  <Label>Recomendación <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Label>
+                    Recomendación{" "}
+                    <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
                   <Input name="recommendation" placeholder="¿Qué cambiarías?" className="mt-1" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Confianza</Label>
                     <Select name="confidence_level" defaultValue="medium">
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="low">Baja</SelectItem>
                         <SelectItem value="medium">Media</SelectItem>
@@ -680,12 +907,15 @@ export default function Insights() {
                   <div>
                     <Label>Episodio</Label>
                     <Select name="episode_id" defaultValue="">
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Ninguno" /></SelectTrigger>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Ninguno" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Sin episodio</SelectItem>
                         {episodes.map((ep) => (
                           <SelectItem key={ep.id} value={ep.id}>
-                            {ep.number ? `#${ep.number} ` : ""}{ep.working_title || ep.title}
+                            {ep.number ? `#${ep.number} ` : ""}
+                            {ep.working_title || ep.title}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -727,8 +957,8 @@ export default function Insights() {
         isIndeterminate={table.isIndeterminate}
         actions={[
           {
-            label: 'Descartar seleccionados',
-            variant: 'destructive',
+            label: "Descartar seleccionados",
+            variant: "destructive",
             onClick: () => discardBulk.mutate(Array.from(table.selectedIds)),
           },
         ]}
@@ -747,7 +977,7 @@ export default function Insights() {
         totalCount={table.totalCount}
         filteredCount={table.filteredCount}
         filtersOpen={filtersOpen}
-        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        onFiltersToggle={() => setFiltersOpen((v) => !v)}
         showViewToggle={true}
         viewType={table.viewType}
         onViewTypeChange={table.setViewType}
@@ -773,7 +1003,9 @@ export default function Insights() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Card key={i} className="h-40 animate-pulse bg-muted" />)}
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="h-40 animate-pulse bg-muted" />
+          ))}
         </div>
       ) : table.filteredCount === 0 ? (
         <SmartEmptyState
@@ -783,7 +1015,8 @@ export default function Insights() {
           description="Captura tu primera observación sobre un episodio"
           action={
             <Button variant="outline" size="sm" onClick={() => setOpenCreate(true)}>
-              <Plus className="h-4 w-4 mr-2" />Capturar primer insight
+              <Plus className="h-4 w-4 mr-2" />
+              Capturar primer insight
             </Button>
           }
         />
@@ -808,10 +1041,20 @@ export default function Insights() {
             Página {table.currentPage + 1} de {table.totalPages}
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage - 1)} disabled={!table.hasPrevPage}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.setCurrentPage(table.currentPage - 1)}
+              disabled={!table.hasPrevPage}
+            >
               Anterior
             </Button>
-            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage + 1)} disabled={!table.hasNextPage}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.setCurrentPage(table.currentPage + 1)}
+              disabled={!table.hasNextPage}
+            >
               Siguiente
             </Button>
           </div>

@@ -3,10 +3,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Send, Plus, CheckSquare, Square, ExternalLink, Calendar, Mic } from "lucide-react";
 import { TruncatedText, SubtitleClamp } from "@/components/ui/text-clamp";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -38,98 +50,171 @@ type PublicationWithEpisode = Tables<"publications"> & {
 // ── Column / Filter Config ─────────────────────────────────────────────────
 
 export const PUB_COLUMNS = [
-  { id: 'platform', label: 'Plataforma', sortable: true, visible: true },
-  { id: 'status', label: 'Estado', sortable: true, visible: true },
-  { id: 'copy_final', label: 'Copy', sortable: false, visible: true },
-  { id: 'scheduled_at', label: 'Programada', sortable: true, visible: true },
-  { id: 'created_at', label: 'Creada', sortable: true, visible: false },
+  { id: "platform", label: "Plataforma", sortable: true, visible: true },
+  { id: "status", label: "Estado", sortable: true, visible: true },
+  { id: "copy_final", label: "Copy", sortable: false, visible: true },
+  { id: "scheduled_at", label: "Programada", sortable: true, visible: true },
+  { id: "created_at", label: "Creada", sortable: true, visible: false },
 ];
 
 const PUB_SORT_OPTIONS: SortOption[] = [
-  { value: 'platform', label: 'Plataforma' },
-  { value: 'status', label: 'Estado' },
-  { value: 'scheduled_at', label: 'Fecha programada' },
-  { value: 'created_at', label: 'Fecha de creación' },
+  { value: "platform", label: "Plataforma" },
+  { value: "status", label: "Estado" },
+  { value: "scheduled_at", label: "Fecha programada" },
+  { value: "created_at", label: "Fecha de creación" },
 ];
 
 const PUB_FILTER_DEFS: FilterDef[] = [
   {
-    field: 'status',
-    label: 'Estado',
-    type: 'select',
+    field: "status",
+    label: "Estado",
+    type: "select",
     options: [
-      { value: 'draft', label: 'Borrador' },
-      { value: 'approved', label: 'Aprobado' },
-      { value: 'scheduled', label: 'Programado' },
-      { value: 'published', label: 'Publicado' },
-      { value: 'failed', label: 'Fallido' },
+      { value: "draft", label: "Borrador" },
+      { value: "approved", label: "Aprobado" },
+      { value: "scheduled", label: "Programado" },
+      { value: "published", label: "Publicado" },
+      { value: "failed", label: "Fallido" },
     ],
   },
   {
-    field: 'platform',
-    label: 'Plataforma',
-    type: 'select',
+    field: "platform",
+    label: "Plataforma",
+    type: "select",
     options: [
-      { value: 'instagram_feed', label: 'IG Feed' },
-      { value: 'instagram_reel', label: 'IG Reel' },
-      { value: 'instagram_story', label: 'IG Story' },
-      { value: 'tiktok', label: 'TikTok' },
-      { value: 'youtube', label: 'YouTube' },
-      { value: 'spotify', label: 'Spotify' },
-      { value: 'x', label: 'X' },
+      { value: "instagram_feed", label: "IG Feed" },
+      { value: "instagram_reel", label: "IG Reel" },
+      { value: "instagram_story", label: "IG Story" },
+      { value: "tiktok", label: "TikTok" },
+      { value: "youtube", label: "YouTube" },
+      { value: "spotify", label: "Spotify" },
+      { value: "x", label: "X" },
     ],
   },
 ];
 
 const PUB_DEFAULT_VIEWS: SavedView[] = [
   {
-    id: 'view-all',
-    name: 'Todos',
+    id: "view-all",
+    name: "Todos",
     filters: [],
-    sortRules: [{ field: 'created_at', direction: 'desc' }],
-    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
-    viewType: 'grid',
+    sortRules: [{ field: "created_at", direction: "desc" }],
+    visibleColumns: ["platform", "status", "copy_final", "scheduled_at"],
+    viewType: "grid",
     isDefault: true,
   },
   {
-    id: 'view-draft',
-    name: 'Borradores',
-    filters: [{ id: 'f-draft', field: 'status', operator: 'equals', value: 'draft', label: 'Estado: Borrador' }],
+    id: "view-draft",
+    name: "Borradores",
+    filters: [
+      {
+        id: "f-draft",
+        field: "status",
+        operator: "equals",
+        value: "draft",
+        label: "Estado: Borrador",
+      },
+    ],
     sortRules: [],
-    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
-    viewType: 'grid',
+    visibleColumns: ["platform", "status", "copy_final", "scheduled_at"],
+    viewType: "grid",
   },
   {
-    id: 'view-approved',
-    name: 'Aprobados',
-    filters: [{ id: 'f-approved', field: 'status', operator: 'equals', value: 'approved', label: 'Estado: Aprobado' }],
+    id: "view-approved",
+    name: "Aprobados",
+    filters: [
+      {
+        id: "f-approved",
+        field: "status",
+        operator: "equals",
+        value: "approved",
+        label: "Estado: Aprobado",
+      },
+    ],
     sortRules: [],
-    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
-    viewType: 'grid',
+    visibleColumns: ["platform", "status", "copy_final", "scheduled_at"],
+    viewType: "grid",
   },
   {
-    id: 'view-published',
-    name: 'Publicados',
-    filters: [{ id: 'f-published', field: 'status', operator: 'equals', value: 'published', label: 'Estado: Publicado' }],
+    id: "view-published",
+    name: "Publicados",
+    filters: [
+      {
+        id: "f-published",
+        field: "status",
+        operator: "equals",
+        value: "published",
+        label: "Estado: Publicado",
+      },
+    ],
     sortRules: [],
-    visibleColumns: ['platform', 'status', 'copy_final', 'scheduled_at'],
-    viewType: 'grid',
+    visibleColumns: ["platform", "status", "copy_final", "scheduled_at"],
+    viewType: "grid",
   },
 ];
 
 // ── Platform config ────────────────────────────────────────────────────────
 
 const PLATFORMS = [
-  { value: "instagram_feed",  label: "IG Feed",    color: "text-pink-400",    bg: "bg-pink-400/10",    border: "border-pink-400/20",    emoji: "📸" },
-  { value: "instagram_reel",  label: "IG Reel",    color: "text-purple-400",  bg: "bg-purple-400/10",  border: "border-purple-400/20",  emoji: "🎬" },
-  { value: "instagram_story", label: "IG Story",   color: "text-orange-400",  bg: "bg-orange-400/10",  border: "border-orange-400/20",  emoji: "⭕" },
-  { value: "tiktok",          label: "TikTok",     color: "text-foreground",  bg: "bg-muted",          border: "border-border",         emoji: "🎵" },
-  { value: "youtube",         label: "YouTube",    color: "text-red-400",     bg: "bg-red-400/10",     border: "border-red-400/20",     emoji: "▶️" },
-  { value: "spotify",         label: "Spotify",    color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", emoji: "🎧" },
-  { value: "x",               label: "X",          color: "text-sky-400",     bg: "bg-sky-400/10",     border: "border-sky-400/20",     emoji: "𝕏" },
+  {
+    value: "instagram_feed",
+    label: "IG Feed",
+    color: "text-pink-400",
+    bg: "bg-pink-400/10",
+    border: "border-pink-400/20",
+    emoji: "📸",
+  },
+  {
+    value: "instagram_reel",
+    label: "IG Reel",
+    color: "text-purple-400",
+    bg: "bg-purple-400/10",
+    border: "border-purple-400/20",
+    emoji: "🎬",
+  },
+  {
+    value: "instagram_story",
+    label: "IG Story",
+    color: "text-orange-400",
+    bg: "bg-orange-400/10",
+    border: "border-orange-400/20",
+    emoji: "⭕",
+  },
+  {
+    value: "tiktok",
+    label: "TikTok",
+    color: "text-foreground",
+    bg: "bg-muted",
+    border: "border-border",
+    emoji: "🎵",
+  },
+  {
+    value: "youtube",
+    label: "YouTube",
+    color: "text-red-400",
+    bg: "bg-red-400/10",
+    border: "border-red-400/20",
+    emoji: "▶️",
+  },
+  {
+    value: "spotify",
+    label: "Spotify",
+    color: "text-emerald-400",
+    bg: "bg-emerald-400/10",
+    border: "border-emerald-400/20",
+    emoji: "🎧",
+  },
+  {
+    value: "x",
+    label: "X",
+    color: "text-sky-400",
+    bg: "bg-sky-400/10",
+    border: "border-sky-400/20",
+    emoji: "𝕏",
+  },
 ] as const;
 
-type PlatformValue = typeof PLATFORMS[number]["value"];
+type PlatformValue = (typeof PLATFORMS)[number]["value"];
 
 function platformCfg(platform: string | null) {
   return PLATFORMS.find((p) => p.value === platform) ?? PLATFORMS[0];
@@ -197,18 +282,27 @@ function timeAgo(dateStr: string) {
 function formatScheduled(dateStr: string | null) {
   if (!dateStr) return null;
   return new Date(dateStr).toLocaleDateString("es-MX", {
-    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
 function statusConfig(status: string | null) {
   switch (status) {
-    case "draft":     return { label: "Borrador",   cls: "text-muted-foreground bg-muted border-border" };
-    case "approved":  return { label: "Aprobado",   cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
-    case "scheduled": return { label: "Programado", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
-    case "published": return { label: "Publicado",  cls: "text-primary bg-primary/10 border-primary/20" };
-    case "failed":    return { label: "Fallido",    cls: "text-red-400 bg-red-400/10 border-red-400/20" };
-    default:          return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
+    case "draft":
+      return { label: "Borrador", cls: "text-muted-foreground bg-muted border-border" };
+    case "approved":
+      return { label: "Aprobado", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
+    case "scheduled":
+      return { label: "Programado", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
+    case "published":
+      return { label: "Publicado", cls: "text-primary bg-primary/10 border-primary/20" };
+    case "failed":
+      return { label: "Fallido", cls: "text-red-400 bg-red-400/10 border-red-400/20" };
+    default:
+      return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
   }
 }
 
@@ -233,15 +327,19 @@ function ChecklistEditor({
   onChange: (items: ChecklistItem[]) => void;
 }) {
   const toggle = (id: string) =>
-    onChange(items.map((item) => item.id === id ? { ...item, done: !item.done } : item));
+    onChange(items.map((item) => (item.id === id ? { ...item, done: !item.done } : item)));
 
   const done = items.filter((i) => i.done).length;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Checklist</p>
-        <span className="text-xs text-muted-foreground tabular-nums">{done}/{items.length}</span>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Checklist
+        </p>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {done}/{items.length}
+        </span>
       </div>
       <div className="h-1 bg-muted rounded-full overflow-hidden">
         <div
@@ -257,11 +355,14 @@ function ChecklistEditor({
             className="flex items-center gap-2 w-full text-left group"
             onClick={() => toggle(item.id)}
           >
-            {item.done
-              ? <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-              : <Square className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0 transition-colors" />
-            }
-            <span className={`text-sm transition-colors ${item.done ? "line-through text-muted-foreground/40" : "text-foreground"}`}>
+            {item.done ? (
+              <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+            ) : (
+              <Square className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0 transition-colors" />
+            )}
+            <span
+              className={`text-sm transition-colors ${item.done ? "line-through text-muted-foreground/40" : "text-foreground"}`}
+            >
               {item.label}
             </span>
           </button>
@@ -289,12 +390,20 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
   const checkTotal = checklist.length;
 
   return (
-    <Card className={`cursor-pointer hover:border-primary/30 transition-colors ${selected ? 'border-primary/50 bg-primary/5' : ''}`} onClick={onOpen}>
+    <Card
+      className={`cursor-pointer hover:border-primary/30 transition-colors ${selected ? "border-primary/50 bg-primary/5" : ""}`}
+      onClick={onOpen}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
             {onToggleSelect && (
-              <div onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSelect();
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={selected}
@@ -304,11 +413,15 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
                 />
               </div>
             )}
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium border ${pc.bg} ${pc.color} ${pc.border}`}
+            >
               {pc.emoji} {pc.label}
             </span>
           </div>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
+          <span
+            className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}
+          >
             {sc.label}
           </span>
         </div>
@@ -343,7 +456,9 @@ function PublicationCard({ pub, onOpen, onStatusChange, selected, onToggleSelect
                 style={{ width: `${(checkDone / checkTotal) * 100}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground">{checkDone}/{checkTotal} pasos</span>
+            <span className="text-xs text-muted-foreground">
+              {checkDone}/{checkTotal} pasos
+            </span>
           </div>
         )}
 
@@ -397,7 +512,10 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
     }
   }, [pub]);
 
-  function setField<K extends keyof Tables<"publications">>(key: K, val: Tables<"publications">[K]) {
+  function setField<K extends keyof Tables<"publications">>(
+    key: K,
+    val: Tables<"publications">[K]
+  ) {
     setForm((p) => ({ ...p, [key]: val }));
   }
 
@@ -411,22 +529,36 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
       const { error } = await supabase.from("publications").update(updates).eq("id", pub.id);
       if (error) throw error;
     },
-    onSuccess: () => { onUpdated(); setEditing(false); toast.success("Publicación actualizada"); },
+    onSuccess: () => {
+      onUpdated();
+      setEditing(false);
+      toast.success("Publicación actualizada");
+    },
     onError: (e) => toast.error(e.message),
   });
 
   const markPublished = useMutation({
     mutationFn: async (link: string) => {
       if (!pub) return;
-      const { error } = await supabase.from("publications").update({
-        status: "published",
-        published_at: new Date().toISOString(),
-        link_published: link || null,
-        checklist_json: checklist.map((i) => ({ ...i, done: true })) as unknown as Tables<"publications">["checklist_json"],
-      }).eq("id", pub.id);
+      const { error } = await supabase
+        .from("publications")
+        .update({
+          status: "published",
+          published_at: new Date().toISOString(),
+          link_published: link || null,
+          checklist_json: checklist.map((i) => ({
+            ...i,
+            done: true,
+          })) as unknown as Tables<"publications">["checklist_json"],
+        })
+        .eq("id", pub.id);
       if (error) throw error;
     },
-    onSuccess: () => { onUpdated(); onClose(); toast.success("¡Publicado! 🎉"); },
+    onSuccess: () => {
+      onUpdated();
+      onClose();
+      toast.success("¡Publicado! 🎉");
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -436,13 +568,20 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
   const sc = statusConfig(pub.status);
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${pc.bg} ${pc.color} ${pc.border}`}>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${pc.bg} ${pc.color} ${pc.border}`}
+                >
                   {pc.emoji} {pc.label}
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
@@ -453,7 +592,12 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 {episodeLabel(pub.episodes)}
               </SheetTitle>
             </div>
-            <Button variant="ghost" size="sm" className="shrink-0 -mt-1" onClick={() => setEditing(!editing)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 -mt-1"
+              onClick={() => setEditing(!editing)}
+            >
               {editing ? "Cancelar" : "Editar"}
             </Button>
           </div>
@@ -465,7 +609,8 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
               <div>
                 <Label className="text-xs">Copy final</Label>
                 <Textarea
-                  className="mt-1 font-mono text-xs" rows={6}
+                  className="mt-1 font-mono text-xs"
+                  rows={6}
                   placeholder="Escribe el copy para esta plataforma..."
                   value={form.copy_final ?? ""}
                   onChange={(e) => setField("copy_final", e.target.value)}
@@ -491,7 +636,10 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                   onChange={(e) =>
                     setField(
                       "hashtags",
-                      e.target.value.split(/\s+/).map((h) => h.trim()).filter(Boolean)
+                      e.target.value
+                        .split(/\s+/)
+                        .map((h) => h.trim())
+                        .filter(Boolean)
                     )
                   }
                 />
@@ -502,11 +650,14 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                 <Input
                   type="datetime-local"
                   className="mt-1"
-                  value={form.scheduled_at
-                    ? new Date(form.scheduled_at).toISOString().slice(0, 16)
-                    : ""}
+                  value={
+                    form.scheduled_at ? new Date(form.scheduled_at).toISOString().slice(0, 16) : ""
+                  }
                   onChange={(e) =>
-                    setField("scheduled_at", e.target.value ? new Date(e.target.value).toISOString() : null)
+                    setField(
+                      "scheduled_at",
+                      e.target.value ? new Date(e.target.value).toISOString() : null
+                    )
                   }
                 />
               </div>
@@ -531,30 +682,43 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
             <div className="space-y-5">
               {pub.copy_final ? (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Copy</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Copy
+                  </p>
                   <div className="bg-muted/40 rounded-lg p-3">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{pub.copy_final}</p>
                   </div>
                 </div>
               ) : (
                 <div className="bg-muted/20 rounded-lg p-4 text-center">
-                  <p className="text-sm text-muted-foreground/50">Sin copy — edita para agregar el texto</p>
+                  <p className="text-sm text-muted-foreground/50">
+                    Sin copy — edita para agregar el texto
+                  </p>
                 </div>
               )}
 
               <div className="grid grid-cols-1 gap-4">
                 {pub.cta_text && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">CTA</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                      CTA
+                    </p>
                     <p className="text-sm">{pub.cta_text}</p>
                   </div>
                 )}
                 {pub.hashtags && pub.hashtags.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Hashtags</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                      Hashtags
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {pub.hashtags.map((h) => (
-                        <span key={h} className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">{h}</span>
+                        <span
+                          key={h}
+                          className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded"
+                        >
+                          {h}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -564,13 +728,17 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
               {pub.scheduled_at && (
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-blue-400" />
-                  <span className="text-blue-400">Programado para {formatScheduled(pub.scheduled_at)}</span>
+                  <span className="text-blue-400">
+                    Programado para {formatScheduled(pub.scheduled_at)}
+                  </span>
                 </div>
               )}
 
               {pub.objective && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Objetivo</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                    Objetivo
+                  </p>
                   <p className="text-sm text-muted-foreground">{pub.objective}</p>
                 </div>
               )}
@@ -578,7 +746,13 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
               {pub.link_published && (
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
                   <span className="text-sm text-primary truncate">{pub.link_published}</span>
-                  <a href={pub.link_published} target="_blank" rel="noreferrer" className="ml-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <a
+                    href={pub.link_published}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-2 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <ExternalLink className="h-4 w-4 text-primary" />
                   </a>
                 </div>
@@ -591,31 +765,63 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
                     setChecklist(updated);
                     supabase
                       .from("publications")
-                      .update({ checklist_json: updated as unknown as Tables<"publications">["checklist_json"] })
+                      .update({
+                        checklist_json:
+                          updated as unknown as Tables<"publications">["checklist_json"],
+                      })
                       .eq("id", pub.id)
-                      .then(({ error }) => { if (!error) onUpdated(); });
+                      .then(({ error }) => {
+                        if (!error) onUpdated();
+                      });
                   }}
                 />
               )}
 
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Acciones
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   {pub.status === "draft" && (
-                    <Button variant="outline" size="sm" onClick={() => { onStatusChange(pub.id, "approved"); onClose(); }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onStatusChange(pub.id, "approved");
+                        onClose();
+                      }}
+                    >
                       Aprobar
                     </Button>
                   )}
                   {pub.status === "approved" && (
-                    <Button variant="outline" size="sm" onClick={() => { onStatusChange(pub.id, "scheduled"); onClose(); }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onStatusChange(pub.id, "scheduled");
+                        onClose();
+                      }}
+                    >
                       Programar
                     </Button>
                   )}
                   {(pub.status === "approved" || pub.status === "scheduled") && (
-                    <MarkPublishedButton onConfirm={(link) => markPublished.mutate(link)} loading={markPublished.isPending} />
+                    <MarkPublishedButton
+                      onConfirm={(link) => markPublished.mutate(link)}
+                      loading={markPublished.isPending}
+                    />
                   )}
                   {pub.status === "published" && (
-                    <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-400" onClick={() => { onStatusChange(pub.id, "failed"); onClose(); }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-400 hover:text-red-400"
+                      onClick={() => {
+                        onStatusChange(pub.id, "failed");
+                        onClose();
+                      }}
+                    >
                       Reportar error
                     </Button>
                   )}
@@ -633,22 +839,46 @@ function PublicationDetailSheet({ pub, open, onClose, onUpdated, onStatusChange 
   );
 }
 
-function MarkPublishedButton({ onConfirm, loading }: { onConfirm: (link: string) => void; loading: boolean }) {
+function MarkPublishedButton({
+  onConfirm,
+  loading,
+}: {
+  onConfirm: (link: string) => void;
+  loading: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState("");
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" className="col-span-2">
-          <Send className="h-3.5 w-3.5 mr-2" />Marcar como publicado
+          <Send className="h-3.5 w-3.5 mr-2" />
+          Marcar como publicado
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>¿Publicado?</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>¿Publicado?</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <Label>Link de la publicación <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-          <Input placeholder="https://www.instagram.com/p/..." value={link} onChange={(e) => setLink(e.target.value)} autoFocus />
-          <Button className="w-full" onClick={() => { onConfirm(link); setOpen(false); }} disabled={loading}>
+          <Label>
+            Link de la publicación{" "}
+            <span className="text-muted-foreground font-normal">(opcional)</span>
+          </Label>
+          <Input
+            placeholder="https://www.instagram.com/p/..."
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            autoFocus
+          />
+          <Button
+            className="w-full"
+            onClick={() => {
+              onConfirm(link);
+              setOpen(false);
+            }}
+            disabled={loading}
+          >
             {loading ? "Guardando..." : "Confirmar publicación"}
           </Button>
         </div>
@@ -711,17 +941,19 @@ export default function Publications() {
   const table = useSmartTable({
     data: publications,
     columns: PUB_COLUMNS,
-    searchFields: ['copy_final', 'platform'],
-    defaultSort: [{ field: 'created_at', direction: 'desc' }],
+    searchFields: ["copy_final", "platform"],
+    defaultSort: [{ field: "created_at", direction: "desc" }],
     defaultViews: PUB_DEFAULT_VIEWS,
-    persistKey: 'amtme:list:publications:v1',
+    persistKey: "amtme:list:publications:v1",
     pageSize: 50,
-    defaultViewType: 'grid',
+    defaultViewType: "grid",
   });
 
   const createPublication = useMutation({
     mutationFn: async (fd: FormData) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
       const episodeId = fd.get("episode_id") as string;
       if (!episodeId) throw new Error("Selecciona un episodio");
@@ -735,7 +967,8 @@ export default function Publications() {
         platform,
         copy_final: (fd.get("copy_final") as string) || null,
         status: "draft",
-        checklist_json: (DEFAULT_CHECKLISTS[platform] ?? []) as unknown as Tables<"publications">["checklist_json"],
+        checklist_json: (DEFAULT_CHECKLISTS[platform] ??
+          []) as unknown as Tables<"publications">["checklist_json"],
         ...(selectedAccount && {
           metadata: { account_id: selectedAccount.id, account_name: selectedAccount.account_name },
         }),
@@ -769,7 +1002,10 @@ export default function Publications() {
 
   const approveBulk = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase.from("publications").update({ status: 'approved' }).in("id", ids);
+      const { error } = await supabase
+        .from("publications")
+        .update({ status: "approved" })
+        .in("id", ids);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -782,9 +1018,10 @@ export default function Publications() {
   });
 
   const exportCSV = () => {
-    const selected = table.selectedIds.size > 0
-      ? publications.filter(p => table.selectedIds.has(p.id))
-      : table.filtered;
+    const selected =
+      table.selectedIds.size > 0
+        ? publications.filter((p) => table.selectedIds.has(p.id))
+        : table.filtered;
     if (!selected.length) return;
     const headers = ["platform", "status", "copy_final", "scheduled_at", "created_at"];
     const rows = selected.map((p) =>
@@ -793,7 +1030,9 @@ export default function Publications() {
         return val === null || val === undefined ? "" : String(val).replace(/"/g, '""');
       })
     );
-    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join(
+      "\n"
+    );
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -823,11 +1062,11 @@ export default function Publications() {
         isIndeterminate={table.isIndeterminate}
         actions={[
           {
-            label: 'Aprobar',
+            label: "Aprobar",
             onClick: () => approveBulk.mutate(Array.from(table.selectedIds)),
           },
           {
-            label: 'Exportar CSV',
+            label: "Exportar CSV",
             onClick: exportCSV,
           },
         ]}
@@ -846,29 +1085,46 @@ export default function Publications() {
         totalCount={table.totalCount}
         filteredCount={table.filteredCount}
         filtersOpen={filtersOpen}
-        onFiltersToggle={() => setFiltersOpen(v => !v)}
+        onFiltersToggle={() => setFiltersOpen((v) => !v)}
         showViewToggle={true}
         viewType={table.viewType}
         onViewTypeChange={table.setViewType}
       >
-        <Dialog open={openCreate} onOpenChange={(v) => { setOpenCreate(v); if (!v) setCreatePlatform(""); }}>
+        <Dialog
+          open={openCreate}
+          onOpenChange={(v) => {
+            setOpenCreate(v);
+            if (!v) setCreatePlatform("");
+          }}
+        >
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-2" />Nueva publicación</Button>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva publicación
+            </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Nueva publicación</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Nueva publicación</DialogTitle>
+            </DialogHeader>
             <form
-              onSubmit={(e) => { e.preventDefault(); createPublication.mutate(new FormData(e.currentTarget)); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                createPublication.mutate(new FormData(e.currentTarget));
+              }}
               className="space-y-4"
             >
               <div>
                 <Label>Episodio *</Label>
                 <Select name="episode_id" required>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona un episodio" /></SelectTrigger>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecciona un episodio" />
+                  </SelectTrigger>
                   <SelectContent>
                     {episodes.map((ep) => (
                       <SelectItem key={ep.id} value={ep.id}>
-                        {ep.number ? `#${ep.number} ` : ""}{ep.working_title || ep.title}
+                        {ep.number ? `#${ep.number} ` : ""}
+                        {ep.working_title || ep.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -877,11 +1133,20 @@ export default function Publications() {
 
               <div>
                 <Label>Plataforma *</Label>
-                <Select name="platform" required value={createPlatform} onValueChange={setCreatePlatform}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona plataforma" /></SelectTrigger>
+                <Select
+                  name="platform"
+                  required
+                  value={createPlatform}
+                  onValueChange={setCreatePlatform}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecciona plataforma" />
+                  </SelectTrigger>
                   <SelectContent>
                     {PLATFORMS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.emoji} {p.label}</SelectItem>
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.emoji} {p.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -889,12 +1154,18 @@ export default function Publications() {
 
               {matchingAccounts.length > 0 && (
                 <div>
-                  <Label>Cuenta <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                  <Label>
+                    Cuenta <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
                   <Select name="account_id">
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona cuenta" /></SelectTrigger>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecciona cuenta" />
+                    </SelectTrigger>
                     <SelectContent>
                       {matchingAccounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.account_name}</SelectItem>
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.account_name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -902,8 +1173,15 @@ export default function Publications() {
               )}
 
               <div>
-                <Label>Copy inicial <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-                <Textarea name="copy_final" placeholder="Puedes editarlo después..." rows={3} className="mt-1" />
+                <Label>
+                  Copy inicial <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Textarea
+                  name="copy_final"
+                  placeholder="Puedes editarlo después..."
+                  rows={3}
+                  className="mt-1"
+                />
               </div>
 
               <Button type="submit" className="w-full" disabled={createPublication.isPending}>
@@ -934,7 +1212,9 @@ export default function Publications() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Card key={i} className="h-44 animate-pulse bg-muted" />)}
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="h-44 animate-pulse bg-muted" />
+          ))}
         </div>
       ) : table.filteredCount === 0 ? (
         <SmartEmptyState
@@ -944,7 +1224,8 @@ export default function Publications() {
           description="Crea la primera publicación para un episodio"
           action={
             <Button variant="outline" size="sm" onClick={() => setOpenCreate(true)}>
-              <Plus className="h-4 w-4 mr-2" />Crear primera publicación
+              <Plus className="h-4 w-4 mr-2" />
+              Crear primera publicación
             </Button>
           }
         />
@@ -969,10 +1250,20 @@ export default function Publications() {
             Página {table.currentPage + 1} de {table.totalPages}
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage - 1)} disabled={!table.hasPrevPage}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.setCurrentPage(table.currentPage - 1)}
+              disabled={!table.hasPrevPage}
+            >
               Anterior
             </Button>
-            <Button variant="outline" size="sm" onClick={() => table.setCurrentPage(table.currentPage + 1)} disabled={!table.hasNextPage}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.setCurrentPage(table.currentPage + 1)}
+              disabled={!table.hasNextPage}
+            >
               Siguiente
             </Button>
           </div>

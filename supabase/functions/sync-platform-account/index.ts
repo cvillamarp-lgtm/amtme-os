@@ -164,11 +164,11 @@ serve(async (req) => {
     }
 
     if (!account.access_token) {
-      return errorResponse(cors, "INTERNAL_ERROR", "No hay token de acceso. Conecta la cuenta vía OAuth primero.",, 200);
+      return errorResponse(cors, "INTERNAL_ERROR", "No hay token de acceso. Conecta la cuenta vía OAuth primero.", 200);
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
-      return errorResponse(cors, "INTERNAL_ERROR", "Token expirado. Ve a Cuentas y reconecta.",, 200);
+      return errorResponse(cors, "INTERNAL_ERROR", "Token expirado. Ve a Cuentas y reconecta.", 200);
     }
 
     // Mark as syncing

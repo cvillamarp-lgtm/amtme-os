@@ -4,7 +4,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Wand2, Check, X, History, RotateCcw, AlertTriangle, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  Wand2,
+  Check,
+  X,
+  History,
+  RotateCcw,
+  AlertTriangle,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
@@ -159,15 +168,20 @@ export function WorkspaceConstructor({ episode }: Props) {
 
   const hasBlockingConflicts = useMemo(() => {
     if (!plan) return false;
-    return plan.changes.some((c) => selectedChangeIds.includes(c.change_id) && c.status === "conflict");
+    return plan.changes.some(
+      (c) => selectedChangeIds.includes(c.change_id) && c.status === "conflict"
+    );
   }, [plan, selectedChangeIds]);
 
   const requiresExtraConfirmation = useMemo(
     () => !!plan?.risk && plan.risk.level === "high",
-    [plan],
+    [plan]
   );
 
-  const canApply = selectedChangeIds.length > 0 && !hasBlockingConflicts && (!requiresExtraConfirmation || highRiskConfirmed);
+  const canApply =
+    selectedChangeIds.length > 0 &&
+    !hasBlockingConflicts &&
+    (!requiresExtraConfirmation || highRiskConfirmed);
 
   const isHighImpactChange = (change: PlanChange) => {
     if (change.entity_type !== "episode") return true;
@@ -178,7 +192,9 @@ export function WorkspaceConstructor({ episode }: Props) {
   };
 
   const toggleChangeSelection = (changeId: string, checked: boolean) => {
-    setSelectedChangeIds((prev) => checked ? Array.from(new Set([...prev, changeId])) : prev.filter((id) => id !== changeId));
+    setSelectedChangeIds((prev) =>
+      checked ? Array.from(new Set([...prev, changeId])) : prev.filter((id) => id !== changeId)
+    );
   };
 
   const selectAllUpdates = () => {
@@ -190,17 +206,29 @@ export function WorkspaceConstructor({ episode }: Props) {
 
   const selectConflicts = () => {
     if (!plan) return;
-    setSelectedChangeIds(plan.changes.filter((c) => c.status === "conflict").map((c) => c.change_id));
+    setSelectedChangeIds(
+      plan.changes.filter((c) => c.status === "conflict").map((c) => c.change_id)
+    );
   };
 
   const selectHighImpact = () => {
     if (!plan) return;
-    setSelectedChangeIds(plan.changes.filter((c) => c.status === "update" && isHighImpactChange(c)).map((c) => c.change_id));
+    setSelectedChangeIds(
+      plan.changes
+        .filter((c) => c.status === "update" && isHighImpactChange(c))
+        .map((c) => c.change_id)
+    );
   };
 
   const renderWordDelta = (before: unknown, after: unknown) => {
-    const beforeWords = String(before ?? "").trim().split(/\s+/).filter(Boolean);
-    const afterWords = String(after ?? "").trim().split(/\s+/).filter(Boolean);
+    const beforeWords = String(before ?? "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const afterWords = String(after ?? "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
     const afterSet = new Set(afterWords.map((w) => w.toLowerCase()));
     const beforeSet = new Set(beforeWords.map((w) => w.toLowerCase()));
 
@@ -210,12 +238,20 @@ export function WorkspaceConstructor({ episode }: Props) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
         <div className="bg-red-500/5 border border-red-500/10 rounded px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wide text-red-700 mb-1">Palabras removidas</p>
-          <p className="text-xs text-red-800/80">{removed.length ? removed.join(" ") : "Sin cambios"}</p>
+          <p className="text-[10px] uppercase tracking-wide text-red-700 mb-1">
+            Palabras removidas
+          </p>
+          <p className="text-xs text-red-800/80">
+            {removed.length ? removed.join(" ") : "Sin cambios"}
+          </p>
         </div>
         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wide text-emerald-700 mb-1">Palabras agregadas</p>
-          <p className="text-xs text-emerald-800/80">{added.length ? added.join(" ") : "Sin cambios"}</p>
+          <p className="text-[10px] uppercase tracking-wide text-emerald-700 mb-1">
+            Palabras agregadas
+          </p>
+          <p className="text-xs text-emerald-800/80">
+            {added.length ? added.join(" ") : "Sin cambios"}
+          </p>
         </div>
       </div>
     );
@@ -226,13 +262,13 @@ export function WorkspaceConstructor({ episode }: Props) {
     const normalized = message.toLowerCase();
 
     if (
-      normalized.includes("assistant-constructor") && normalized.includes("not found")
-      || normalized.includes("could not find the function")
-      || normalized.includes("assistant_action_runs") && normalized.includes("does not exist")
+      (normalized.includes("assistant-constructor") && normalized.includes("not found")) ||
+      normalized.includes("could not find the function") ||
+      (normalized.includes("assistant_action_runs") && normalized.includes("does not exist"))
     ) {
       setInfraWarning(
         "Este entorno no tiene desplegado el backend del Constructor IA (edge function o migración). " +
-        "Despliega `supabase/functions/assistant-constructor` y ejecuta migraciones.",
+          "Despliega `supabase/functions/assistant-constructor` y ejecuta migraciones."
       );
       toast.error("Falta despliegue backend del Constructor IA en este entorno");
       return;
@@ -246,7 +282,7 @@ export function WorkspaceConstructor({ episode }: Props) {
     try {
       const data = await invokeEdgeFunction<{ runs: ActionHistoryItem[] }>(
         "assistant-constructor",
-        { mode: "history", episode_id: episode.id },
+        { mode: "history", episode_id: episode.id }
       );
       setInfraWarning(null);
       const runs = data.runs || [];
@@ -260,7 +296,7 @@ export function WorkspaceConstructor({ episode }: Props) {
           const saved = loadSavedPlan(episode.id);
           if (saved && saved.run_id === pendingRun.id) {
             setSelectedChangeIds(
-              saved.changes.filter((c) => c.status === "update").map((c) => c.change_id),
+              saved.changes.filter((c) => c.status === "update").map((c) => c.change_id)
             );
             toast.info("Propuesta pendiente restaurada. Revisa y aplica cuando estés listo.");
             return saved;
@@ -273,7 +309,7 @@ export function WorkspaceConstructor({ episode }: Props) {
     } finally {
       setLoadingHistory(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode.id]);
 
   useEffect(() => {
@@ -298,7 +334,9 @@ export function WorkspaceConstructor({ episode }: Props) {
       setPlan(data);
       savePlan(episode.id, data);
       setHighRiskConfirmed(false);
-      setSelectedChangeIds(data.changes.filter((c) => c.status === "update").map((c) => c.change_id));
+      setSelectedChangeIds(
+        data.changes.filter((c) => c.status === "update").map((c) => c.change_id)
+      );
       toast.success("Propuesta generada. Revisa antes de aplicar.");
       await loadHistory();
     } catch (e: unknown) {
@@ -396,8 +434,22 @@ export function WorkspaceConstructor({ episode }: Props) {
             placeholder='Ej: "reorganiza el resumen para que sea más directo y actualiza el hook con más tensión"'
             className="resize-none"
           />
-          <Button onClick={handlePlan} disabled={planning || !instruction.trim()} className="w-full">
-            {planning ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Interpretando...</> : <><Sparkles className="h-4 w-4 mr-2" />Generar propuesta</>}
+          <Button
+            onClick={handlePlan}
+            disabled={planning || !instruction.trim()}
+            className="w-full"
+          >
+            {planning ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Interpretando...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generar propuesta
+              </>
+            )}
           </Button>
         </div>
 
@@ -408,15 +460,21 @@ export function WorkspaceConstructor({ episode }: Props) {
           </div>
           <ScrollArea className="h-[360px] pr-2">
             <div className="space-y-2">
-              {loadingHistory && <p className="text-xs text-muted-foreground">Cargando historial...</p>}
+              {loadingHistory && (
+                <p className="text-xs text-muted-foreground">Cargando historial...</p>
+              )}
               {!loadingHistory && history.length === 0 && (
                 <p className="text-xs text-muted-foreground">Sin acciones registradas todavía.</p>
               )}
               {history.map((item) => (
                 <div key={item.id} className="border border-border rounded-md p-2 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className="text-[10px]">{item.status}</Badge>
-                    <span className="text-[10px] text-muted-foreground">{new Date(item.created_at).toLocaleString()}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {item.status}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(item.created_at).toLocaleString()}
+                    </span>
                   </div>
                   <p className="text-xs text-foreground line-clamp-2">{item.instruction}</p>
                   {item.status === "applied" && (
@@ -427,7 +485,11 @@ export function WorkspaceConstructor({ episode }: Props) {
                       onClick={() => handleRollback(item.id)}
                       disabled={rollingBackId === item.id}
                     >
-                      {rollingBackId === item.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RotateCcw className="h-3 w-3 mr-1" />}
+                      {rollingBackId === item.id ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                      )}
                       Restaurar
                     </Button>
                   )}
@@ -441,40 +503,63 @@ export function WorkspaceConstructor({ episode }: Props) {
       <div className="xl:col-span-8 space-y-4">
         <div className="surface p-4 space-y-3">
           <p className="text-sm font-medium">Interpretación de la IA</p>
-          {!plan && <p className="text-sm text-muted-foreground">Aún no hay una propuesta activa.</p>}
+          {!plan && (
+            <p className="text-sm text-muted-foreground">Aún no hay una propuesta activa.</p>
+          )}
           {plan && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline">{INTENT_LABELS[plan.plan.intent] ?? plan.plan.intent}</Badge>
+                <Badge variant="outline">
+                  {INTENT_LABELS[plan.plan.intent] ?? plan.plan.intent}
+                </Badge>
                 <Badge variant="secondary">{plan.plan.operations_count} acción(es)</Badge>
               </div>
               <p className="text-sm text-foreground">{plan.plan.summary}</p>
               {plan.risk && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="border border-border rounded p-2">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Riesgo</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                      Riesgo
+                    </p>
                     <p className="text-sm font-medium">
                       {plan.risk.score}/100 · {plan.risk.level.toUpperCase()}
                     </p>
                   </div>
                   <div className="border border-border rounded p-2 md:col-span-2">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Factores</p>
-                    <p className="text-xs text-foreground">{plan.risk.factors.join(" · ") || "Sin factores relevantes"}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                      Factores
+                    </p>
+                    <p className="text-xs text-foreground">
+                      {plan.risk.factors.join(" · ") || "Sin factores relevantes"}
+                    </p>
                   </div>
                 </div>
               )}
               {plan.impact && (
                 <div className="bg-secondary/40 border border-border rounded p-2 space-y-1">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Impacto</p>
-                  <p className="text-xs text-foreground">Modifica: {plan.impact.will_modify.length ? plan.impact.will_modify.join(", ") : "ningún campo"}</p>
-                  <p className="text-xs text-muted-foreground">Conserva: {plan.impact.will_preserve.length} campo(s)</p>
-                  <p className="text-xs text-muted-foreground">Histórico/snapshot: {plan.impact.historical_snapshot ? "sí" : "no"}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Impacto
+                  </p>
+                  <p className="text-xs text-foreground">
+                    Modifica:{" "}
+                    {plan.impact.will_modify.length
+                      ? plan.impact.will_modify.join(", ")
+                      : "ningún campo"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Conserva: {plan.impact.will_preserve.length} campo(s)
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Histórico/snapshot: {plan.impact.historical_snapshot ? "sí" : "no"}
+                  </p>
                 </div>
               )}
               {plan.warnings.length > 0 && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2">
                   {plan.warnings.map((w, idx) => (
-                    <p key={idx} className="text-xs text-amber-700">• {w}</p>
+                    <p key={idx} className="text-xs text-amber-700">
+                      • {w}
+                    </p>
                   ))}
                 </div>
               )}
@@ -484,25 +569,56 @@ export function WorkspaceConstructor({ episode }: Props) {
 
         <div className="surface p-4 space-y-3">
           <p className="text-sm font-medium">Vista previa de cambios</p>
-          {!plan && <p className="text-sm text-muted-foreground">Aquí verás qué cambia, qué se conserva y posibles conflictos.</p>}
+          {!plan && (
+            <p className="text-sm text-muted-foreground">
+              Aquí verás qué cambia, qué se conserva y posibles conflictos.
+            </p>
+          )}
           {plan && (
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2 pb-1">
-                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={selectAllUpdates}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={selectAllUpdates}
+                >
                   Seleccionar todo
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={clearSelection}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={clearSelection}
+                >
                   Limpiar selección
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={selectConflicts}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={selectConflicts}
+                >
                   Solo conflictos
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={selectHighImpact}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[11px]"
+                  onClick={selectHighImpact}
+                >
                   Solo alto impacto
                 </Button>
               </div>
               {plan.changes.map((c, idx) => (
-                <div key={c.change_id || `${c.entity_type}-${c.action}-${c.field}-${idx}`} className="border border-border rounded-md p-3">
+                <div
+                  key={c.change_id || `${c.entity_type}-${c.action}-${c.field}-${idx}`}
+                  className="border border-border rounded-md p-3"
+                >
                   <div className="flex items-center gap-2 mb-1">
                     <Checkbox
                       checked={selectedChangeIds.includes(c.change_id)}
@@ -510,12 +626,20 @@ export function WorkspaceConstructor({ episode }: Props) {
                       disabled={c.status !== "update" || applying}
                     />
                     <p className="text-xs font-medium capitalize">{c.field.replace(/_/g, " ")}</p>
-                    <Badge variant="secondary" className="text-[10px]">{ENTITY_LABELS[c.entity_type]}</Badge>
-                    <Badge variant="secondary" className="text-[10px]">{ACTION_LABELS[c.action]}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{c.status}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {ENTITY_LABELS[c.entity_type]}
+                    </Badge>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {ACTION_LABELS[c.action]}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {c.status}
+                    </Badge>
                   </div>
                   {c.before !== null && c.before !== undefined && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">Antes: {String(c.before)}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      Antes: {String(c.before)}
+                    </p>
                   )}
                   <p className="text-xs text-foreground line-clamp-3">Después: {String(c.after)}</p>
                   {renderWordDelta(c.before, c.after)}
@@ -530,25 +654,47 @@ export function WorkspaceConstructor({ episode }: Props) {
           <div className="surface p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {hasBlockingConflicts ? (
-                <><AlertTriangle className="h-3.5 w-3.5 text-amber-600" />Hay conflictos: revisa antes de aplicar.</>
-              ) : (
-                <><Check className="h-3.5 w-3.5 text-emerald-600" />Propuesta lista para aplicar.</>
-              )}
+                {hasBlockingConflicts ? (
+                  <>
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                    Hay conflictos: revisa antes de aplicar.
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    Propuesta lista para aplicar.
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={handleCancel} disabled={applying}>
-                  <X className="h-4 w-4 mr-1" />Cancelar
+                  <X className="h-4 w-4 mr-1" />
+                  Cancelar
                 </Button>
                 <Button onClick={handleApply} disabled={applying || !canApply}>
-                  {applying ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Aplicando...</> : <><Check className="h-4 w-4 mr-1" />Aplicar cambios</>}
+                  {applying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Aplicando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Aplicar cambios
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Cambios seleccionados: {selectedChangeIds.length}</p>
+            <p className="text-xs text-muted-foreground">
+              Cambios seleccionados: {selectedChangeIds.length}
+            </p>
             {requiresExtraConfirmation && (
               <label className="flex items-center gap-2 text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded p-2">
-                <Checkbox checked={highRiskConfirmed} onCheckedChange={(v) => setHighRiskConfirmed(!!v)} />
+                <Checkbox
+                  checked={highRiskConfirmed}
+                  onCheckedChange={(v) => setHighRiskConfirmed(!!v)}
+                />
                 Confirmo revisión manual y autorizo aplicar cambios de riesgo alto.
               </label>
             )}
