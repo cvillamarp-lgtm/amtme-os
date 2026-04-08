@@ -206,7 +206,8 @@ export function useEpisodeDraft() {
           .from("episode_drafts")
           .update({ converted_to_episode_id: episodeId, updated_at: new Date().toISOString() })
           .eq("id", prev.id)
-          .then(() => {});
+          .then(() => {})
+          .catch(() => {});
       }
       return EMPTY_DRAFT;
     });
@@ -221,7 +222,8 @@ export function useEpisodeDraft() {
           .from("episode_drafts")
           .delete()
           .eq("id", prev.id)
-          .then(() => {});
+          .then(() => {})
+          .catch(() => {});
       }
       return EMPTY_DRAFT;
     });
