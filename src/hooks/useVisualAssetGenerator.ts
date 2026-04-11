@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 
 interface VisualAsset {
   piece_id: string;
@@ -41,20 +43,17 @@ export function useVisualAssetGenerator() {
       try {
         toast.info("Generando assets visuales... esto puede tardar 2-3 minutos");
 
-        // Call the generate-visual-assets Edge Function
-        const { data, error } = await supabase.functions.invoke(
+        // Use canonical invokeEdgeFunction client (handles token refresh, retry, timeout)
+        const data = await invokeEdgeFunction<{ assets?: VisualAsset[] }>(
           "generate-visual-assets",
           {
-            body: {
-              episode_id: episodeId,
-              episode_title: episodeTitle,
-              central_thesis: centralThesis,
-              theme: theme,
-            },
-          }
+            episode_id: episodeId,
+            episode_title: episodeTitle,
+            central_thesis: centralThesis,
+            theme: theme,
+          },
+          { timeoutMs: 90_000 } // image generation needs longer timeout
         );
-
-        if (error) throw error;
 
         // Update state with generated assets
         setState((prev) => ({
@@ -75,13 +74,13 @@ export function useVisualAssetGenerator() {
           .eq("id", episodeId);
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Error generating assets";
+          err instanceof Error ? err.message : "Error generando assets";
         setState((prev) => ({
           ...prev,
           isGenerating: false,
           error: message,
         }));
-        toast.error(`Error: ${message}`);
+        showEdgeFunctionError(err instanceof Error ? err : new Error(message));
       }
     },
     []

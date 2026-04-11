@@ -9,7 +9,7 @@ import "../_shared/deno-shims.d.ts";
  * Recibe: { semantic_map_id, semantic_json }
  * Retorna: Objeto con los 10 outputs, cada uno guardado en generated_assets
  *
- * Los 10 outputs se generan en paralelo con Promise.all.
+ * Los 10 outputs se generan en paralelo con Promise.allSettled.
  * Cada uno tiene word count validation según §12.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";

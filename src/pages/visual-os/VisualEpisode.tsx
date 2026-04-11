@@ -210,8 +210,8 @@ export default function VisualEpisode() {
       await updateEpisode.mutateAsync({ id: episodeId, thesis_central: thesis });
       await saveKeyPhrases.mutateAsync({ episodeId, phrases: phraseList });
       toast.success("Datos guardados");
-    } catch {
-      toast.error("Error al guardar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al guardar");
     } finally {
       setSaving(false);
     }
