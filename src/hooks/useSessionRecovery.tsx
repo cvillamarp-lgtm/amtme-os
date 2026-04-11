@@ -25,7 +25,7 @@ export function useSessionRecovery() {
         return;
       }
 
-      const result = await action.execute();
+      await action.execute();
       setPending(null);
       setRecovering(false);
     } catch (e) {

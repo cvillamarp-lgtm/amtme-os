@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
-import { getEdgeFunctionErrorMessage } from "@/services/functions/edgeFunctionErrors";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import hostPhotoWebp from "@/assets/host-reference.webp";
 
@@ -166,8 +166,7 @@ export default function PromptBuilder() {
         toast.success("¡Imagen generada exitosamente!");
       }
     } catch (e: unknown) {
-      // Image generation error - user notified via toast with specific error message
-      toast.error(getEdgeFunctionErrorMessage(e));
+      showEdgeFunctionError(e);
     } finally {
       setGenerating(false);
     }
@@ -194,8 +193,7 @@ export default function PromptBuilder() {
       if (linkEpisodeId) queryClient.invalidateQueries({ queryKey: ["episodes"] });
       toast.success("¡Imagen editada exitosamente!");
     } catch (e: unknown) {
-      // Image edit error - user notified via toast with specific error message
-      toast.error(getEdgeFunctionErrorMessage(e));
+      showEdgeFunctionError(e);
     } finally {
       setEditing(false);
     }
