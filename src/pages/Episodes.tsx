@@ -55,7 +55,7 @@ import {
 import type { ConflictOption } from "@/hooks/useEpisodeDraft";
 import { useSessionRecovery } from "@/hooks/useSessionRecovery";
 import { SessionExpiredDialog } from "@/components/SessionExpiredDialog";
-import type { Json } from "@/integrations/supabase/types";
+import type { Json, Tables } from "@/integrations/supabase/types";
 import { useSmartTable } from "@/hooks/useSmartTable";
 import {
   ListingToolbar,
@@ -135,6 +135,8 @@ interface GeneratedOptions {
   conflicto_central: ConflictOption[];
   intencion: ConflictOption[];
 }
+
+type EpisodeRow = Tables<"episodes">;
 
 // ─── Option Card ──────────────────────────────────────────────────────────────
 
@@ -219,8 +221,9 @@ export default function Episodes() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const sessionRecovery = useSessionRecovery();
-  const { data: episodes = [], isLoading } = useEpisodes();
-  const activeEpisodes = (episodes as any[]).filter((ep: any) => ep.status !== "archived");
+  const { data: episodesData = [], isLoading } = useEpisodes();
+  const episodes: EpisodeRow[] = episodesData;
+  const activeEpisodes = episodes.filter((ep) => ep.status !== "archived");
 
   const table = useSmartTable({
     data: activeEpisodes,
@@ -560,7 +563,7 @@ export default function Episodes() {
   const exportCSV = () => {
     const selectedEpisodes =
       table.selectedIds.size > 0
-        ? activeEpisodes.filter((ep: any) => table.selectedIds.has(ep.id))
+        ? activeEpisodes.filter((ep) => table.selectedIds.has(ep.id))
         : table.filtered;
 
     if (!selectedEpisodes.length) return;

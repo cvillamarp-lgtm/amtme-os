@@ -86,6 +86,16 @@ const PRICING_TIERS: PricingTier[] = [
   },
 ];
 
+const SUPPORT_EMAIL = "support@amtme.com";
+
+function buildStudioContactMessage(billingCycle: "monthly" | "annual") {
+  const subject = encodeURIComponent(`Plan Studio (${billingCycle})`);
+  const body = encodeURIComponent(
+    `Equipo AMTME,\n\nSolicito activar el plan Studio en modalidad ${billingCycle}.\n\nGracias.`
+  );
+  return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export function Pricing() {
@@ -107,11 +117,7 @@ export function Pricing() {
       return;
     }
 
-    const subject = encodeURIComponent(`Plan Studio (${billingCycle})`);
-    const body = encodeURIComponent(
-      `Hola AMTME,\n\nQuiero activar el plan Studio en modalidad ${billingCycle}.\n\nGracias.`
-    );
-    window.location.href = `mailto:support@amtme.com?subject=${subject}&body=${body}`;
+    window.location.href = buildStudioContactMessage(billingCycle);
   };
 
   return (
@@ -280,7 +286,7 @@ export function Pricing() {
         {/* Footer CTA */}
         <div className="max-w-2xl mx-auto mt-16 text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">
-            ¿Necesitas ayuda? Contáctanos en support@amtme.com
+            ¿Necesitas ayuda? Contáctanos en {SUPPORT_EMAIL}
           </p>
         </div>
       </div>
