@@ -195,15 +195,15 @@ serve(async (req) => {
       .single();
 
     if (accountError || !account) {
-      return errorResponse(cors, "VALIDATION_ERROR", "No hay cuenta de Instagram conectada. Ve a Cuentas → Conectar Instagram.",, 400);
+      return errorResponse(cors, "VALIDATION_ERROR", "No hay cuenta de Instagram conectada. Ve a Cuentas → Conectar Instagram.", 400);
     }
 
     if (!account.access_token) {
-      return errorResponse(cors, "VALIDATION_ERROR", "Token de Instagram no disponible. Reconecta la cuenta.",, 400);
+      return errorResponse(cors, "VALIDATION_ERROR", "Token de Instagram no disponible. Reconecta la cuenta.", 400);
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
-      return errorResponse(cors, "VALIDATION_ERROR", "Token de Instagram expirado. Ve a Cuentas y reconecta.",, 400);
+      return errorResponse(cors, "VALIDATION_ERROR", "Token de Instagram expirado. Ve a Cuentas y reconecta.", 400);
     }
 
     const accessToken = account.access_token as string;
@@ -213,7 +213,7 @@ serve(async (req) => {
     if (!igUserId) {
       const discovered = await discoverIgAccountId(accessToken);
       if (!discovered) {
-        return errorResponse(cors, "VALIDATION_ERROR", "No se encontró una cuenta de Instagram Business. Reconecta Instagram desde la página de Cuentas.",, 400);
+        return errorResponse(cors, "VALIDATION_ERROR", "No se encontró una cuenta de Instagram Business. Reconecta Instagram desde la página de Cuentas.", 400);
       }
       // Return descriptive error if discovery returned an error object
       if ("error" in discovered) {

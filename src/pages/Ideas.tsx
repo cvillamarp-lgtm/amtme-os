@@ -3,11 +3,23 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Lightbulb, Plus, Search } from "lucide-react";
@@ -31,23 +43,35 @@ function timeAgo(dateStr: string) {
 
 function statusConfig(status: string | null) {
   switch (status) {
-    case "captured":   return { label: "Capturada",  cls: "text-muted-foreground bg-muted border-border" };
-    case "evaluating": return { label: "Evaluando",  cls: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" };
-    case "approved":   return { label: "Aprobada",   cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
-    case "in_brief":   return { label: "En Brief",   cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
-    case "backlog":    return { label: "Backlog",     cls: "text-purple-400 bg-purple-400/10 border-purple-400/20" };
-    case "archived":   return { label: "Archivada",  cls: "text-muted-foreground bg-muted/30 border-border/40" };
-    default:           return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
+    case "captured":
+      return { label: "Capturada", cls: "text-muted-foreground bg-muted border-border" };
+    case "evaluating":
+      return { label: "Evaluando", cls: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" };
+    case "approved":
+      return { label: "Aprobada", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
+    case "in_brief":
+      return { label: "En Brief", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
+    case "backlog":
+      return { label: "Backlog", cls: "text-purple-400 bg-purple-400/10 border-purple-400/20" };
+    case "archived":
+      return { label: "Archivada", cls: "text-muted-foreground bg-muted/30 border-border/40" };
+    default:
+      return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
   }
 }
 
 function urgencyConfig(urgency: string | null) {
   switch (urgency) {
-    case "low":    return { label: "Baja",    cls: "text-muted-foreground" };
-    case "medium": return { label: "Media",   cls: "text-yellow-400" };
-    case "high":   return { label: "Alta",    cls: "text-orange-400" };
-    case "urgent": return { label: "Urgente", cls: "text-red-400" };
-    default:       return { label: "—",       cls: "text-muted-foreground" };
+    case "low":
+      return { label: "Baja", cls: "text-muted-foreground" };
+    case "medium":
+      return { label: "Media", cls: "text-yellow-400" };
+    case "high":
+      return { label: "Alta", cls: "text-orange-400" };
+    case "urgent":
+      return { label: "Urgente", cls: "text-red-400" };
+    default:
+      return { label: "—", cls: "text-muted-foreground" };
   }
 }
 
@@ -80,14 +104,15 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
   const uc = urgencyConfig(idea.urgency_level);
 
   return (
-    <Card
-      className="cursor-pointer hover:border-primary/30 transition-colors"
-      onClick={onOpen}
-    >
+    <Card className="cursor-pointer hover:border-primary/30 transition-colors" onClick={onOpen}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <TitleClamp className="text-sm flex-1" lines={2}>{idea.title}</TitleClamp>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
+          <TitleClamp className="text-sm flex-1" lines={2}>
+            {idea.title}
+          </TitleClamp>
+          <span
+            className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}
+          >
             {sc.label}
           </span>
         </div>
@@ -120,7 +145,9 @@ function IdeaCard({ idea, onOpen, onStatusChange }: IdeaCardProps) {
         {idea.tags && idea.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {idea.tags.slice(0, 3).map((t) => (
-              <Badge key={t} variant="secondary" className="text-xs px-1.5 py-0">{t}</Badge>
+              <Badge key={t} variant="secondary" className="text-xs px-1.5 py-0">
+                {t}
+              </Badge>
             ))}
             {idea.tags.length > 3 && (
               <span className="text-xs text-muted-foreground">+{idea.tags.length - 3}</span>
@@ -206,7 +233,9 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
   const convertToBrief = useMutation({
     mutationFn: async () => {
       if (!idea) return;
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
       const { error: briefErr } = await supabase.from("briefs").insert({
         user_id: user.id,
@@ -222,7 +251,10 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
         status: "draft",
       });
       if (briefErr) throw briefErr;
-      const { error: ideaErr } = await supabase.from("ideas").update({ status: "in_brief" }).eq("id", idea.id);
+      const { error: ideaErr } = await supabase
+        .from("ideas")
+        .update({ status: "in_brief" })
+        .eq("id", idea.id);
       if (ideaErr) throw ideaErr;
     },
     onSuccess: () => {
@@ -246,20 +278,34 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
   if (!idea) return null;
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto space-y-0 gap-0 p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-3">
             <SheetTitle className="text-base leading-snug flex-1">{idea.title}</SheetTitle>
-            <Button variant="ghost" size="sm" className="shrink-0 -mt-1" onClick={() => setEditing(!editing)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 -mt-1"
+              onClick={() => setEditing(!editing)}
+            >
               {editing ? "Cancelar" : "Editar"}
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>{sc.label}</span>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
+              {sc.label}
+            </span>
             <span className={`text-xs font-medium ${uc.cls}`}>⚡ {uc.label}</span>
             {idea.origin && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{idea.origin}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                {idea.origin}
+              </span>
             )}
           </div>
         </SheetHeader>
@@ -270,7 +316,11 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">Título</Label>
-                <Input className="mt-1" value={form.title ?? ""} onChange={(e) => setField("title", e.target.value)} />
+                <Input
+                  className="mt-1"
+                  value={form.title ?? ""}
+                  onChange={(e) => setField("title", e.target.value)}
+                />
               </div>
               <div>
                 <Label className="text-xs">Descripción</Label>
@@ -304,8 +354,13 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Origen</Label>
-                  <Select value={form.origin ?? "other"} onValueChange={(v) => setField("origin", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={form.origin ?? "other"}
+                    onValueChange={(v) => setField("origin", v)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="personal">Personal</SelectItem>
                       <SelectItem value="research">Investigación</SelectItem>
@@ -318,8 +373,13 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                 </div>
                 <div>
                   <Label className="text-xs">Urgencia</Label>
-                  <Select value={form.urgency_level ?? "medium"} onValueChange={(v) => setField("urgency_level", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={form.urgency_level ?? "medium"}
+                    onValueChange={(v) => setField("urgency_level", v)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Baja</SelectItem>
                       <SelectItem value="medium">Media</SelectItem>
@@ -330,19 +390,27 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                 </div>
               </div>
               <div>
-                <Label className="text-xs">Potencial de contenido: {form.content_potential_score ?? 3}/5</Label>
+                <Label className="text-xs">
+                  Potencial de contenido: {form.content_potential_score ?? 3}/5
+                </Label>
                 <Slider
                   className="mt-3"
-                  min={1} max={5} step={1}
+                  min={1}
+                  max={5}
+                  step={1}
                   value={[form.content_potential_score ?? 3]}
                   onValueChange={([v]) => setField("content_potential_score", v)}
                 />
               </div>
               <div>
-                <Label className="text-xs">Potencial de derivados: {form.derivative_potential_score ?? 3}/5</Label>
+                <Label className="text-xs">
+                  Potencial de derivados: {form.derivative_potential_score ?? 3}/5
+                </Label>
                 <Slider
                   className="mt-3"
-                  min={1} max={5} step={1}
+                  min={1}
+                  max={5}
+                  step={1}
                   value={[form.derivative_potential_score ?? 3]}
                   onValueChange={([v]) => setField("derivative_potential_score", v)}
                 />
@@ -374,7 +442,11 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                   onChange={(e) => setField("reference_links", e.target.value)}
                 />
               </div>
-              <Button className="w-full" onClick={() => save.mutate(form)} disabled={save.isPending}>
+              <Button
+                className="w-full"
+                onClick={() => save.mutate(form)}
+                disabled={save.isPending}
+              >
                 {save.isPending ? "Guardando..." : "Guardar cambios"}
               </Button>
             </div>
@@ -383,7 +455,9 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
             <div className="space-y-5">
               {idea.description && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Descripción</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Descripción
+                  </p>
                   <p className="text-sm leading-relaxed">{idea.description}</p>
                 </div>
               )}
@@ -392,13 +466,17 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                 <div className="grid grid-cols-2 gap-4">
                   {idea.theme && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Tema</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        Tema
+                      </p>
                       <p className="text-sm">{idea.theme}</p>
                     </div>
                   )}
                   {idea.emotional_theme && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Tema emocional</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        Tema emocional
+                      </p>
                       <p className="text-sm">{idea.emotional_theme}</p>
                     </div>
                   )}
@@ -407,20 +485,26 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 
               {/* Scores */}
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Potencial</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Potencial
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-muted/40 rounded-lg p-3 space-y-1">
                     <p className="text-xs text-muted-foreground">Contenido</p>
                     <div className="flex items-center gap-2">
                       <ScoreDots value={idea.content_potential_score} />
-                      <span className="text-base font-bold tabular-nums">{idea.content_potential_score ?? "—"}</span>
+                      <span className="text-base font-bold tabular-nums">
+                        {idea.content_potential_score ?? "—"}
+                      </span>
                     </div>
                   </div>
                   <div className="bg-muted/40 rounded-lg p-3 space-y-1">
                     <p className="text-xs text-muted-foreground">Derivados</p>
                     <div className="flex items-center gap-2">
                       <ScoreDots value={idea.derivative_potential_score} />
-                      <span className="text-base font-bold tabular-nums">{idea.derivative_potential_score ?? "—"}</span>
+                      <span className="text-base font-bold tabular-nums">
+                        {idea.derivative_potential_score ?? "—"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -428,17 +512,23 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 
               {idea.audience_fit && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Encaje con audiencia</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Encaje con audiencia
+                  </p>
                   <p className="text-sm">{idea.audience_fit}</p>
                 </div>
               )}
 
               {idea.tags && idea.tags.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Tags</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                    Tags
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {idea.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+                      <Badge key={t} variant="secondary" className="text-xs">
+                        {t}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -446,27 +536,36 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 
               {idea.notes && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Notas</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Notas
+                  </p>
                   <p className="text-sm text-muted-foreground">{idea.notes}</p>
                 </div>
               )}
 
               {idea.reference_links && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Referencias</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Referencias
+                  </p>
                   <p className="text-sm text-muted-foreground">{idea.reference_links}</p>
                 </div>
               )}
 
               {/* Action buttons */}
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Acciones
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   {idea.status === "captured" && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { onStatusChange(idea.id, "evaluating"); onClose(); }}
+                      onClick={() => {
+                        onStatusChange(idea.id, "evaluating");
+                        onClose();
+                      }}
                     >
                       Evaluar
                     </Button>
@@ -475,7 +574,10 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { onStatusChange(idea.id, "approved"); onClose(); }}
+                      onClick={() => {
+                        onStatusChange(idea.id, "approved");
+                        onClose();
+                      }}
                     >
                       Aprobar
                     </Button>
@@ -493,7 +595,10 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { onStatusChange(idea.id, "backlog"); onClose(); }}
+                      onClick={() => {
+                        onStatusChange(idea.id, "backlog");
+                        onClose();
+                      }}
                     >
                       Mover a Backlog
                     </Button>
@@ -503,7 +608,10 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
                       variant="ghost"
                       size="sm"
                       className="text-muted-foreground col-span-2"
-                      onClick={() => { onStatusChange(idea.id, "archived"); onClose(); }}
+                      onClick={() => {
+                        onStatusChange(idea.id, "archived");
+                        onClose();
+                      }}
                     >
                       Archivar idea
                     </Button>
@@ -525,13 +633,13 @@ function IdeaDetailSheet({ idea, open, onClose, onUpdated, onStatusChange }: Ide
 // ── Ideas (main page) ──────────────────────────────────────────────────────
 
 const TABS = [
-  { value: "all",        label: "Todas" },
-  { value: "captured",   label: "Capturadas" },
+  { value: "all", label: "Todas" },
+  { value: "captured", label: "Capturadas" },
   { value: "evaluating", label: "Evaluando" },
-  { value: "approved",   label: "Aprobadas" },
-  { value: "in_brief",   label: "En Brief" },
-  { value: "backlog",    label: "Backlog" },
-  { value: "archived",   label: "Archivadas" },
+  { value: "approved", label: "Aprobadas" },
+  { value: "in_brief", label: "En Brief" },
+  { value: "backlog", label: "Backlog" },
+  { value: "archived", label: "Archivadas" },
 ] as const;
 
 export default function Ideas() {
@@ -557,7 +665,9 @@ export default function Ideas() {
   // ── Mutations ──────────────────────────────────────────────────────────
   const createIdea = useMutation({
     mutationFn: async (fd: FormData) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
       const { error } = await supabase.from("ideas").insert({
         user_id: user.id,
@@ -595,9 +705,7 @@ export default function Ideas() {
   const counts = Object.fromEntries(
     TABS.map(({ value }) => [
       value,
-      value === "all"
-        ? ideas.length
-        : ideas.filter((i) => i.status === value).length,
+      value === "all" ? ideas.length : ideas.filter((i) => i.status === value).length,
     ])
   );
 
@@ -619,7 +727,6 @@ export default function Ideas() {
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="page-container animate-fade-in">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -629,7 +736,8 @@ export default function Ideas() {
         <Dialog open={openCapture} onOpenChange={setOpenCapture}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />Capturar idea
+              <Plus className="h-4 w-4 mr-2" />
+              Capturar idea
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -637,15 +745,26 @@ export default function Ideas() {
               <DialogTitle>Captura rápida</DialogTitle>
             </DialogHeader>
             <form
-              onSubmit={(e) => { e.preventDefault(); createIdea.mutate(new FormData(e.currentTarget)); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                createIdea.mutate(new FormData(e.currentTarget));
+              }}
               className="space-y-4"
             >
               <div>
                 <Label>Título *</Label>
-                <Input name="title" placeholder="¿Cuál es la idea?" required autoFocus className="mt-1" />
+                <Input
+                  name="title"
+                  placeholder="¿Cuál es la idea?"
+                  required
+                  autoFocus
+                  className="mt-1"
+                />
               </div>
               <div>
-                <Label>Descripción <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Label>
+                  Descripción <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
                 <Textarea
                   name="description"
                   placeholder="Desarrolla un poco la idea..."
@@ -657,7 +776,9 @@ export default function Ideas() {
                 <div>
                   <Label>Origen</Label>
                   <Select name="origin" defaultValue="personal">
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="personal">Personal</SelectItem>
                       <SelectItem value="research">Investigación</SelectItem>
@@ -671,7 +792,9 @@ export default function Ideas() {
                 <div>
                   <Label>Urgencia</Label>
                   <Select name="urgency_level" defaultValue="medium">
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Baja</SelectItem>
                       <SelectItem value="medium">Media</SelectItem>
@@ -728,8 +851,8 @@ export default function Ideas() {
             {search
               ? "Sin resultados para esa búsqueda"
               : tab === "all"
-              ? "Aún no hay ideas. ¡Captura la primera!"
-              : "No hay ideas en esta categoría"}
+                ? "Aún no hay ideas. ¡Captura la primera!"
+                : "No hay ideas en esta categoría"}
           </p>
           {!search && tab === "all" && (
             <Button
@@ -738,7 +861,8 @@ export default function Ideas() {
               className="mt-3"
               onClick={() => setOpenCapture(true)}
             >
-              <Plus className="h-4 w-4 mr-2" />Capturar primera idea
+              <Plus className="h-4 w-4 mr-2" />
+              Capturar primera idea
             </Button>
           )}
         </div>
