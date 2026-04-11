@@ -93,14 +93,25 @@ export function Pricing() {
 
   const handleCheckout = (tierId: string) => {
     if (tierId === "atoms") {
-      // Redirect to signup
       window.location.href = "/auth?redirect=/library";
       return;
     }
 
-    // TODO: Integrate Stripe checkout
-    // For now, show toast
-    alert(`Stripe checkout para ${tierId} (${billingCycle})`);
+    if (tierId === "pro") {
+      const params = new URLSearchParams({
+        redirect: "/library",
+        plan: "pro",
+        billing: billingCycle,
+      });
+      window.location.href = `/auth?${params.toString()}`;
+      return;
+    }
+
+    const subject = encodeURIComponent(`Plan Studio (${billingCycle})`);
+    const body = encodeURIComponent(
+      `Hola AMTME,\n\nQuiero activar el plan Studio en modalidad ${billingCycle}.\n\nGracias.`
+    );
+    window.location.href = `mailto:support@amtme.com?subject=${subject}&body=${body}`;
   };
 
   return (

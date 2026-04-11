@@ -104,6 +104,7 @@ const EPISODE_FILTER_DEFS: FilterDef[] = [
       { value: "recording", label: "Grabando" },
       { value: "editing", label: "En edición" },
       { value: "published", label: "Publicado" },
+      { value: "archived", label: "Archivado" },
     ],
   },
   {
@@ -219,9 +220,10 @@ export default function Episodes() {
   const navigate = useNavigate();
   const sessionRecovery = useSessionRecovery();
   const { data: episodes = [], isLoading } = useEpisodes();
+  const activeEpisodes = (episodes as any[]).filter((ep: any) => ep.status !== "archived");
 
   const table = useSmartTable({
-    data: episodes as any[],
+    data: activeEpisodes,
     columns: EPISODE_COLUMNS,
     searchFields: ["title", "number", "theme", "working_title"],
     defaultSort: [{ field: "number", direction: "desc" }],
@@ -532,10 +534,33 @@ export default function Episodes() {
     },
   });
 
+  const archiveEpisodes = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("episodes")
+        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["episodes"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
+      table.clearSelection();
+      toast.success(`${ids.length} episodio${ids.length === 1 ? "" : "s"} archivado${ids.length === 1 ? "" : "s"}`);
+    },
+    onError: (e) => {
+      if (isAuthError(e)) {
+        showEdgeFunctionError(e);
+        return;
+      }
+      toast.error((e as Error).message);
+    },
+  });
+
   const exportCSV = () => {
     const selectedEpisodes =
       table.selectedIds.size > 0
-        ? (episodes as any[]).filter((ep: any) => table.selectedIds.has(ep.id))
+        ? activeEpisodes.filter((ep: any) => table.selectedIds.has(ep.id))
         : table.filtered;
 
     if (!selectedEpisodes.length) return;
@@ -575,6 +600,8 @@ export default function Episodes() {
         return "Grabando";
       case "editing":
         return "En edición";
+      case "archived":
+        return "Archivado";
       default:
         return "Borrador";
     }
@@ -608,7 +635,14 @@ export default function Episodes() {
           },
           {
             label: "Archivar",
-            onClick: () => toast.info("Próximamente"),
+            onClick: () => {
+              const ids = Array.from(table.selectedIds);
+              if (!ids.length) {
+                toast.info("Selecciona al menos un episodio para archivar");
+                return;
+              }
+              archiveEpisodes.mutate(ids);
+            },
           },
         ]}
       />
@@ -632,7 +666,7 @@ export default function Episodes() {
         <Button
           variant="outline"
           onClick={exportCSV}
-          disabled={!(episodes as any[]).length}
+          disabled={!activeEpisodes.length}
           size="sm"
         >
           <Download className="h-4 w-4 mr-2" />

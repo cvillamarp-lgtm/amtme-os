@@ -294,7 +294,10 @@ function generarPrompt(
   data: EpisodeData,
   fondoImg02: "cobalt" | "negro" = "cobalt"
 ): string {
-  const copy = data[pieza.copyKey] || "[COPY PENDIENTE]";
+  const fallbackCopy = [data.tesis, data.copy_portada, data.copy_lanzamiento]
+    .map((value) => value?.trim())
+    .find(Boolean);
+  const copy = data[pieza.copyKey]?.trim() || fallbackCopy || "Sin copy disponible";
 
   const fondoSection =
     pieza.hostRef === "imagen02"
