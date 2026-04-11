@@ -53,6 +53,19 @@ interface Pieza {
   hostRef: "imagen01" | "imagen02";
 }
 
+const VISUAL_COPY_FALLBACK_KEYS: Array<keyof EpisodeData> = [
+  "tesis",
+  "copy_portada",
+  "copy_lanzamiento",
+];
+
+function resolveVisualCopy(pieza: Pieza, data: EpisodeData): string {
+  const primaryCopy = data[pieza.copyKey]?.trim();
+  if (primaryCopy) return primaryCopy;
+  const fallbackCopy = VISUAL_COPY_FALLBACK_KEYS.map((key) => data[key]?.trim()).find(Boolean);
+  return fallbackCopy || "Sin copy disponible";
+}
+
 // ─── SISTEMA FIJO DE PIEZAS ───────────────────────────────────────────────────
 
 const PIEZAS: Pieza[] = [
@@ -294,7 +307,7 @@ function generarPrompt(
   data: EpisodeData,
   fondoImg02: "cobalt" | "negro" = "cobalt"
 ): string {
-  const copy = data[pieza.copyKey] || "[COPY PENDIENTE]";
+  const copy = resolveVisualCopy(pieza, data);
 
   const fondoSection =
     pieza.hostRef === "imagen02"
