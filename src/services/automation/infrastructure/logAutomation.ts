@@ -49,7 +49,7 @@ export async function logAutomation(entry: AutomationLogEntry): Promise<void> {
       data: { session },
     } = await supabase.auth.getSession();
 
-    supabase
+    await supabase
       .from("automation_logs")
       .insert({
         user_id: session?.user?.id ?? null,
@@ -64,8 +64,7 @@ export async function logAutomation(entry: AutomationLogEntry): Promise<void> {
         error_message: entry.errorMessage ?? null,
         duration_ms: entry.durationMs ?? null,
         metadata: entry.metadata ?? {},
-      })
-      .then(() => {});
+      });
   } catch {
     // Logging must never crash the calling code
   }

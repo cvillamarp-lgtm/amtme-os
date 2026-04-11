@@ -453,7 +453,8 @@ export default function Episodes() {
             supabase
               .from("change_history")
               .insert(historyRows)
-              .then(() => {});
+              .then(() => {})
+              .catch(() => {});
           }
         }
       }
