@@ -137,7 +137,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const [generatingAll, setGeneratingAll] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>("");
-  const lastHydratedSnapshotRef = useRef<string>("");
+  const previousEpisodeSnapshotRef = useRef<string>("");
   const formRef = useRef(form);
   const blockStatesRef = useRef(blockStates);
   const versionHistoryRef = useRef(versionHistory);
@@ -162,11 +162,11 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         versionHistory: nextHistory,
       });
 
-      if (snapshot === lastHydratedSnapshotRef.current) {
+      if (snapshot === previousEpisodeSnapshotRef.current) {
         return;
       }
 
-      lastHydratedSnapshotRef.current = snapshot;
+      previousEpisodeSnapshotRef.current = snapshot;
       lastSavedRef.current = JSON.stringify(buildSavePayload(nextForm, nextStates, nextHistory));
       syncLocalState(nextForm, nextStates, nextHistory);
     }

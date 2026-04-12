@@ -82,6 +82,8 @@ export function useEpisode(id?: string) {
       const previousEpisode = queryClient.getQueryData<Episode | null>(["episode", id]);
       const previousEpisodes = queryClient.getQueryData<Episode[]>(["episodes"]);
 
+      // Mirror the pending update into React Query immediately so workspace tabs
+      // and save-triggered rerenders keep reading the same episode snapshot.
       if (previousEpisode) {
         queryClient.setQueryData<Episode>(["episode", id], {
           ...previousEpisode,
