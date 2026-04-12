@@ -141,10 +141,11 @@ export async function callClaude(
 
   if (!res.ok) {
     const status = res.status;
+    const body = await res.text().catch(() => "");
+    console.error(`[AI][claude] status=${status} body=${body.slice(0, 400)}`);
     if (status === 429) throw new Error("Claude rate limit — retry later.");
     if (status === 402) throw new Error("Claude quota exhausted — check billing at console.anthropic.com.");
     if (status === 401) throw new Error("Invalid ANTHROPIC_API_KEY.");
-    const body = await res.text().catch(() => "");
     throw new Error(`Claude API error ${status}: ${body}`);
   }
 
@@ -260,6 +261,10 @@ export async function callAI(
 
         if (!res.ok) {
           const status = res.status;
+          const errorBody = await res.text().catch(() => "");
+          console.warn(
+            `[AI] provider=${provider.name} status=${status} attempt=${attempt + 1} body=${errorBody.slice(0, 400)}`
+          );
           // Retry on these status codes
           if (status === 429 || status === 402 || (status >= 500 && status <= 599)) {
             const msg = `${provider.name} returned ${status}`;
@@ -270,12 +275,12 @@ export async function callAI(
           }
           // Move to next provider on invalid key
           if (status === 401) {
-            const msg = "invalid key";
-            console.warn(`[AI] ${provider.name} ${msg}, trying next provider`);
-            lastError = new Error(`${provider.name} ${msg}`);
+            const msg = `${provider.name} returned 401 invalid key`;
+            console.warn(`[AI] ${msg}, trying next provider`);
+            lastError = new Error(msg);
             break;
           }
-          throw new Error(`AI error ${status}`);
+          throw new Error(`AI error ${status}: ${errorBody.slice(0, 400)}`);
         }
 
         const data = await res.json();

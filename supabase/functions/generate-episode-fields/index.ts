@@ -38,6 +38,29 @@ const FIELD_INSTRUCTIONS: Record<string, string> = {
   intencion_del_episodio: 'la intención del episodio en una oración. Qué quiere que el oyente sienta, piense o se permita al terminar de escuchar.',
 };
 
+function mapAiProviderError(message: string): { code: string; status: number } | null {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes("quota") ||
+    normalized.includes("créditos") ||
+    normalized.includes("credits") ||
+    /\b402\b/.test(normalized)
+  ) {
+    return { code: "QUOTA_EXCEEDED", status: 402 };
+  }
+  if (
+    normalized.includes("invalid key") ||
+    normalized.includes("unauthorized") ||
+    /\b401\b/.test(normalized)
+  ) {
+    return { code: "AI_GATEWAY_UNAUTHORIZED", status: 401 };
+  }
+  if (normalized.includes("ai error") || normalized.includes("returned 5") || /\b500\b/.test(normalized)) {
+    return { code: "AI_GATEWAY_ERROR", status: 500 };
+  }
+  return null;
+}
+
 serve(async (req) => {
   const cors = getCorsHeaders(req);
 
@@ -58,6 +81,7 @@ serve(async (req) => {
     if (authError || !user) {
       return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
     }
+    console.log("[generate-episode-fields] Authenticated request", { userId: user.id });
 
     const body = await req.json();
     const { mode } = body;
@@ -227,8 +251,10 @@ ${fieldInstructions}
   } catch (error) {
     console.error("generate-episode-fields error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    const code = message.includes("Créditos") ? "QUOTA_EXCEEDED" : "INTERNAL_ERROR";
-    const status = message.includes("Créditos") ? 402 : 500;
-    return errorResponse(cors, code, message, status);
+    const aiError = mapAiProviderError(message);
+    if (aiError) {
+      return errorResponse(cors, aiError.code, message, aiError.status);
+    }
+    return errorResponse(cors, "INTERNAL_ERROR", message, 500);
   }
 });
