@@ -14,6 +14,7 @@ import "./deno-shims.d.ts";
 const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds for AI calls
 const EXPONENTIAL_BACKOFF_BASE_MS = 500;
 const MAX_RETRIES = 2;
+const MAX_ERROR_BODY_LOG_LENGTH = 400;
 
 /**
  * Wrap a fetch call with timeout enforcement.
@@ -141,10 +142,11 @@ export async function callClaude(
 
   if (!res.ok) {
     const status = res.status;
+    const body = await res.text().catch(() => "");
+    console.error(`[AI][claude] status=${status} body=${body.slice(0, MAX_ERROR_BODY_LOG_LENGTH)}`);
     if (status === 429) throw new Error("Claude rate limit — retry later.");
     if (status === 402) throw new Error("Claude quota exhausted — check billing at console.anthropic.com.");
     if (status === 401) throw new Error("Invalid ANTHROPIC_API_KEY.");
-    const body = await res.text().catch(() => "");
     throw new Error(`Claude API error ${status}: ${body}`);
   }
 

@@ -113,6 +113,7 @@ serve(async (req) => {
         }),
       );
     }
+    console.log("[generate-episode-fields] Authenticated request", { userId: user.id });
 
     const body = await req.json();
     const { mode } = body;
@@ -384,8 +385,10 @@ ${fieldInstructions}
   } catch (error) {
     console.error("generate-episode-fields error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    const code = message.includes("Créditos") ? "QUOTA_EXCEEDED" : "INTERNAL_ERROR";
-    const status = message.includes("Créditos") ? 402 : 500;
-    return errorResponse(cors, code, message, status);
+    const aiError = mapAiProviderError(message);
+    if (aiError) {
+      return errorResponse(cors, aiError.code, message, aiError.status);
+    }
+    return errorResponse(cors, "INTERNAL_ERROR", message, 500);
   }
 });
