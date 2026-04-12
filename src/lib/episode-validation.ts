@@ -43,6 +43,7 @@ export interface AuditResult {
 const PRODUCTION_REQUIRED_FIELDS: { field: string; label: string }[] = [
   { field: "number", label: "Número de episodio" },
   { field: "working_title", label: "Título de trabajo" },
+  { field: "idea_principal", label: "Idea principal" },
   { field: "theme", label: "Tema" },
   { field: "summary", label: "Resumen" },
   { field: "cta", label: "CTA" },
@@ -64,6 +65,7 @@ export function auditEpisode(episode: Record<string, any>): AuditResult {
     { field: "number", label: "Número" },
     { field: "working_title", label: "Título de trabajo" },
     { field: "final_title", label: "Título final" },
+    { field: "idea_principal", label: "Idea principal" },
     { field: "theme", label: "Tema" },
     { field: "core_thesis", label: "Tesis central" },
     { field: "summary", label: "Resumen" },

@@ -30,6 +30,7 @@ interface FormFields {
   working_title: string;
   final_title: string;
   titulo_original: string;
+  idea_principal: string;
   theme: string;
   core_thesis: string;
   summary: string;
@@ -65,6 +66,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
     working_title: "",
     final_title: "",
     titulo_original: "",
+    idea_principal: "",
     theme: "",
     core_thesis: "",
     summary: "",
@@ -98,6 +100,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         working_title: episode.working_title || episode.title || "",
         final_title: episode.final_title || "",
         titulo_original: episode.titulo_original || "",
+        idea_principal: episode.idea_principal || "",
         theme: episode.theme || "",
         core_thesis: episode.core_thesis || "",
         summary: episode.summary || "",
@@ -221,7 +224,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       const data = await invokeEdgeFunction<{ value?: string }>("generate-episode-fields", {
         mode: "regenerate_field",
         field_name: fieldName,
-        idea_principal: episode.idea_principal,
+        idea_principal: form.idea_principal,
         episode_number: episode.number,
         current_fields: {
           working_title: form.working_title,
@@ -286,7 +289,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       const data = await invokeEdgeFunction<{ options: BlockOption[] }>("generate-episode-fields", {
         mode: "generate_options",
         field_name: fieldName,
-        idea_principal: episode.idea_principal,
+        idea_principal: form.idea_principal,
         episode_number: episode.number,
         count: 3,
         current_fields: {
@@ -334,14 +337,14 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Generate ALL 8 base fields at once ──────────────────────
   const generateAll = async () => {
-    if (!episode.idea_principal) {
+    if (!form.idea_principal.trim()) {
       toast.error("Agrega una idea principal al episodio antes de generar todos los campos");
       return;
     }
     setGeneratingAll(true);
     try {
       const data = await invokeEdgeFunction<{ fields: Record<string, string> }>("generate-episode-fields", {
-        idea_principal: episode.idea_principal,
+        idea_principal: form.idea_principal,
         episode_number: episode.number,
         conflicto_central: (episode as Record<string, unknown>).conflicto_central,
         intencion_del_episodio: (episode as Record<string, unknown>).intencion_del_episodio,
@@ -509,6 +512,15 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       {/* Contenido */}
       <div className="surface p-5 space-y-4">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contenido</p>
+        <div>
+          <Label>Idea principal *</Label>
+          <Textarea
+            value={form.idea_principal}
+            onChange={(e) => update("idea_principal", e.target.value)}
+            rows={2}
+            placeholder="Ej: la diferencia entre soltar y rendirse"
+          />
+        </div>
         {renderBlock("theme",
           <Input value={form.theme} onChange={(e) => update("theme", e.target.value)} />
         )}
