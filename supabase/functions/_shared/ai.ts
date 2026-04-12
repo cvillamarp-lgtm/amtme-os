@@ -142,6 +142,7 @@ export async function callClaude(
   if (!res.ok) {
     const status = res.status;
     if (status === 429) throw new Error("Claude rate limit — retry later.");
+    if (status === 402) throw new Error("Claude quota exhausted — check billing at console.anthropic.com.");
     if (status === 401) throw new Error("Invalid ANTHROPIC_API_KEY.");
     const body = await res.text().catch(() => "");
     throw new Error(`Claude API error ${status}: ${body}`);

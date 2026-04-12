@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { isAuthError, showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 import { buildVisualPromptImagePayload } from "@/lib/image-generation-payload";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -51,6 +52,19 @@ interface Pieza {
   composicion: string;
   copyKey: keyof EpisodeData;
   hostRef: "imagen01" | "imagen02";
+}
+
+const VISUAL_COPY_FALLBACK_KEYS: Array<keyof EpisodeData> = [
+  "tesis",
+  "copy_portada",
+  "copy_lanzamiento",
+];
+
+function resolveVisualCopy(pieza: Pieza, data: EpisodeData): string {
+  const primaryCopy = data[pieza.copyKey]?.trim();
+  if (primaryCopy) return primaryCopy;
+  const fallbackCopy = VISUAL_COPY_FALLBACK_KEYS.map((key) => data[key]?.trim()).find(Boolean);
+  return fallbackCopy || "Sin copy disponible";
 }
 
 // ─── SISTEMA FIJO DE PIEZAS ───────────────────────────────────────────────────
@@ -294,7 +308,7 @@ function generarPrompt(
   data: EpisodeData,
   fondoImg02: "cobalt" | "negro" = "cobalt"
 ): string {
-  const copy = data[pieza.copyKey] || "[COPY PENDIENTE]";
+  const copy = resolveVisualCopy(pieza, data);
 
   const fondoSection =
     pieza.hostRef === "imagen02"
@@ -478,7 +492,7 @@ export default function VisualPromptGenerator() {
         toast.success("✨ Copy generado para las 15 piezas");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al generar copy");
+      showEdgeFunctionError(e instanceof Error ? e : new Error("Error al generar copy"));
     } finally {
       setGeneratingCopy(false);
     }
@@ -527,6 +541,7 @@ export default function VisualPromptGenerator() {
         await saveAsset(pieza, result.imageUrl);
       }
     } catch (e) {
+      if (isAuthError(e)) { showEdgeFunctionError(e); return; }
       toast.error(`Error en "${pieza.nombre}": ${e instanceof Error ? e.message : "Error desconocido"}`);
     } finally {
       setLoadingPieces((prev) => ({ ...prev, [pieza.id]: false }));

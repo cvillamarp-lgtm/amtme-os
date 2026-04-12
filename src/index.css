@@ -9,46 +9,46 @@
      ───────────────────────────────────────────────────────────── */
   :root {
     /* Surfaces */
-    --background:          240 6% 97%;   /* #F5F5F7 — Apple systemBackground */
-    --foreground:          240 4% 12%;   /* #1D1D1F — Apple label */
+    --background: 240 6% 97%; /* #F5F5F7 — Apple systemBackground */
+    --foreground: 240 4% 12%; /* #1D1D1F — Apple label */
 
-    --card:                0 0% 100%;    /* #FFFFFF — white card */
-    --card-foreground:     240 4% 12%;
+    --card: 0 0% 100%; /* #FFFFFF — white card */
+    --card-foreground: 240 4% 12%;
 
-    --popover:             0 0% 100%;
-    --popover-foreground:  240 4% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 4% 12%;
 
     /* Brand primary — AMTME Teal #407E8C → Apple-ified */
-    --primary:             193 37% 40%;
-    --primary-foreground:  0 0% 100%;
+    --primary: 193 37% 40%;
+    --primary-foreground: 0 0% 100%;
 
     /* Semantic */
-    --secondary:           240 5% 94%;   /* #EFEFF0 — systemGray6 */
+    --secondary: 240 5% 94%; /* #EFEFF0 — systemGray6 */
     --secondary-foreground: 240 4% 12%;
 
-    --muted:               240 5% 91%;   /* #E8E8EA — systemGray5 */
-    --muted-foreground:    240 3% 44%;   /* #6E6E73 — Apple secondaryLabel */
+    --muted: 240 5% 91%; /* #E8E8EA — systemGray5 */
+    --muted-foreground: 240 3% 44%; /* #6E6E73 — Apple secondaryLabel */
 
-    --accent:              240 5% 94%;
-    --accent-foreground:   193 37% 35%;
+    --accent: 240 5% 94%;
+    --accent-foreground: 193 37% 35%;
 
-    --destructive:         356 100% 45%; /* #E5000A — Apple systemRed */
+    --destructive: 356 100% 45%; /* #E5000A — Apple systemRed */
     --destructive-foreground: 0 0% 100%;
 
-    --border:              240 5% 84%;   /* #D2D2D7 — Apple separator */
-    --input:               240 5% 91%;   /* same as muted — filled input bg */
-    --ring:                193 37% 40%;
+    --border: 240 5% 84%; /* #D2D2D7 — Apple separator */
+    --input: 240 5% 91%; /* same as muted — filled input bg */
+    --ring: 193 37% 40%;
 
     /* Sidebar — macOS sidebar style */
-    --sidebar-background:  240 6% 97%;
-    --sidebar-foreground:  240 4% 12%;
-    --sidebar-primary:     193 37% 40%;
+    --sidebar-background: 240 6% 97%;
+    --sidebar-foreground: 240 4% 12%;
+    --sidebar-primary: 193 37% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:      240 5% 91%;
+    --sidebar-accent: 240 5% 91%;
     --sidebar-accent-foreground: 240 4% 12%;
-    --sidebar-border:      240 5% 88%;
-    --sidebar-ring:        193 37% 40%;
-    --sidebar:             240 6% 97%;
+    --sidebar-border: 240 5% 88%;
+    --sidebar-ring: 193 37% 40%;
+    --sidebar: 240 6% 97%;
 
     /* Charts — muted brand tones */
     --chart-1: 193 37% 40%;
@@ -57,29 +57,31 @@
     --chart-4: 168 40% 45%;
     --chart-5: 240 3% 60%;
 
-    --success:             142 71% 38%;
-    --success-foreground:  0 0% 100%;
-    --warning:             38 92% 45%;
-    --warning-foreground:  0 0% 100%;
+    --success: 142 71% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
 
     /* Layout */
-    --radius: 0.875rem;   /* 14px — Apple's standard card radius */
+    --radius: 1rem; /* 16px — modern Apple card radius */
 
     /* Apple-style layered shadows (light) */
-    --shadow-2xs: 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-xs:  0 1px 4px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
-    --shadow-sm:  0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
-    --shadow:     0 2px 12px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05);
-    --shadow-md:  0 4px 16px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.05);
-    --shadow-lg:  0 8px 28px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06);
-    --shadow-xl:  0 16px 48px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
-    --shadow-2xl: 0 24px 64px rgba(0,0,0,0.16), 0 0 0 0.5px rgba(0,0,0,0.08);
+    --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+    --shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
 
     /* Typography */
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-                 system-ui, "Helvetica Neue", Arial, sans-serif;
-    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-                    system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-sans:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui,
+      "Helvetica Neue", Arial, sans-serif;
+    --font-display:
+      -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui,
+      "Helvetica Neue", Arial, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
 
     --tracking-normal: -0.022em;
@@ -91,45 +93,45 @@
      ───────────────────────────────────────────────────────────── */
   .dark {
     /* Surfaces — pure black base like Apple dark mode */
-    --background:          0 0% 0%;      /* #000000 — systemBackground dark */
-    --foreground:          0 0% 100%;    /* #FFFFFF */
+    --background: 0 0% 0%; /* #000000 — systemBackground dark */
+    --foreground: 0 0% 100%; /* #FFFFFF */
 
-    --card:                240 5% 11%;   /* #1C1C1E — secondarySystemBackground */
-    --card-foreground:     0 0% 100%;
+    --card: 240 5% 11%; /* #1C1C1E — secondarySystemBackground */
+    --card-foreground: 0 0% 100%;
 
-    --popover:             240 4% 17%;   /* #2C2C2E — tertiarySystemBackground */
-    --popover-foreground:  0 0% 100%;
+    --popover: 240 4% 17%; /* #2C2C2E — tertiarySystemBackground */
+    --popover-foreground: 0 0% 100%;
 
     /* Brand primary — lighter teal for dark */
-    --primary:             193 37% 58%;
-    --primary-foreground:  0 0% 100%;
+    --primary: 193 37% 58%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary:           240 4% 17%;   /* #2C2C2E */
+    --secondary: 240 4% 17%; /* #2C2C2E */
     --secondary-foreground: 0 0% 100%;
 
-    --muted:               240 4% 23%;   /* #3A3A3C — quaternarySystemBackground */
-    --muted-foreground:    240 5% 62%;   /* Apple secondaryLabel dark */
+    --muted: 240 4% 23%; /* #3A3A3C — quaternarySystemBackground */
+    --muted-foreground: 240 5% 62%; /* Apple secondaryLabel dark */
 
-    --accent:              240 4% 17%;
-    --accent-foreground:   193 37% 65%;
+    --accent: 240 4% 17%;
+    --accent-foreground: 193 37% 65%;
 
-    --destructive:         356 100% 62%; /* #FF453A — Apple systemRed dark */
+    --destructive: 356 100% 62%; /* #FF453A — Apple systemRed dark */
     --destructive-foreground: 0 0% 100%;
 
-    --border:              240 4% 19%;   /* barely-visible separator */
-    --input:               240 4% 17%;
-    --ring:                193 37% 58%;
+    --border: 240 4% 19%; /* barely-visible separator */
+    --input: 240 4% 17%;
+    --ring: 193 37% 58%;
 
     /* Sidebar — slightly darker than card */
-    --sidebar-background:  240 5% 8%;    /* #141416 */
-    --sidebar-foreground:  0 0% 85%;
-    --sidebar-primary:     193 37% 58%;
+    --sidebar-background: 240 5% 8%; /* #141416 */
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 193 37% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent:      240 4% 17%;
+    --sidebar-accent: 240 4% 17%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border:      240 4% 14%;
-    --sidebar-ring:        193 37% 58%;
-    --sidebar:             240 5% 8%;
+    --sidebar-border: 240 4% 14%;
+    --sidebar-ring: 193 37% 58%;
+    --sidebar: 240 5% 8%;
 
     /* Charts */
     --chart-1: 193 37% 58%;
@@ -138,20 +140,20 @@
     --chart-4: 168 40% 58%;
     --chart-5: 240 5% 55%;
 
-    --success:             142 60% 45%;
-    --success-foreground:  0 0% 100%;
-    --warning:             38 90% 58%;
-    --warning-foreground:  0 0% 0%;
+    --success: 142 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 90% 58%;
+    --warning-foreground: 0 0% 0%;
 
     /* Apple-style layered shadows (dark — deeper) */
-    --shadow-2xs: 0 1px 2px rgba(0,0,0,0.30);
-    --shadow-xs:  0 1px 4px rgba(0,0,0,0.40), 0 0 0 0.5px rgba(255,255,255,0.04);
-    --shadow-sm:  0 2px 8px rgba(0,0,0,0.45), 0 0 0 0.5px rgba(255,255,255,0.05);
-    --shadow:     0 2px 12px rgba(0,0,0,0.50), 0 0 0 0.5px rgba(255,255,255,0.06);
-    --shadow-md:  0 4px 20px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.06);
-    --shadow-lg:  0 8px 32px rgba(0,0,0,0.60), 0 0 0 0.5px rgba(255,255,255,0.07);
-    --shadow-xl:  0 16px 52px rgba(0,0,0,0.65), 0 0 0 0.5px rgba(255,255,255,0.07);
-    --shadow-2xl: 0 28px 72px rgba(0,0,0,0.70), 0 0 0 0.5px rgba(255,255,255,0.08);
+    --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.04);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+    --shadow-xl: 0 16px 52px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+    --shadow-2xl: 0 28px 72px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -170,6 +172,12 @@
     scroll-behavior: smooth;
   }
 
+  :where(button, a, [role="button"], input, textarea, select, .stat-card, .surface) {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
@@ -178,7 +186,12 @@
     letter-spacing: var(--tracking-normal);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     letter-spacing: -0.025em;
     font-weight: 600;
@@ -192,8 +205,13 @@
   }
 
   /* Scrollbar — minimal, Apple-like */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 9999px;
@@ -226,11 +244,13 @@
     border-radius: var(--radius);
     padding: 1.25rem;
     box-shadow: var(--shadow);
-    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    transition:
+      box-shadow 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   .stat-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
   }
 
   /* Generic surface */
@@ -240,10 +260,12 @@
     box-shadow: var(--shadow-sm);
   }
   .surface-hover {
-    @apply transition-colors duration-150;
+    @apply transition-all duration-200;
   }
   .surface-hover:hover {
     background: hsl(var(--muted) / 0.6);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
   }
 
   .empty-state {
@@ -252,10 +274,13 @@
 
   /* Apple vibrancy — frosted glass for overlays */
   .glass {
-    background: hsl(var(--card) / 0.8);
+    background: hsl(var(--card) / 0.72);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 0.5px solid hsl(var(--border) / 0.5);
+    box-shadow: var(--shadow-sm);
+  }
+  .dark .glass {
+    background: hsl(var(--card) / 0.56);
   }
 
   /* Grouped section (iOS settings style) */
@@ -280,10 +305,22 @@
 }
 
 @keyframes apple-fade-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.99); }
-  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 @keyframes apple-slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

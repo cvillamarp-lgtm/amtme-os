@@ -86,6 +86,16 @@ const PRICING_TIERS: PricingTier[] = [
   },
 ];
 
+const SUPPORT_EMAIL = "support@amtme.com";
+
+function buildStudioContactMessage(billingCycle: "monthly" | "annual") {
+  const subject = encodeURIComponent(`Plan Studio (${billingCycle})`);
+  const body = encodeURIComponent(
+    `Equipo AMTME,\n\nSolicito activar el plan Studio en modalidad ${billingCycle}.\n\nGracias.`
+  );
+  return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export function Pricing() {
@@ -93,14 +103,21 @@ export function Pricing() {
 
   const handleCheckout = (tierId: string) => {
     if (tierId === "atoms") {
-      // Redirect to signup
       window.location.href = "/auth?redirect=/library";
       return;
     }
 
-    // TODO: Integrate Stripe checkout
-    // For now, show toast
-    alert(`Stripe checkout para ${tierId} (${billingCycle})`);
+    if (tierId === "pro") {
+      const params = new URLSearchParams({
+        redirect: "/library",
+        plan: "pro",
+        billing: billingCycle,
+      });
+      window.location.href = `/auth?${params.toString()}`;
+      return;
+    }
+
+    window.location.href = buildStudioContactMessage(billingCycle);
   };
 
   return (
@@ -269,7 +286,7 @@ export function Pricing() {
         {/* Footer CTA */}
         <div className="max-w-2xl mx-auto mt-16 text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">
-            ¿Necesitas ayuda? Contáctanos en support@amtme.com
+            ¿Necesitas ayuda? Contáctanos en {SUPPORT_EMAIL}
           </p>
         </div>
       </div>

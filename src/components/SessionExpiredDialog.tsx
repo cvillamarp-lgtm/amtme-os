@@ -36,7 +36,7 @@ export function SessionExpiredDialog({ open, onRetry, onLoginComplete }: Session
         <p>Tu sesión ha expirado. Por favor, inicia sesión para continuar.</p>
         <DialogFooter>
           <Button onClick={handleLogin} variant="outline">Ir a iniciar sesión</Button>
-          <Button onClick={handleRetry} disabled={retrying}>{retrying ? 'Reinentando...' : 'Reintentar'}</Button>
+          <Button onClick={handleRetry} disabled={retrying}>{retrying ? 'Reintentando...' : 'Reintentar'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

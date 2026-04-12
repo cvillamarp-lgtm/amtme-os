@@ -1,9 +1,30 @@
 import React from "react";
 import {
-  Home, Mic, Factory, BarChart3, ListTodo, LogOut,
-  Lightbulb, Send, FlaskConical, Users, Sun, Moon,
-  AudioWaveform, BookOpen, StickyNote, Layers, DollarSign,
-  CalendarDays, FileText, Wand2, Palette, Brush, ImagePlay, BookMarked, Globe2,
+  Home,
+  Mic,
+  Factory,
+  BarChart3,
+  ListTodo,
+  LogOut,
+  Lightbulb,
+  Send,
+  FlaskConical,
+  Users,
+  Sun,
+  Moon,
+  AudioWaveform,
+  BookOpen,
+  StickyNote,
+  Layers,
+  DollarSign,
+  CalendarDays,
+  FileText,
+  Wand2,
+  Palette,
+  Brush,
+  ImagePlay,
+  BookMarked,
+  Globe2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { NavLink } from "@/components/NavLink";
@@ -31,40 +52,40 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
-  { label: "Dashboard",  url: "/",         icon: Home },
-  { label: "Ideas",      url: "/ideas",    icon: Lightbulb },
-  { label: "Episodios",  url: "/episodes", icon: Mic },
-  { label: "Temporadas", url: "/seasons",  icon: Layers },
-  { label: "Fábrica",    url: "/factory",  icon: Factory },
+  { label: "Dashboard", url: "/", icon: Home },
+  { label: "Ideas", url: "/ideas", icon: Lightbulb },
+  { label: "Episodios", url: "/episodes", icon: Mic },
+  { label: "Temporadas", url: "/seasons", icon: Layers },
+  { label: "Fábrica", url: "/factory", icon: Factory },
 ];
 
 const visualNav: NavItem[] = [
-  { label: "Visual OS",   url: "/visual",           icon: ImagePlay  },
-  { label: "Plantilla",   url: "/visual/templates", icon: BookMarked },
+  { label: "Visual OS", url: "/visual", icon: ImagePlay },
+  { label: "Plantilla", url: "/visual/templates", icon: BookMarked },
 ];
 
 const distributeNav: NavItem[] = [
   { label: "Publicaciones", url: "/publications", icon: Send },
-  { label: "Calendario",    url: "/calendar",     icon: CalendarDays },
-  { label: "Audio",         url: "/audio",        icon: AudioWaveform },
-  { label: "Cuentas",       url: "/accounts",     icon: Globe2 },
-  { label: "Invitados",     url: "/guests",       icon: Users },
-  { label: "Patrocinadores",url: "/sponsors",     icon: DollarSign },
-  { label: "Tareas",        url: "/tasks",        icon: ListTodo, badgeKey: "pendingTasks" },
+  { label: "Calendario", url: "/calendar", icon: CalendarDays },
+  { label: "Audio", url: "/audio", icon: AudioWaveform },
+  { label: "Cuentas", url: "/accounts", icon: Globe2 },
+  { label: "Invitados", url: "/guests", icon: Users },
+  { label: "Patrocinadores", url: "/sponsors", icon: DollarSign },
+  { label: "Tareas", url: "/tasks", icon: ListTodo, badgeKey: "pendingTasks" },
 ];
 
 const studioNav: NavItem[] = [
-  { label: "Guiones",    url: "/script-generator", icon: FileText },
-  { label: "Prompts",    url: "/prompt-builder",   icon: Wand2 },
-  { label: "Brand",      url: "/brand",            icon: Palette },
-  { label: "Diseño",     url: "/design",           icon: Brush },
+  { label: "Guiones", url: "/script-generator", icon: FileText },
+  { label: "Prompts", url: "/prompt-builder", icon: Wand2 },
+  { label: "Brand", url: "/brand", icon: Palette },
+  { label: "Diseño", url: "/design", icon: Brush },
 ];
 
 const measureNav: NavItem[] = [
-  { label: "Métricas",  url: "/metrics",   icon: BarChart3 },
-  { label: "Insights",  url: "/insights",  icon: FlaskConical },
+  { label: "Métricas", url: "/metrics", icon: BarChart3 },
+  { label: "Insights", url: "/insights", icon: FlaskConical },
   { label: "Knowledge", url: "/knowledge", icon: BookOpen },
-  { label: "Notas",     url: "/notes",     icon: StickyNote },
+  { label: "Notas", url: "/notes", icon: StickyNote },
 ];
 
 function NavGroup({
@@ -149,10 +170,7 @@ export function AppSidebar() {
     : undefined;
 
   return (
-    <Sidebar
-      collapsible="icon"
-      className="border-r border-sidebar-border/50"
-    >
+    <Sidebar collapsible="icon" className="shadow-[var(--shadow-sm)]">
       {/* Logo / wordmark */}
       <div
         className={[
@@ -175,23 +193,29 @@ export function AppSidebar() {
 
       {/* Nav groups */}
       <SidebarContent className="py-1">
-        <NavGroup label="Crear"      items={mainNav}       collapsed={collapsed} counts={countsMap} />
-        <NavGroup label="Visual OS"  items={visualNav}     collapsed={collapsed} counts={countsMap} />
-        <NavGroup label="Distribuir" items={distributeNav} collapsed={collapsed} counts={countsMap} />
-        <NavGroup label="Estudio"    items={studioNav}     collapsed={collapsed} counts={countsMap} />
-        <NavGroup label="Medir"      items={measureNav}    collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Crear" items={mainNav} collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Visual OS" items={visualNav} collapsed={collapsed} counts={countsMap} />
+        <NavGroup
+          label="Distribuir"
+          items={distributeNav}
+          collapsed={collapsed}
+          counts={countsMap}
+        />
+        <NavGroup label="Estudio" items={studioNav} collapsed={collapsed} counts={countsMap} />
+        <NavGroup label="Medir" items={measureNav} collapsed={collapsed} counts={countsMap} />
       </SidebarContent>
 
       {/* Footer — subtle controls */}
-      <SidebarFooter className="p-2 pb-3 border-t border-sidebar-border/40 space-y-px">
+      <SidebarFooter className="p-2 pb-3 space-y-px">
         <button
           onClick={toggle}
           className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-[8px] text-sm text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-150"
         >
-          {theme === "dark"
-            ? <Sun className="h-4 w-4 shrink-0 opacity-70" />
-            : <Moon className="h-4 w-4 shrink-0 opacity-70" />
-          }
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4 shrink-0 opacity-70" />
+          ) : (
+            <Moon className="h-4 w-4 shrink-0 opacity-70" />
+          )}
           {!collapsed && (
             <span className="font-medium tracking-[-0.011em]">
               {theme === "dark" ? "Modo claro" : "Modo oscuro"}
@@ -204,15 +228,11 @@ export function AppSidebar() {
           className="flex items-center gap-2.5 w-full px-2.5 py-2 rounded-[8px] text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
         >
           <LogOut className="h-4 w-4 shrink-0 opacity-70" />
-          {!collapsed && (
-            <span className="font-medium tracking-[-0.011em]">Cerrar sesión</span>
-          )}
+          {!collapsed && <span className="font-medium tracking-[-0.011em]">Cerrar sesión</span>}
         </button>
 
         {!collapsed && (
-          <p className="text-xs text-muted-foreground px-2.5 pt-1 tracking-tight">
-            energy / amtme
-          </p>
+          <p className="text-xs text-muted-foreground px-2.5 pt-1 tracking-tight">energy / amtme</p>
         )}
       </SidebarFooter>
     </Sidebar>

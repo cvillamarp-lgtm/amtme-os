@@ -14,6 +14,7 @@ import { RecoveryAgentProvider, RouteErrorBoundary, lazyWithRecovery } from "@/r
 import { isAuthError } from "@/services/functions/edgeFunctionErrors";
 import type { RecoveryEntityContext } from "@/recovery";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 
 // Eager load auth (small, critical path)
 import Auth from "./pages/Auth";
@@ -22,51 +23,51 @@ import Auth from "./pages/Auth";
 const Pricing = lazyWithRecovery(() => import("./pages/Pricing"));
 
 // ── Lazy pages (with chunk-error recovery) ────────────────────────────────────
-const Index            = lazyWithRecovery(() => import("./pages/Index"));
-const Episodes         = lazyWithRecovery(() => import("./pages/Episodes"));
+const Index = lazyWithRecovery(() => import("./pages/Index"));
+const Episodes = lazyWithRecovery(() => import("./pages/Episodes"));
 const EpisodeWorkspace = lazyWithRecovery(() => import("./pages/EpisodeWorkspace"));
-const ContentFactory   = lazyWithRecovery(() => import("./pages/ContentFactory"));
-const Library          = lazyWithRecovery(() => import("./pages/Library"));
-const Templates        = lazyWithRecovery(() => import("./pages/Templates"));
-const MetricsPage      = lazyWithRecovery(() => import("./pages/Metrics"));
-const Tasks            = lazyWithRecovery(() => import("./pages/Tasks"));
-const SystemPage       = lazyWithRecovery(() => import("./pages/System"));
-const Resources        = lazyWithRecovery(() => import("./pages/Resources"));
-const ImportPage       = lazyWithRecovery(() => import("./pages/Import"));
-const Ideas            = lazyWithRecovery(() => import("./pages/Ideas"));
-const Briefs           = lazyWithRecovery(() => import("./pages/Briefs"));
-const Publications     = lazyWithRecovery(() => import("./pages/Publications"));
-const Insights         = lazyWithRecovery(() => import("./pages/Insights"));
-const QuoteCandidates  = lazyWithRecovery(() => import("./pages/QuoteCandidates"));
+const ContentFactory = lazyWithRecovery(() => import("./pages/ContentFactory"));
+const Library = lazyWithRecovery(() => import("./pages/Library"));
+const Templates = lazyWithRecovery(() => import("./pages/Templates"));
+const MetricsPage = lazyWithRecovery(() => import("./pages/Metrics"));
+const Tasks = lazyWithRecovery(() => import("./pages/Tasks"));
+const SystemPage = lazyWithRecovery(() => import("./pages/System"));
+const Resources = lazyWithRecovery(() => import("./pages/Resources"));
+const ImportPage = lazyWithRecovery(() => import("./pages/Import"));
+const Ideas = lazyWithRecovery(() => import("./pages/Ideas"));
+const Briefs = lazyWithRecovery(() => import("./pages/Briefs"));
+const Publications = lazyWithRecovery(() => import("./pages/Publications"));
+const Insights = lazyWithRecovery(() => import("./pages/Insights"));
+const QuoteCandidates = lazyWithRecovery(() => import("./pages/QuoteCandidates"));
 const PlatformAccounts = lazyWithRecovery(() => import("./pages/PlatformAccounts"));
-const Notes            = lazyWithRecovery(() => import("./pages/Notes"));
-const Seasons          = lazyWithRecovery(() => import("./pages/Seasons"));
-const Sponsors         = lazyWithRecovery(() => import("./pages/Sponsors"));
-const NotFound         = lazyWithRecovery(() => import("./pages/NotFound"));
+const Notes = lazyWithRecovery(() => import("./pages/Notes"));
+const Seasons = lazyWithRecovery(() => import("./pages/Seasons"));
+const Sponsors = lazyWithRecovery(() => import("./pages/Sponsors"));
+const NotFound = lazyWithRecovery(() => import("./pages/NotFound"));
 
 // Archived routes (still accessible but not in main nav)
-const Guests                = lazyWithRecovery(() => import("./pages/Guests"));
-const EditorialCalendar     = lazyWithRecovery(() => import("./pages/EditorialCalendar"));
-const BrandStudio           = lazyWithRecovery(() => import("./pages/BrandStudio"));
-const DesignStudio          = lazyWithRecovery(() => import("./pages/DesignStudio"));
-const ScriptGenerator       = lazyWithRecovery(() => import("./pages/ScriptGenerator"));
-const PromptBuilder         = lazyWithRecovery(() => import("./pages/PromptBuilder"));
+const Guests = lazyWithRecovery(() => import("./pages/Guests"));
+const EditorialCalendar = lazyWithRecovery(() => import("./pages/EditorialCalendar"));
+const BrandStudio = lazyWithRecovery(() => import("./pages/BrandStudio"));
+const DesignStudio = lazyWithRecovery(() => import("./pages/DesignStudio"));
+const ScriptGenerator = lazyWithRecovery(() => import("./pages/ScriptGenerator"));
+const PromptBuilder = lazyWithRecovery(() => import("./pages/PromptBuilder"));
 const VisualPromptGenerator = lazyWithRecovery(() => import("./pages/VisualPromptGenerator"));
-const AudioStudio           = lazyWithRecovery(() => import("./pages/AudioStudio"));
-const Episode360            = lazyWithRecovery(() => import("./pages/Episode360"));
-const KnowledgeBase         = lazyWithRecovery(() => import("./pages/KnowledgeBase"));
+const AudioStudio = lazyWithRecovery(() => import("./pages/AudioStudio"));
+const Episode360 = lazyWithRecovery(() => import("./pages/Episode360"));
+const KnowledgeBase = lazyWithRecovery(() => import("./pages/KnowledgeBase"));
 
 // ── Visual OS ─────────────────────────────────────────────────────────────────
-const VisualOS        = lazyWithRecovery(() => import("./pages/visual-os/VisualOS"));
-const VisualEpisode   = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
-const VisualPiece     = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
+const VisualOS = lazyWithRecovery(() => import("./pages/visual-os/VisualOS"));
+const VisualEpisode = lazyWithRecovery(() => import("./pages/visual-os/VisualEpisode"));
+const VisualPiece = lazyWithRecovery(() => import("./pages/visual-os/VisualPiece"));
 const VisualTemplates = lazyWithRecovery(() => import("./pages/visual-os/VisualTemplates"));
 
 // ── Script Engine ─────────────────────────────────────────────────────────────
-const ScriptEngineIngesta  = lazyWithRecovery(() => import("./pages/ScriptEngineIngesta"));
-const ScriptEngineClean    = lazyWithRecovery(() => import("./pages/ScriptEngineClean"));
+const ScriptEngineIngesta = lazyWithRecovery(() => import("./pages/ScriptEngineIngesta"));
+const ScriptEngineClean = lazyWithRecovery(() => import("./pages/ScriptEngineClean"));
 const ScriptEngineSemantico = lazyWithRecovery(() => import("./pages/ScriptEngineSemantico"));
-const ScriptEngineOutputs  = lazyWithRecovery(() => import("./pages/ScriptEngineOutputs"));
+const ScriptEngineOutputs = lazyWithRecovery(() => import("./pages/ScriptEngineOutputs"));
 
 // ── QueryClient ───────────────────────────────────────────────────────────────
 const queryClient = new QueryClient({
@@ -202,64 +203,85 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/pricing" element={<R C={Pricing} />} />
-                <Route path="*" element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Routes>
-                        {/* Main routes */}
-                        <Route path="/" element={<R C={Index} />} />
-                        <Route path="/episodes" element={<R C={Episodes} />} />
-                        <Route path="/episodes/:id" element={<R C={EpisodeWorkspace} />} />
-                        <Route path="/factory" element={<R C={ContentFactory} />} />
-                        <Route path="/library" element={<R C={Library} />} />
-                        <Route path="/templates" element={<R C={Templates} />} />
-                        <Route path="/metrics" element={<R C={MetricsPage} />} />
-                        <Route path="/tasks" element={<R C={Tasks} />} />
-                        <Route path="/system" element={<R C={SystemPage} />} />
-                        <Route path="/resources" element={<R C={Resources} />} />
-                        <Route path="/import" element={<R C={ImportPage} />} />
-                        <Route path="/ideas" element={<R C={Ideas} />} />
-                        <Route path="/briefs" element={<R C={Briefs} />} />
-                        <Route path="/publications" element={<R C={Publications} />} />
-                        <Route path="/insights" element={<R C={Insights} />} />
-                        <Route path="/quotes" element={<R C={QuoteCandidates} />} />
-                        <Route path="/accounts" element={<R C={PlatformAccounts} />} />
-                        <Route path="/notes" element={<R C={Notes} />} />
-                        <Route path="/seasons" element={<R C={Seasons} />} />
-                        <Route path="/sponsors" element={<R C={Sponsors} />} />
+                <Route
+                  path="*"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Routes>
+                          {/* Main routes */}
+                          <Route path="/" element={<R C={Index} />} />
+                          <Route path="/episodes" element={<R C={Episodes} />} />
+                          <Route path="/episodes/:id" element={<R C={EpisodeWorkspace} />} />
+                          <Route path="/factory" element={<R C={ContentFactory} />} />
+                          <Route path="/library" element={<R C={Library} />} />
+                          <Route path="/templates" element={<R C={Templates} />} />
+                          <Route path="/metrics" element={<R C={MetricsPage} />} />
+                          <Route path="/tasks" element={<R C={Tasks} />} />
+                          <Route path="/system" element={<R C={SystemPage} />} />
+                          <Route path="/resources" element={<R C={Resources} />} />
+                          <Route path="/import" element={<R C={ImportPage} />} />
+                          <Route path="/ideas" element={<R C={Ideas} />} />
+                          <Route path="/briefs" element={<R C={Briefs} />} />
+                          <Route path="/publications" element={<R C={Publications} />} />
+                          <Route path="/insights" element={<R C={Insights} />} />
+                          <Route path="/quotes" element={<R C={QuoteCandidates} />} />
+                          <Route path="/accounts" element={<R C={PlatformAccounts} />} />
+                          <Route path="/notes" element={<R C={Notes} />} />
+                          <Route path="/seasons" element={<R C={Seasons} />} />
+                          <Route path="/sponsors" element={<R C={Sponsors} />} />
 
-                        {/* Archived routes (accessible but not in nav) */}
-                        <Route path="/guests" element={<R C={Guests} />} />
-                        <Route path="/calendar" element={<R C={EditorialCalendar} />} />
-                        <Route path="/brand" element={<R C={BrandStudio} />} />
-                        <Route path="/design" element={<R C={DesignStudio} />} />
-                        <Route path="/script-generator" element={<R C={ScriptGenerator} />} />
-                        <Route path="/prompt-builder" element={<R C={PromptBuilder} />} />
-                        <Route path="/visual-prompts" element={<R C={VisualPromptGenerator} />} />
-                        <Route path="/audio" element={<R C={AudioStudio} />} />
-                        <Route path="/episodes/:episodeId/360" element={<R C={Episode360} />} />
-                        <Route path="/knowledge" element={<R C={KnowledgeBase} />} />
+                          {/* Archived routes (accessible but not in nav) */}
+                          <Route path="/guests" element={<R C={Guests} />} />
+                          <Route path="/calendar" element={<R C={EditorialCalendar} />} />
+                          <Route path="/brand" element={<R C={BrandStudio} />} />
+                          <Route path="/design" element={<R C={DesignStudio} />} />
+                          <Route path="/script-generator" element={<R C={ScriptGenerator} />} />
+                          <Route path="/prompt-builder" element={<R C={PromptBuilder} />} />
+                          <Route path="/visual-prompts" element={<R C={VisualPromptGenerator} />} />
+                          <Route path="/audio" element={<R C={AudioStudio} />} />
+                          <Route path="/episodes/:episodeId/360" element={<R C={Episode360} />} />
+                          <Route path="/knowledge" element={<R C={KnowledgeBase} />} />
 
-                        {/* Visual OS */}
-                        <Route path="/visual"                                         element={<R C={VisualOS} />} />
-                        <Route path="/visual/templates"                               element={<R C={VisualTemplates} />} />
-                        <Route path="/visual/episode/:episodeId"                      element={<R C={VisualEpisode} />} />
-                        <Route path="/visual/episode/:episodeId/piece/:pieceId"       element={<R C={VisualPiece} />} />
+                          {/* Visual OS */}
+                          <Route path="/visual" element={<R C={VisualOS} />} />
+                          <Route path="/visual/templates" element={<R C={VisualTemplates} />} />
+                          <Route
+                            path="/visual/episode/:episodeId"
+                            element={<R C={VisualEpisode} />}
+                          />
+                          <Route
+                            path="/visual/episode/:episodeId/piece/:pieceId"
+                            element={<R C={VisualPiece} />}
+                          />
 
-                        {/* Script Engine */}
-                        <Route path="/script-engine/ingesta"                          element={<R C={ScriptEngineIngesta} />} />
-                        <Route path="/script-engine/clean/:rawInputId"                element={<R C={ScriptEngineClean} />} />
-                        <Route path="/script-engine/semantico/:cleanedTextId"         element={<R C={ScriptEngineSemantico} />} />
-                        <Route path="/script-engine/outputs/:semanticMapId"           element={<R C={ScriptEngineOutputs} />} />
+                          {/* Script Engine */}
+                          <Route
+                            path="/script-engine/ingesta"
+                            element={<R C={ScriptEngineIngesta} />}
+                          />
+                          <Route
+                            path="/script-engine/clean/:rawInputId"
+                            element={<R C={ScriptEngineClean} />}
+                          />
+                          <Route
+                            path="/script-engine/semantico/:cleanedTextId"
+                            element={<R C={ScriptEngineSemantico} />}
+                          />
+                          <Route
+                            path="/script-engine/outputs/:semanticMapId"
+                            element={<R C={ScriptEngineOutputs} />}
+                          />
 
-                        {/* Aliases */}
-                        <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                          {/* Aliases */}
+                          <Route path="/dashboard" element={<Navigate to="/" replace />} />
 
-                        <Route path="*" element={<R C={NotFound} />} />
-                      </Routes>
-                    </AppLayout>
-                  </ProtectedRoute>
-                } />
+                          <Route path="*" element={<R C={NotFound} />} />
+                        </Routes>
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </BrowserRouter>
           </ErrorBoundary>
@@ -267,6 +289,7 @@ const App = () => (
       </AuthProvider>
     </RecoveryAgentProvider>
     <SpeedInsights />
+    <Analytics />
   </QueryClientProvider>
 );
 

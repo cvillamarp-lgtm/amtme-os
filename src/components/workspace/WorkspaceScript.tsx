@@ -107,7 +107,7 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
 
       toast.success("Guión generado");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Error al generar");
+      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
     } finally {
       setGenerating(false);
     }

@@ -97,8 +97,8 @@ export default function VisualPiece() {
       setIsDirty(false);
       setChangeReason("");
       toast.success("Versión guardada");
-    } catch {
-      toast.error("Error al guardar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al guardar");
     }
   };
 
@@ -115,8 +115,8 @@ export default function VisualPiece() {
         },
       });
       toast.success("Copy pre-llenado con frases del episodio");
-    } catch {
-      toast.error("Error al re-seed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al re-seed");
     }
   };
 

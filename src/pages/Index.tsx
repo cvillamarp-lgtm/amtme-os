@@ -1,6 +1,17 @@
 import {
-  Mic, ListTodo, Image, Zap, AlertTriangle, Lightbulb, ScrollText,
-  Send, FlaskConical, ArrowRight, Quote, Bell, Clock,
+  Mic,
+  ListTodo,
+  Image,
+  Zap,
+  AlertTriangle,
+  Lightbulb,
+  ScrollText,
+  Send,
+  FlaskConical,
+  ArrowRight,
+  Quote,
+  Bell,
+  Clock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -23,7 +34,11 @@ function useDashboardCounts() {
     queryKey: ["dashboard-counts-v2"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("dashboard_counts");
-      if (error) throw error;
+      if (error) {
+        console.error("[dashboard_counts] RPC error:", error);
+        throw error;
+      }
+      if (!data) console.warn("[dashboard_counts] RPC returned no data");
       return data as {
         episodes: number;
         tasks: number;
@@ -35,12 +50,15 @@ function useDashboardCounts() {
         briefsConvertidos: number;
         pubsScheduled: number;
         pubsPublished: number;
+        insightsActive: number;
         insightsExperimenting: number;
         insightsAccepted: number;
         quotesTotal: number;
         quotesApproved: number;
       };
     },
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -62,10 +80,10 @@ function useSmartAlerts() {
     queryKey: ["smart-alerts"],
     queryFn: async () => {
       const now = new Date();
-      const sevenDaysAgo  = new Date(now.getTime() - 7  * 86400000).toISOString();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString();
       const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400000).toISOString();
-      const fiveDaysAgo   = new Date(now.getTime() - 5  * 86400000).toISOString();
-      const nowISO        = now.toISOString();
+      const fiveDaysAgo = new Date(now.getTime() - 5 * 86400000).toISOString();
+      const nowISO = now.toISOString();
 
       const [stagnantEps, overduePubs, overdueTasks, staleBriefs] = await Promise.all([
         supabase
@@ -122,7 +140,9 @@ function useSmartAlerts() {
       });
 
       (overduePubs.data || []).forEach((pub) => {
-        const daysAgo = Math.floor((now.getTime() - new Date(pub.scheduled_at!).getTime()) / 86400000);
+        const daysAgo = Math.floor(
+          (now.getTime() - new Date(pub.scheduled_at!).getTime()) / 86400000
+        );
         alerts.push({
           id: `pub-${pub.id}`,
           type: "overdue_publication",
@@ -151,7 +171,9 @@ function useSmartAlerts() {
       });
 
       (staleBriefs.data || []).forEach((brief) => {
-        const daysAgo = Math.floor((now.getTime() - new Date(brief.created_at).getTime()) / 86400000);
+        const daysAgo = Math.floor(
+          (now.getTime() - new Date(brief.created_at).getTime()) / 86400000
+        );
         alerts.push({
           id: `brief-${brief.id}`,
           type: "stale_brief",
@@ -199,14 +221,18 @@ function PipelineStage({
         to={to}
         className="flex-1 min-w-0 surface rounded-xl p-4 hover:border-primary/30 transition-all group text-center"
       >
-        <div className={`inline-flex items-center justify-center h-8 w-8 rounded-lg mb-2 ${color} bg-opacity-10`}>
+        <div
+          className={`inline-flex items-center justify-center h-8 w-8 rounded-lg mb-2 ${color} bg-opacity-10`}
+        >
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
         <div className="text-xl font-display font-bold text-foreground">{value}</div>
         <div className="text-xs font-medium text-foreground/80">{label}</div>
         <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
       </Link>
-      {!isLast && <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0 hidden sm:block" />}
+      {!isLast && (
+        <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0 hidden sm:block" />
+      )}
     </div>
   );
 }
@@ -219,9 +245,12 @@ const Dashboard = () => {
 
   type EpisodeRow = Tables<"episodes">;
   type TaskRow = Pick<Tables<"tasks">, "id" | "title" | "priority" | "category" | "episode_id">;
-  type AssetRow = Pick<Tables<"content_assets">, "id" | "piece_name" | "image_url" | "status" | "created_at">;
+  type AssetRow = Pick<
+    Tables<"content_assets">,
+    "id" | "piece_name" | "image_url" | "status" | "created_at"
+  >;
 
-  const { data: counts, isLoading: loadingCounts } = useDashboardCounts();
+  const { data: counts, isLoading: loadingCounts, error: countsError } = useDashboardCounts();
 
   const { data: episodes = [], isLoading: loadingEpisodes } = useQuery<EpisodeRow[]>({
     queryKey: ["dashboard-episodes"],
@@ -269,7 +298,10 @@ const Dashboard = () => {
       if (audit.blockers.length === 0 && audit.warnings.length === 0) return null;
       return { episode: ep, audit };
     })
-    .filter((item): item is { episode: EpisodeRow; audit: ReturnType<typeof auditEpisode> } => item !== null)
+    .filter(
+      (item): item is { episode: EpisodeRow; audit: ReturnType<typeof auditEpisode> } =>
+        item !== null
+    )
     .slice(0, 3);
 
   return (
@@ -292,7 +324,7 @@ const Dashboard = () => {
                 icon={Lightbulb}
                 label="Ideas"
                 value={counts?.ideasCapturadas ?? 0}
-                sub="capturadas"
+                sub="en funnel"
                 to="/ideas"
                 color="text-yellow-500"
               />
@@ -332,16 +364,62 @@ const Dashboard = () => {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { name: "Episodios",   value: counts?.episodes ?? 0,          sub: "total",          icon: Mic,          color: "text-primary",      to: "/episodes" },
-            { name: "Ideas",       value: counts?.ideasAprobadas ?? 0,     sub: "aprobadas",      icon: Lightbulb,    color: "text-yellow-500",   to: "/ideas" },
-            { name: "Briefs",      value: counts?.briefsConvertidos ?? 0,  sub: "convertidos",    icon: ScrollText,   color: "text-blue-500",     to: "/briefs" },
-            { name: "Assets",      value: counts?.assetsPending ?? 0,      sub: "pendientes",     icon: Image,        color: "text-orange-500",   to: "/library" },
-            { name: "Insights",    value: counts?.insightsAccepted ?? 0,   sub: "aceptados",      icon: FlaskConical, color: "text-purple-500",   to: "/insights" },
-            { name: "Citas",       value: counts?.quotesApproved ?? 0,     sub: "aprobadas",      icon: Quote,        color: "text-pink-500",     to: "/quotes" },
+            {
+              name: "Episodios",
+              value: counts?.episodes ?? 0,
+              sub: "total",
+              icon: Mic,
+              color: "text-primary",
+              to: "/episodes",
+            },
+            {
+              name: "Ideas",
+              value: counts?.ideasAprobadas ?? 0,
+              sub: "aprobadas",
+              icon: Lightbulb,
+              color: "text-yellow-500",
+              to: "/ideas",
+            },
+            {
+              name: "Briefs",
+              value: counts?.briefsConvertidos ?? 0,
+              sub: "convertidos",
+              icon: ScrollText,
+              color: "text-blue-500",
+              to: "/briefs",
+            },
+            {
+              name: "Assets",
+              value: counts?.assetsPending ?? 0,
+              sub: "pendientes",
+              icon: Image,
+              color: "text-orange-500",
+              to: "/library",
+            },
+            {
+              name: "Insights",
+              value: counts?.insightsAccepted ?? 0,
+              sub: "aceptados",
+              icon: FlaskConical,
+              color: "text-purple-500",
+              to: "/insights",
+            },
+            {
+              name: "Citas",
+              value: counts?.quotesApproved ?? 0,
+              sub: "aprobadas",
+              icon: Quote,
+              color: "text-pink-500",
+              to: "/quotes",
+            },
           ].map((m) => {
             const Icon = m.icon;
             return (
-              <Link key={m.name} to={m.to} className="stat-card hover:border-primary/30 transition-all group">
+              <Link
+                key={m.name}
+                to={m.to}
+                className="stat-card hover:border-primary/30 transition-all group"
+              >
                 <div className="flex justify-between items-start mb-3">
                   <div className="p-1.5 bg-secondary rounded-lg">
                     <Icon className={`w-4 h-4 ${m.color}`} />
@@ -350,7 +428,8 @@ const Dashboard = () => {
                 <div className="text-xl font-display font-bold text-foreground">{m.value}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   <span className="text-foreground/70 font-medium">{m.name}</span>
-                  {" · "}{m.sub}
+                  {" · "}
+                  {m.sub}
                 </div>
               </Link>
             );
@@ -362,7 +441,10 @@ const Dashboard = () => {
       {!loadingCounts && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Insights widget */}
-          <Link to="/insights" className="surface rounded-xl p-5 hover:border-primary/30 transition-all">
+          <Link
+            to="/insights"
+            className="surface rounded-xl p-5 hover:border-primary/30 transition-all"
+          >
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <FlaskConical className="h-4 w-4 text-purple-500" />
@@ -372,24 +454,33 @@ const Dashboard = () => {
             </div>
             <div className="flex gap-4">
               <div>
-                <div className="text-2xl font-display font-bold text-yellow-500">{counts?.insightsExperimenting ?? 0}</div>
+                <div className="text-2xl font-display font-bold text-yellow-500">
+                  {counts?.insightsExperimenting ?? 0}
+                </div>
                 <div className="text-xs text-muted-foreground">Experimentando</div>
               </div>
               <div className="w-px bg-border" />
               <div>
-                <div className="text-2xl font-display font-bold text-green-500">{counts?.insightsAccepted ?? 0}</div>
+                <div className="text-2xl font-display font-bold text-green-500">
+                  {counts?.insightsAccepted ?? 0}
+                </div>
                 <div className="text-xs text-muted-foreground">Aceptados</div>
               </div>
               <div className="w-px bg-border" />
               <div>
-                <div className="text-2xl font-display font-bold text-foreground">{(counts?.insightsExperimenting ?? 0) + (counts?.insightsAccepted ?? 0)}</div>
+                <div className="text-2xl font-display font-bold text-foreground">
+                  {(counts?.insightsActive ?? 0) + (counts?.insightsExperimenting ?? 0)}
+                </div>
                 <div className="text-xs text-muted-foreground">Activos</div>
               </div>
             </div>
           </Link>
 
           {/* Quotes widget */}
-          <Link to="/quotes" className="surface rounded-xl p-5 hover:border-primary/30 transition-all">
+          <Link
+            to="/quotes"
+            className="surface rounded-xl p-5 hover:border-primary/30 transition-all"
+          >
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <Quote className="h-4 w-4 text-pink-500" />
@@ -399,17 +490,23 @@ const Dashboard = () => {
             </div>
             <div className="flex gap-4">
               <div>
-                <div className="text-2xl font-display font-bold text-foreground">{counts?.quotesTotal ?? 0}</div>
+                <div className="text-2xl font-display font-bold text-foreground">
+                  {counts?.quotesTotal ?? 0}
+                </div>
                 <div className="text-xs text-muted-foreground">Capturadas</div>
               </div>
               <div className="w-px bg-border" />
               <div>
-                <div className="text-2xl font-display font-bold text-green-500">{counts?.quotesApproved ?? 0}</div>
+                <div className="text-2xl font-display font-bold text-green-500">
+                  {counts?.quotesApproved ?? 0}
+                </div>
                 <div className="text-xs text-muted-foreground">Aprobadas</div>
               </div>
               <div className="w-px bg-border" />
               <div>
-                <div className="text-2xl font-display font-bold text-purple-500">{counts?.pubsPublished ?? 0}</div>
+                <div className="text-2xl font-display font-bold text-purple-500">
+                  {counts?.pubsPublished ?? 0}
+                </div>
                 <div className="text-xs text-muted-foreground">Pubs. publicadas</div>
               </div>
             </div>
@@ -442,8 +539,12 @@ const Dashboard = () => {
                   className="p-4 flex items-center justify-between surface-hover gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`p-1.5 rounded-lg shrink-0 ${alert.severity === "high" ? "bg-destructive/10" : "bg-amber-500/10"}`}>
-                      <AlertIcon className={`h-4 w-4 ${alert.severity === "high" ? "text-destructive" : "text-amber-500"}`} />
+                    <div
+                      className={`p-1.5 rounded-lg shrink-0 ${alert.severity === "high" ? "bg-destructive/10" : "bg-amber-500/10"}`}
+                    >
+                      <AlertIcon
+                        className={`h-4 w-4 ${alert.severity === "high" ? "text-destructive" : "text-amber-500"}`}
+                      />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{alert.title}</p>
@@ -481,13 +582,18 @@ const Dashboard = () => {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">
-                    {item.episode.number && `#${item.episode.number} — `}{item.episode.title}
+                    {item.episode.number && `#${item.episode.number} — `}
+                    {item.episode.title}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {item.audit.blockers.length} bloqueos · {item.audit.warnings.length} advertencias · {item.audit.healthScore}% salud
+                    {item.audit.blockers.length} bloqueos · {item.audit.warnings.length}{" "}
+                    advertencias · {item.audit.healthScore}% salud
                   </p>
                 </div>
-                <Badge variant="outline" className={getCompletenessLevel(item.audit.healthScore).color}>
+                <Badge
+                  variant="outline"
+                  className={getCompletenessLevel(item.audit.healthScore).color}
+                >
                   {item.audit.healthScore}%
                 </Badge>
               </div>
@@ -500,10 +606,14 @@ const Dashboard = () => {
       <div className="surface overflow-hidden">
         <div className="p-5 border-b border-border flex justify-between items-center">
           <h2 className="text-lg font-display font-semibold text-foreground">Episodios activos</h2>
-          <Link to="/episodes" className="text-sm text-primary hover:text-primary/80 font-medium">Ver todos</Link>
+          <Link to="/episodes" className="text-sm text-primary hover:text-primary/80 font-medium">
+            Ver todos
+          </Link>
         </div>
         {loadingEpisodes ? (
-          <div className="p-5"><LoadingSkeleton count={3} variant="row" /></div>
+          <div className="p-5">
+            <LoadingSkeleton count={3} variant="row" />
+          </div>
         ) : episodes.length === 0 ? (
           <EmptyState icon={Mic} message="No hay episodios aún" className="py-12" />
         ) : (
@@ -520,20 +630,34 @@ const Dashboard = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground truncate">{ep.title}</p>
-                      {ep.number && <span className="text-xs text-muted-foreground">#{ep.number}</span>}
+                      {ep.number && (
+                        <span className="text-xs text-muted-foreground">#{ep.number}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <Progress value={audit.healthScore} className="h-1.5 flex-1 max-w-[120px]" />
-                      <span className={`text-xs font-medium ${level.color}`}>{level.nivel} · {audit.healthScore}%</span>
+                      <span className={`text-xs font-medium ${level.color}`}>
+                        {level.nivel} · {audit.healthScore}%
+                      </span>
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    {!audit.canProduce && <Badge variant="destructive" className="text-xs">Bloqueado</Badge>}
+                    {!audit.canProduce && (
+                      <Badge variant="destructive" className="text-xs">
+                        Bloqueado
+                      </Badge>
+                    )}
                     <Button
-                      size="sm" variant="outline" className="h-11 text-xs"
-                      onClick={(e) => { e.stopPropagation(); navigate(`/factory?episode_id=${ep.id}`); }}
+                      size="sm"
+                      variant="outline"
+                      className="h-11 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/factory?episode_id=${ep.id}`);
+                      }}
                     >
-                      <Zap className="h-3 w-3 mr-1" />Producir
+                      <Zap className="h-3 w-3 mr-1" />
+                      Producir
                     </Button>
                   </div>
                 </div>
@@ -547,8 +671,12 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="surface overflow-hidden">
           <div className="p-5 border-b border-border flex justify-between items-center">
-            <h2 className="text-lg font-display font-semibold text-foreground">Tareas pendientes</h2>
-            <Link to="/tasks" className="text-sm text-primary hover:text-primary/80 font-medium">Ver todas</Link>
+            <h2 className="text-lg font-display font-semibold text-foreground">
+              Tareas pendientes
+            </h2>
+            <Link to="/tasks" className="text-sm text-primary hover:text-primary/80 font-medium">
+              Ver todas
+            </Link>
           </div>
           {pendingTasks.length === 0 ? (
             <EmptyState icon={ListTodo} message="Sin tareas pendientes" className="py-12" />
@@ -561,7 +689,9 @@ const Dashboard = () => {
                     {t.category && <p className="text-xs text-muted-foreground">{t.category}</p>}
                   </div>
                   {t.priority === "high" && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">Alta</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
+                      Alta
+                    </span>
                   )}
                 </div>
               ))}
@@ -572,7 +702,9 @@ const Dashboard = () => {
         <div className="surface overflow-hidden">
           <div className="p-5 border-b border-border flex justify-between items-center">
             <h2 className="text-lg font-display font-semibold text-foreground">Assets recientes</h2>
-            <Link to="/library" className="text-sm text-primary hover:text-primary/80 font-medium">Ver todos</Link>
+            <Link to="/library" className="text-sm text-primary hover:text-primary/80 font-medium">
+              Ver todos
+            </Link>
           </div>
           {recentAssets.length === 0 ? (
             <EmptyState icon={Image} message="No hay assets generados" className="py-12" />
@@ -584,7 +716,12 @@ const Dashboard = () => {
                   className="rounded-md overflow-hidden border border-border bg-secondary/30 aspect-square relative group"
                 >
                   {a.image_url ? (
-                    <img src={a.image_url} alt={a.piece_name} className="w-full h-full object-cover" loading="lazy" />
+                    <img
+                      src={a.image_url}
+                      alt={a.piece_name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Image className="h-5 w-5 text-muted-foreground/30" />

@@ -4,11 +4,23 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Plus, Search, ArrowRight, Lightbulb, Mic } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,11 +41,16 @@ function timeAgo(dateStr: string) {
 
 function statusConfig(status: string | null) {
   switch (status) {
-    case "draft":     return { label: "Borrador",    cls: "text-muted-foreground bg-muted border-border" };
-    case "approved":  return { label: "Aprobado",    cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
-    case "rejected":  return { label: "Rechazado",   cls: "text-red-400 bg-red-400/10 border-red-400/20" };
-    case "converted": return { label: "Convertido",  cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
-    default:          return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
+    case "draft":
+      return { label: "Borrador", cls: "text-muted-foreground bg-muted border-border" };
+    case "approved":
+      return { label: "Aprobado", cls: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
+    case "rejected":
+      return { label: "Rechazado", cls: "text-red-400 bg-red-400/10 border-red-400/20" };
+    case "converted":
+      return { label: "Convertido", cls: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
+    default:
+      return { label: status ?? "—", cls: "text-muted-foreground bg-muted border-border" };
   }
 }
 
@@ -53,21 +70,24 @@ interface BriefCardProps {
 function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
   const sc = statusConfig(brief.status);
   const completedFields = [
-    brief.thesis, brief.audience, brief.pain_point,
-    brief.promise, brief.angle, brief.cta,
+    brief.thesis,
+    brief.audience,
+    brief.pain_point,
+    brief.promise,
+    brief.angle,
+    brief.cta,
   ].filter(Boolean).length;
   const totalFields = 6;
   const pct = Math.round((completedFields / totalFields) * 100);
 
   return (
-    <Card
-      className="cursor-pointer hover:border-primary/30 transition-colors"
-      onClick={onOpen}
-    >
+    <Card className="cursor-pointer hover:border-primary/30 transition-colors" onClick={onOpen}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-medium text-sm leading-snug line-clamp-2 flex-1">{brief.title}</h3>
-          <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}>
+          <span
+            className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium border ${sc.cls}`}
+          >
             {sc.label}
           </span>
         </div>
@@ -92,10 +112,10 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
         {/* Field pills */}
         <div className="flex flex-wrap gap-1">
           {[
-            { key: "audience",  label: "Audiencia" },
-            { key: "angle",     label: "Ángulo" },
-            { key: "tone",      label: "Tono" },
-            { key: "cta",       label: "CTA" },
+            { key: "audience", label: "Audiencia" },
+            { key: "angle", label: "Ángulo" },
+            { key: "tone", label: "Tono" },
+            { key: "cta", label: "CTA" },
           ].map(({ key, label }) => (
             <span
               key={key}
@@ -141,7 +161,8 @@ function BriefCard({ brief, onOpen, onStatusChange }: BriefCardProps) {
             )}
             {brief.status === "approved" && (
               <span className="text-xs text-emerald-400 flex items-center gap-0.5">
-                <ArrowRight className="h-2.5 w-2.5" />Listo para episodio
+                <ArrowRight className="h-2.5 w-2.5" />
+                Listo para episodio
               </span>
             )}
           </div>
@@ -162,11 +183,23 @@ interface BriefDetailSheetProps {
 }
 
 const TONE_OPTIONS = [
-  "íntimo", "confrontacional", "reflexivo", "conversacional",
-  "vulnerable", "urgente", "inspirador", "honesto",
+  "íntimo",
+  "confrontacional",
+  "reflexivo",
+  "conversacional",
+  "vulnerable",
+  "urgente",
+  "inspirador",
+  "honesto",
 ];
 
-function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: BriefDetailSheetProps) {
+function BriefDetailSheet({
+  brief,
+  open,
+  onClose,
+  onUpdated,
+  onStatusChange,
+}: BriefDetailSheetProps) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -189,14 +222,20 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
       const { error } = await supabase.from("briefs").update(updates).eq("id", brief.id);
       if (error) throw error;
     },
-    onSuccess: () => { onUpdated(); setEditing(false); toast.success("Brief actualizado"); },
+    onSuccess: () => {
+      onUpdated();
+      setEditing(false);
+      toast.success("Brief actualizado");
+    },
     onError: (e) => toast.error(e.message),
   });
 
   const convertToEpisode = useMutation({
     mutationFn: async () => {
       if (!brief) return null;
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
       // Count existing episodes for auto-number
@@ -209,7 +248,8 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
       // Build traceability note from fields without a direct episode column
       const trazabilidadParts: string[] = [`Convertido desde brief: "${brief.title}"`];
       if (brief.audience) trazabilidadParts.push(`Audiencia: ${brief.audience}`);
-      if (brief.emotional_transformation) trazabilidadParts.push(`Transformación emocional: ${brief.emotional_transformation}`);
+      if (brief.emotional_transformation)
+        trazabilidadParts.push(`Transformación emocional: ${brief.emotional_transformation}`);
       if (brief.risks) trazabilidadParts.push(`Riesgos: ${brief.risks}`);
 
       // Create episode pre-filled with brief data
@@ -241,10 +281,13 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
       if (error) throw error;
 
       // Link episode back to brief + mark brief as converted
-      await supabase.from("briefs").update({
-        episode_id: episode.id,
-        status: "converted",
-      }).eq("id", brief.id);
+      await supabase
+        .from("briefs")
+        .update({
+          episode_id: episode.id,
+          status: "converted",
+        })
+        .eq("id", brief.id);
 
       return episode.id;
     },
@@ -268,18 +311,30 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
   const Field = ({ label, value }: { label: string; value: string | null | undefined }) =>
     value ? (
       <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+          {label}
+        </p>
         <p className="text-sm leading-relaxed">{value}</p>
       </div>
     ) : null;
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 gap-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-3">
             <SheetTitle className="text-base leading-snug flex-1">{brief.title}</SheetTitle>
-            <Button variant="ghost" size="sm" className="shrink-0 -mt-1" onClick={() => setEditing(!editing)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 -mt-1"
+              onClick={() => setEditing(!editing)}
+            >
               {editing ? "Cancelar" : "Editar"}
             </Button>
           </div>
@@ -288,11 +343,14 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               {sc.label}
             </span>
             {brief.tone && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{brief.tone}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                {brief.tone}
+              </span>
             )}
             {brief.ideas?.title && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Lightbulb className="h-2.5 w-2.5" />{brief.ideas.title}
+                <Lightbulb className="h-2.5 w-2.5" />
+                {brief.ideas.title}
               </span>
             )}
           </div>
@@ -304,13 +362,18 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
             <div className="space-y-4">
               <div>
                 <Label className="text-xs">Título</Label>
-                <Input className="mt-1" value={form.title ?? ""} onChange={(e) => setField("title", e.target.value)} />
+                <Input
+                  className="mt-1"
+                  value={form.title ?? ""}
+                  onChange={(e) => setField("title", e.target.value)}
+                />
               </div>
 
               <div>
                 <Label className="text-xs">Tesis central</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   placeholder="La idea central que el episodio va a defender..."
                   value={form.thesis ?? ""}
                   onChange={(e) => setField("thesis", e.target.value)}
@@ -330,10 +393,14 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
                 <div>
                   <Label className="text-xs">Tono</Label>
                   <Select value={form.tone ?? ""} onValueChange={(v) => setField("tone", v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Selecciona tono" /></SelectTrigger>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecciona tono" />
+                    </SelectTrigger>
                     <SelectContent>
                       {TONE_OPTIONS.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -343,7 +410,8 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               <div>
                 <Label className="text-xs">Dolor / Problema del oyente</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   placeholder="¿Qué problema real tiene tu audiencia?"
                   value={form.pain_point ?? ""}
                   onChange={(e) => setField("pain_point", e.target.value)}
@@ -353,7 +421,8 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               <div>
                 <Label className="text-xs">Promesa del episodio</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   placeholder="¿Qué se lleva el oyente al terminar?"
                   value={form.promise ?? ""}
                   onChange={(e) => setField("promise", e.target.value)}
@@ -363,7 +432,8 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               <div>
                 <Label className="text-xs">Ángulo único</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   placeholder="¿Qué hace único este enfoque?"
                   value={form.angle ?? ""}
                   onChange={(e) => setField("angle", e.target.value)}
@@ -373,7 +443,8 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               <div>
                 <Label className="text-xs">Transformación emocional</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   placeholder="¿Cómo se siente el oyente al inicio vs. al final?"
                   value={form.emotional_transformation ?? ""}
                   onChange={(e) => setField("emotional_transformation", e.target.value)}
@@ -393,7 +464,8 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               <div>
                 <Label className="text-xs">Riesgos / Lo que puede salir mal</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   placeholder="Posibles problemas con este ángulo..."
                   value={form.risks ?? ""}
                   onChange={(e) => setField("risks", e.target.value)}
@@ -409,7 +481,10 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
                   onChange={(e) =>
                     setField(
                       "keywords",
-                      e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
                     )
                   }
                 />
@@ -418,13 +493,18 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               <div>
                 <Label className="text-xs">Notas</Label>
                 <Textarea
-                  className="mt-1" rows={2}
+                  className="mt-1"
+                  rows={2}
                   value={form.notes ?? ""}
                   onChange={(e) => setField("notes", e.target.value)}
                 />
               </div>
 
-              <Button className="w-full" onClick={() => save.mutate(form)} disabled={save.isPending}>
+              <Button
+                className="w-full"
+                onClick={() => save.mutate(form)}
+                disabled={save.isPending}
+              >
                 {save.isPending ? "Guardando..." : "Guardar cambios"}
               </Button>
             </div>
@@ -454,10 +534,14 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
               {/* Keywords */}
               {brief.keywords && brief.keywords.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Palabras clave</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                    Palabras clave
+                  </p>
                   <div className="flex flex-wrap gap-1.5">
                     {brief.keywords.map((k) => (
-                      <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
+                      <Badge key={k} variant="secondary" className="text-xs">
+                        {k}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -476,7 +560,10 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
                     size="sm"
                     variant="ghost"
                     className="text-blue-400 h-9 text-xs"
-                    onClick={() => { onClose(); navigate(`/episodes/${brief.episode_id}`); }}
+                    onClick={() => {
+                      onClose();
+                      navigate(`/episodes/${brief.episode_id}`);
+                    }}
                   >
                     Abrir <ArrowRight className="h-3 w-3 ml-1" />
                   </Button>
@@ -485,20 +572,30 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
 
               {/* Action buttons */}
               <div className="border-t border-border pt-4 space-y-3">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Acciones
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   {brief.status === "draft" && (
                     <>
                       <Button
-                        variant="outline" size="sm"
-                        onClick={() => { onStatusChange(brief.id, "approved"); onClose(); }}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          onStatusChange(brief.id, "approved");
+                          onClose();
+                        }}
                       >
                         Aprobar brief
                       </Button>
                       <Button
-                        variant="ghost" size="sm"
+                        variant="ghost"
+                        size="sm"
                         className="text-red-400 hover:text-red-400"
-                        onClick={() => { onStatusChange(brief.id, "rejected"); onClose(); }}
+                        onClick={() => {
+                          onStatusChange(brief.id, "rejected");
+                          onClose();
+                        }}
                       >
                         Rechazar
                       </Button>
@@ -519,8 +616,12 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
 
                   {brief.status === "rejected" && (
                     <Button
-                      variant="outline" size="sm"
-                      onClick={() => { onStatusChange(brief.id, "draft"); onClose(); }}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onStatusChange(brief.id, "draft");
+                        onClose();
+                      }}
                     >
                       Volver a borrador
                     </Button>
@@ -542,10 +643,10 @@ function BriefDetailSheet({ brief, open, onClose, onUpdated, onStatusChange }: B
 // ── Briefs (main page) ─────────────────────────────────────────────────────
 
 const TABS = [
-  { value: "all",       label: "Todos" },
-  { value: "draft",     label: "Borrador" },
-  { value: "approved",  label: "Aprobados" },
-  { value: "rejected",  label: "Rechazados" },
+  { value: "all", label: "Todos" },
+  { value: "draft", label: "Borrador" },
+  { value: "approved", label: "Aprobados" },
+  { value: "rejected", label: "Rechazados" },
   { value: "converted", label: "Convertidos" },
 ] as const;
 
@@ -572,7 +673,9 @@ export default function Briefs() {
   // ── Mutations ──────────────────────────────────────────────────────────
   const createBrief = useMutation({
     mutationFn: async (fd: FormData) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
       const { error } = await supabase.from("briefs").insert({
         user_id: user.id,
@@ -585,6 +688,7 @@ export default function Briefs() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["briefs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       setOpenCreate(false);
       toast.success("Brief creado");
     },
@@ -598,6 +702,7 @@ export default function Briefs() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["briefs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-counts-v2"] });
       toast.success("Estado actualizado");
     },
     onError: (e) => toast.error(e.message),
@@ -629,31 +734,47 @@ export default function Briefs() {
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="page-container animate-fade-in">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Briefs</h1>
-          <p className="page-subtitle">Define el ángulo y la promesa de cada episodio antes de grabar</p>
+          <p className="page-subtitle">
+            Define el ángulo y la promesa de cada episodio antes de grabar
+          </p>
         </div>
         <Dialog open={openCreate} onOpenChange={setOpenCreate}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" />Nuevo brief</Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo brief
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nuevo brief</DialogTitle>
             </DialogHeader>
             <form
-              onSubmit={(e) => { e.preventDefault(); createBrief.mutate(new FormData(e.currentTarget)); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                createBrief.mutate(new FormData(e.currentTarget));
+              }}
               className="space-y-4"
             >
               <div>
                 <Label>Título del episodio *</Label>
-                <Input name="title" placeholder="¿De qué va este episodio?" required autoFocus className="mt-1" />
+                <Input
+                  name="title"
+                  placeholder="¿De qué va este episodio?"
+                  required
+                  autoFocus
+                  className="mt-1"
+                />
               </div>
               <div>
-                <Label>Tesis central <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Label>
+                  Tesis central{" "}
+                  <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
                 <Textarea
                   name="thesis"
                   placeholder="La idea central que vas a defender..."
@@ -664,10 +785,14 @@ export default function Briefs() {
               <div>
                 <Label>Tono</Label>
                 <Select name="tone" defaultValue="íntimo">
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {TONE_OPTIONS.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -708,7 +833,9 @@ export default function Briefs() {
       {/* Content */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Card key={i} className="h-48 animate-pulse bg-muted" />)}
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="h-48 animate-pulse bg-muted" />
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">
@@ -717,12 +844,18 @@ export default function Briefs() {
             {search
               ? "Sin resultados"
               : tab === "all"
-              ? "Aún no hay briefs. Aprueba una idea o crea uno directamente."
-              : "No hay briefs en esta categoría"}
+                ? "Aún no hay briefs. Aprueba una idea o crea uno directamente."
+                : "No hay briefs en esta categoría"}
           </p>
           {!search && tab === "all" && (
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setOpenCreate(true)}>
-              <Plus className="h-4 w-4 mr-2" />Crear primer brief
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => setOpenCreate(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Crear primer brief
             </Button>
           )}
         </div>
