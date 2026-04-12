@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { callAI } from "../_shared/ai.ts";
+import { callAIWithResilience, type AIErrorCategory, type AIOrchestratorResult } from "../_shared/ai.ts";
 import { errorResponse } from "../_shared/response.ts";
 
 const AMTME_SYSTEM_PROMPT = `Eres el sistema de producción del podcast A Mí Tampoco Me Explicaron (AMTME).
@@ -38,6 +38,45 @@ const FIELD_INSTRUCTIONS: Record<string, string> = {
   intencion_del_episodio: 'la intención del episodio en una oración. Qué quiere que el oyente sienta, piense o se permita al terminar de escuchar.',
 };
 
+const inFlightByKey = new Map<string, Promise<AIOrchestratorResult>>();
+
+function buildUIEnvelope(
+  payload: Partial<{
+    status: "success" | "recovered" | "degraded" | "failed";
+    error_code: AIErrorCategory;
+    retryable: boolean;
+    provider_used: string | null;
+    fallback_used: boolean;
+    message: string;
+    request_id: string;
+  }>,
+) {
+  return {
+    status: payload.status ?? "failed",
+    error_code: payload.error_code,
+    retryable: payload.retryable ?? false,
+    provider_used: payload.provider_used ?? null,
+    fallback_used: payload.fallback_used ?? false,
+    message: payload.message ?? "No se pudo completar la operación IA",
+    request_id: payload.request_id,
+  };
+}
+
+function mapAuthErrorCode(errorMessage: string): AIErrorCategory {
+  const normalized = errorMessage.toLowerCase();
+  return normalized.includes("expired") || normalized.includes("expir")
+    ? "USER_AUTH_EXPIRED"
+    : "USER_AUTH_INVALID";
+}
+
+function withIdempotency(key: string, factory: () => Promise<AIOrchestratorResult>) {
+  const current = inFlightByKey.get(key);
+  if (current) return current;
+  const created = factory().finally(() => inFlightByKey.delete(key));
+  inFlightByKey.set(key, created);
+  return created;
+}
+
 serve(async (req) => {
   const cors = getCorsHeaders(req);
 
@@ -56,7 +95,23 @@ serve(async (req) => {
     });
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return errorResponse(cors, "UNAUTHORIZED", "Invalid token", 401);
+      const authMessage = authError?.message ?? "Invalid token";
+      const authCode = mapAuthErrorCode(authMessage);
+      return errorResponse(
+        cors,
+        authCode,
+        authMessage,
+        401,
+        buildUIEnvelope({
+          status: "failed",
+          error_code: authCode,
+          retryable: true,
+          provider_used: null,
+          fallback_used: false,
+          message: "Sesión inválida o expirada. Intenta iniciar sesión nuevamente.",
+          request_id: req.headers.get("x-request-id") ?? crypto.randomUUID(),
+        }),
+      );
     }
 
     const body = await req.json();
@@ -86,13 +141,47 @@ Instrucción para "${field_name}": ${FIELD_INSTRUCTIONS[field_name]}
 
 Responde ÚNICAMENTE con el texto del campo, sin JSON, sin comillas, sin explicaciones.`;
 
-      const value = await callAI([
-        { role: "system", content: AMTME_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ], 0.7);
+      const episodeScope = episode_number ?? String(idea_principal ?? "").trim().slice(0, 80) || "na";
+      const idempotencyKey = `${user.id}:regenerate_field:${episodeScope}:${field_name}`;
+      const orchestrated = await withIdempotency(idempotencyKey, () => callAIWithResilience(
+        [
+          { role: "system", content: AMTME_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        0.7,
+        {
+          request_id: req.headers.get("x-request-id") ?? crypto.randomUUID(),
+          user_id: user.id,
+          action: "regenerate_field",
+        },
+      ));
+
+      if (!orchestrated.text) {
+        return new Response(JSON.stringify(buildUIEnvelope({
+          status: orchestrated.status,
+          error_code: orchestrated.error_code,
+          retryable: orchestrated.retryable,
+          provider_used: orchestrated.provider_used,
+          fallback_used: orchestrated.fallback_used,
+          message: orchestrated.message,
+          request_id: orchestrated.request_id,
+        })), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
 
       return new Response(JSON.stringify({
-        value,
+        value: orchestrated.text,
+        ...buildUIEnvelope({
+          status: orchestrated.status,
+          error_code: orchestrated.error_code,
+          retryable: orchestrated.retryable,
+          provider_used: orchestrated.provider_used,
+          fallback_used: orchestrated.fallback_used,
+          message: orchestrated.message,
+          request_id: orchestrated.request_id,
+        }),
         metadata: {
           source_type: "ai_regenerated",
           source_module: field_name,
@@ -135,25 +224,59 @@ Responde ÚNICAMENTE con un array JSON válido, sin markdown, sin backticks, sin
   ...
 ]`;
 
-      const content = await callAI([
-        { role: "system", content: AMTME_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ], 0.9);
+      const episodeScope = episode_number ?? String(idea_principal ?? "").trim().slice(0, 80) || "na";
+      const idempotencyKey = `${user.id}:generate_options:${episodeScope}:${field_name}:${numOptions}`;
+      const orchestrated = await withIdempotency(idempotencyKey, () => callAIWithResilience(
+        [
+          { role: "system", content: AMTME_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        0.9,
+        {
+          request_id: req.headers.get("x-request-id") ?? crypto.randomUUID(),
+          user_id: user.id,
+          action: "generate_options",
+        },
+      ));
+
+      if (!orchestrated.text) {
+        return new Response(JSON.stringify(buildUIEnvelope({
+          status: orchestrated.status,
+          error_code: orchestrated.error_code,
+          retryable: orchestrated.retryable,
+          provider_used: orchestrated.provider_used,
+          fallback_used: orchestrated.fallback_used,
+          message: orchestrated.message,
+          request_id: orchestrated.request_id,
+        })), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
 
       let options: { value: string; rationale: string }[];
       try {
-        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        const jsonMatch = orchestrated.text.match(/\[[\s\S]*\]/);
         if (!jsonMatch) throw new Error("No JSON array found");
         const parsed = JSON.parse(jsonMatch[0]);
         if (!Array.isArray(parsed)) throw new Error("Response is not an array");
         options = parsed.filter((o: unknown) => o && typeof (o as Record<string, unknown>).value === "string").slice(0, 5);
       } catch {
-        console.error("Failed to parse options response:", content);
+        console.error("Failed to parse options response:", orchestrated.text);
         throw new Error("Failed to parse options from AI response");
       }
 
       return new Response(JSON.stringify({
         options,
+        ...buildUIEnvelope({
+          status: orchestrated.status,
+          error_code: orchestrated.error_code,
+          retryable: orchestrated.retryable,
+          provider_used: orchestrated.provider_used,
+          fallback_used: orchestrated.fallback_used,
+          message: orchestrated.message,
+          request_id: orchestrated.request_id,
+        }),
         metadata: { source_type: "ai_options", field_name, generated_at: new Date().toISOString() },
       }), {
         status: 200,
@@ -190,18 +313,43 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura exacta, sin markdow
 ${fieldInstructions}
 }`;
 
-    const content = await callAI([
-      { role: "system", content: AMTME_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ], 0.7);
+    const episodeScope = episode_number ?? String(idea_principal ?? "").trim().slice(0, 80) || "na";
+    const idempotencyKey = `${user.id}:generate_all:${episodeScope}`;
+    const orchestrated = await withIdempotency(idempotencyKey, () => callAIWithResilience(
+      [
+        { role: "system", content: AMTME_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      0.7,
+      {
+        request_id: req.headers.get("x-request-id") ?? crypto.randomUUID(),
+        user_id: user.id,
+        action: "generate_all_fields",
+      },
+    ));
+
+    if (!orchestrated.text) {
+      return new Response(JSON.stringify(buildUIEnvelope({
+        status: orchestrated.status,
+        error_code: orchestrated.error_code,
+        retryable: orchestrated.retryable,
+        provider_used: orchestrated.provider_used,
+        fallback_used: orchestrated.fallback_used,
+        message: orchestrated.message,
+        request_id: orchestrated.request_id,
+      })), {
+        status: 200,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
 
     let parsed;
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = orchestrated.text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON found in response");
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      console.error("Failed to parse AI response:", content);
+      console.error("Failed to parse AI response:", orchestrated.text);
       throw new Error("Failed to parse AI response as JSON");
     }
 
@@ -215,6 +363,15 @@ ${fieldInstructions}
 
     return new Response(JSON.stringify({
       fields: parsed,
+      ...buildUIEnvelope({
+        status: orchestrated.status,
+        error_code: orchestrated.error_code,
+        retryable: orchestrated.retryable,
+        provider_used: orchestrated.provider_used,
+        fallback_used: orchestrated.fallback_used,
+        message: orchestrated.message,
+        request_id: orchestrated.request_id,
+      }),
       metadata: {
         source_type: "ai_generated",
         source_module: "episode_creation",

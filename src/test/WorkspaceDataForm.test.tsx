@@ -2,9 +2,16 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { WorkspaceDataForm } from "@/components/workspace/WorkspaceDataForm";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
+import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
 
 vi.mock("@/components/workspace/BlockWrapper", () => ({
-  BlockWrapper: ({ children }: { children: ReactNode }) => <>{children}</>,
+  BlockWrapper: ({ children, fieldName, onRegenerate }: { children: ReactNode; fieldName: string; onRegenerate?: () => void }) => (
+    <>
+      <button type="button" onClick={onRegenerate}>{`regen-${fieldName}`}</button>
+      {children}
+    </>
+  ),
 }));
 
 vi.mock("@/services/functions/invokeEdgeFunction", () => ({
@@ -78,6 +85,27 @@ describe("WorkspaceDataForm", () => {
       expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({
         idea_principal: "Nueva idea principal",
       }));
+    });
+  });
+
+  it("handles stable failed AI responses on regenerate", async () => {
+    vi.mocked(invokeEdgeFunction).mockResolvedValueOnce({
+      status: "failed",
+      message: "All AI providers failed. You can continue manually.",
+    } as never);
+
+    render(
+      <WorkspaceDataForm
+        episode={baseEpisode as any}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        isSaving={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "regen-working_title" }));
+
+    await waitFor(() => {
+      expect(showEdgeFunctionError).toHaveBeenCalled();
     });
   });
 });
