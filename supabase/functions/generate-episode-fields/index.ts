@@ -141,7 +141,8 @@ Instrucción para "${field_name}": ${FIELD_INSTRUCTIONS[field_name]}
 
 Responde ÚNICAMENTE con el texto del campo, sin JSON, sin comillas, sin explicaciones.`;
 
-      const idempotencyKey = `${user.id}:regenerate_field:${episode_number ?? "na"}:${field_name}`;
+      const episodeScope = episode_number ?? String(idea_principal ?? "").trim().slice(0, 80) || "na";
+      const idempotencyKey = `${user.id}:regenerate_field:${episodeScope}:${field_name}`;
       const orchestrated = await withIdempotency(idempotencyKey, () => callAIWithResilience(
         [
           { role: "system", content: AMTME_SYSTEM_PROMPT },
@@ -223,7 +224,8 @@ Responde ÚNICAMENTE con un array JSON válido, sin markdown, sin backticks, sin
   ...
 ]`;
 
-      const idempotencyKey = `${user.id}:generate_options:${episode_number ?? "na"}:${field_name}:${numOptions}`;
+      const episodeScope = episode_number ?? String(idea_principal ?? "").trim().slice(0, 80) || "na";
+      const idempotencyKey = `${user.id}:generate_options:${episodeScope}:${field_name}:${numOptions}`;
       const orchestrated = await withIdempotency(idempotencyKey, () => callAIWithResilience(
         [
           { role: "system", content: AMTME_SYSTEM_PROMPT },
@@ -311,7 +313,8 @@ Responde ÚNICAMENTE con un JSON válido con esta estructura exacta, sin markdow
 ${fieldInstructions}
 }`;
 
-    const idempotencyKey = `${user.id}:generate_all:${episode_number ?? "na"}`;
+    const episodeScope = episode_number ?? String(idea_principal ?? "").trim().slice(0, 80) || "na";
+    const idempotencyKey = `${user.id}:generate_all:${episodeScope}`;
     const orchestrated = await withIdempotency(idempotencyKey, () => callAIWithResilience(
       [
         { role: "system", content: AMTME_SYSTEM_PROMPT },

@@ -224,9 +224,16 @@ interface CircuitState {
   openUntil: number;
 }
 
+function envPositiveInt(name: string, fallback: number): number {
+  const raw = Deno.env.get(name);
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 const circuitByProvider = new Map<AIProviderName, CircuitState>();
-const CIRCUIT_BREAKER_FAILURES = Number(Deno.env.get("AI_CIRCUIT_BREAKER_FAILURES") ?? 3);
-const CIRCUIT_BREAKER_COOLDOWN_MS = Number(Deno.env.get("AI_CIRCUIT_BREAKER_COOLDOWN_MS") ?? 60_000);
+const CIRCUIT_BREAKER_FAILURES = envPositiveInt("AI_CIRCUIT_BREAKER_FAILURES", 3);
+const CIRCUIT_BREAKER_COOLDOWN_MS = envPositiveInt("AI_CIRCUIT_BREAKER_COOLDOWN_MS", 60_000);
 
 /** Builds the ordered list of OpenAI-compatible providers available */
 function getProviders(): AIProviderConfig[] {
@@ -284,6 +291,10 @@ function isRetryableCategory(category: AIErrorCategory): boolean {
   return category === "NETWORK_TIMEOUT" || category === "PROVIDER_429" || category === "PROVIDER_5XX";
 }
 
+function isValidRole(role: unknown): role is MessageRole {
+  return role === "system" || role === "user" || role === "assistant";
+}
+
 function isFallbackCategory(category: AIErrorCategory): boolean {
   return category === "PROVIDER_401" || category === "INVALID_PROVIDER_SECRET" || isRetryableCategory(category);
 }
@@ -337,8 +348,8 @@ export async function callAIWithResilience(
     };
   }
 
-  const preflightFeatureEnabled = (Deno.env.get("AI_FEATURE_ENABLED") ?? "true").toLowerCase() !== "false";
-  if (!preflightFeatureEnabled) {
+  const aiFeatureEnabled = (Deno.env.get("AI_FEATURE_ENABLED") ?? "true").toLowerCase() !== "false";
+  if (!aiFeatureEnabled) {
     return {
       request_id: requestId,
       status: "failed",
@@ -353,7 +364,11 @@ export async function callAIWithResilience(
     };
   }
 
-  if (!Array.isArray(messages) || messages.length === 0 || messages.some((m) => !m.content?.trim())) {
+  if (
+    !Array.isArray(messages) ||
+    messages.length === 0 ||
+    messages.some((m) => !isValidRole(m.role) || !m.content?.trim())
+  ) {
     return {
       request_id: requestId,
       status: "failed",
