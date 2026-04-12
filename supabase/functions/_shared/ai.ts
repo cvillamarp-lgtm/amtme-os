@@ -185,9 +185,61 @@ export function resolveAI(): AIConfig {
   throw new Error("No fallback AI key configured. Set GROQ_API_KEY or OPENAI_API_KEY.");
 }
 
+type AIProviderName = "grok" | "groq" | "openai" | "lovable";
+type MessageRole = "system" | "user" | "assistant";
+
+export type AIErrorCategory =
+  | "USER_AUTH_EXPIRED"
+  | "USER_AUTH_INVALID"
+  | "MISSING_PROVIDER_SECRET"
+  | "INVALID_PROVIDER_SECRET"
+  | "PROVIDER_401"
+  | "PROVIDER_429"
+  | "PROVIDER_5XX"
+  | "NETWORK_TIMEOUT"
+  | "BAD_REQUEST_PAYLOAD"
+  | "UNKNOWN_UPSTREAM_ERROR";
+
+export type AIOrchestratorStatus = "success" | "recovered" | "degraded" | "failed";
+
+export interface AIOrchestratorResult {
+  request_id: string;
+  status: AIOrchestratorStatus;
+  message: string;
+  error_code?: AIErrorCategory;
+  retryable: boolean;
+  provider_used: AIProviderName | null;
+  fallback_used: boolean;
+  session_refresh_status: "not_attempted" | "attempted" | "succeeded" | "failed";
+  retry_count: number;
+  failover_count: number;
+  upstream_status?: number;
+  text?: string;
+}
+
+interface AIProviderConfig extends AIConfig {
+  name: AIProviderName;
+}
+
+interface CircuitState {
+  failures: number;
+  openUntil: number;
+}
+
+function envPositiveInt(name: string, fallback: number): number {
+  const raw = Deno.env.get(name);
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const circuitByProvider = new Map<AIProviderName, CircuitState>();
+const CIRCUIT_BREAKER_FAILURES = envPositiveInt("AI_CIRCUIT_BREAKER_FAILURES", 3);
+const CIRCUIT_BREAKER_COOLDOWN_MS = envPositiveInt("AI_CIRCUIT_BREAKER_COOLDOWN_MS", 60_000);
+
 /** Builds the ordered list of OpenAI-compatible providers available */
-function getProviders(): (AIConfig & { name: string })[] {
-  const list: (AIConfig & { name: string })[] = [];
+function getProviders(): AIProviderConfig[] {
+  const list: AIProviderConfig[] = [];
   const grokKey = Deno.env.get("GROK_API_KEY");
   if (grokKey)
     list.push({
@@ -224,29 +276,150 @@ function getProviders(): (AIConfig & { name: string })[] {
   return list;
 }
 
-/**
- * Call AI with automatic runtime fallback across OpenAI-compatible providers.
- * Grok → GROQ → OpenAI → Lovable. On 429 / 5xx / timeout, tries the next one.
- * Enforces timeout per provider and implements exponential backoff.
- * Use callClaude() for Script Engine pipeline calls (Claude is primary).
- */
-export async function callAI(
-  messages: { role: "system" | "user" | "assistant"; content: string }[],
-  temperature = 0.7
-): Promise<string> {
-  const providers = getProviders();
-  let lastError: Error = new Error("All AI providers failed");
+function classifyError(error: unknown, status?: number): AIErrorCategory {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  if (status === 401 && (message.includes("invalid") || message.includes("api key"))) {
+    return "INVALID_PROVIDER_SECRET";
+  }
+  if (status === 401) return "PROVIDER_401";
+  if (status === 429) return "PROVIDER_429";
+  if (typeof status === "number" && status >= 500 && status <= 599) return "PROVIDER_5XX";
+  if (status === 400 || status === 422) return "BAD_REQUEST_PAYLOAD";
+  if (message.includes("timeout") || message.includes("abort")) return "NETWORK_TIMEOUT";
+  return "UNKNOWN_UPSTREAM_ERROR";
+}
 
-  for (const provider of providers) {
+function isRetryableCategory(category: AIErrorCategory): boolean {
+  return category === "NETWORK_TIMEOUT" || category === "PROVIDER_429" || category === "PROVIDER_5XX";
+}
+
+function isValidRole(role: unknown): role is MessageRole {
+  return role === "system" || role === "user" || role === "assistant";
+}
+
+function isFallbackCategory(category: AIErrorCategory): boolean {
+  return category === "PROVIDER_401" || category === "INVALID_PROVIDER_SECRET" || isRetryableCategory(category);
+}
+
+function isCircuitOpen(provider: AIProviderName): boolean {
+  const state = circuitByProvider.get(provider);
+  return Boolean(state && state.openUntil > Date.now());
+}
+
+function markProviderSuccess(provider: AIProviderName): void {
+  circuitByProvider.set(provider, { failures: 0, openUntil: 0 });
+}
+
+function markProviderFailure(provider: AIProviderName): void {
+  const current = circuitByProvider.get(provider) ?? { failures: 0, openUntil: 0 };
+  const failures = current.failures + 1;
+  if (failures >= CIRCUIT_BREAKER_FAILURES) {
+    circuitByProvider.set(provider, { failures: 0, openUntil: Date.now() + CIRCUIT_BREAKER_COOLDOWN_MS });
+    return;
+  }
+  circuitByProvider.set(provider, { failures, openUntil: 0 });
+}
+
+function logOrchestratorEvent(event: Record<string, unknown>): void {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), ...event }));
+}
+
+export async function callAIWithResilience(
+  messages: { role: MessageRole; content: string }[],
+  temperature = 0.7,
+  context: { request_id?: string; user_id?: string; action?: string } = {},
+): Promise<AIOrchestratorResult> {
+  const requestId = context.request_id ?? crypto.randomUUID();
+  const userId = context.user_id ?? "unknown";
+  const action = context.action ?? "ai_call";
+  let providers: AIProviderConfig[] = [];
+  try {
+    providers = getProviders().filter((provider) => !isCircuitOpen(provider.name));
+  } catch {
+    return {
+      request_id: requestId,
+      status: "failed",
+      message: "No AI provider secret configured",
+      error_code: "MISSING_PROVIDER_SECRET",
+      retryable: false,
+      provider_used: null,
+      fallback_used: false,
+      session_refresh_status: "not_attempted",
+      retry_count: 0,
+      failover_count: 0,
+    };
+  }
+
+  const aiFeatureEnabled = (Deno.env.get("AI_FEATURE_ENABLED") ?? "true").toLowerCase() !== "false";
+  if (!aiFeatureEnabled) {
+    return {
+      request_id: requestId,
+      status: "failed",
+      message: "AI feature is disabled by configuration",
+      error_code: "BAD_REQUEST_PAYLOAD",
+      retryable: false,
+      provider_used: null,
+      fallback_used: false,
+      session_refresh_status: "not_attempted",
+      retry_count: 0,
+      failover_count: 0,
+    };
+  }
+
+  if (
+    !Array.isArray(messages) ||
+    messages.length === 0 ||
+    messages.some((m) => !isValidRole(m.role) || !m.content?.trim())
+  ) {
+    return {
+      request_id: requestId,
+      status: "failed",
+      message: "Invalid AI payload",
+      error_code: "BAD_REQUEST_PAYLOAD",
+      retryable: false,
+      provider_used: null,
+      fallback_used: false,
+      session_refresh_status: "not_attempted",
+      retry_count: 0,
+      failover_count: 0,
+    };
+  }
+
+  if (providers.length === 0) {
+    return {
+      request_id: requestId,
+      status: "degraded",
+      message: "No healthy AI providers available",
+      error_code: "MISSING_PROVIDER_SECRET",
+      retryable: false,
+      provider_used: null,
+      fallback_used: false,
+      session_refresh_status: "not_attempted",
+      retry_count: 0,
+      failover_count: 0,
+    };
+  }
+
+  let fallbackUsed = false;
+  let failoverCount = 0;
+  let totalRetryCount = 0;
+  let lastError: { code: AIErrorCategory; message: string; retryable: boolean; upstreamStatus?: number } | null = null;
+
+  for (let providerIndex = 0; providerIndex < providers.length; providerIndex++) {
+    const provider = providers[providerIndex];
+    if (providerIndex > 0) {
+      fallbackUsed = true;
+      failoverCount += 1;
+    }
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        // Apply exponential backoff on retry
-        if (attempt > 0) {
-          const delayMs = getBackoffDelayMs(attempt - 1);
-          console.log(`[AI] Retry attempt ${attempt} for ${provider.name} after ${delayMs}ms`);
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
+      if (attempt > 0) {
+        const delayMs = getBackoffDelayMs(attempt - 1);
+        totalRetryCount += 1;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
 
+      try {
         const res = await fetchWithTimeout(
           provider.url,
           {
@@ -257,58 +430,155 @@ export async function callAI(
             },
             body: JSON.stringify({ model: provider.model, messages, temperature }),
           },
-          DEFAULT_TIMEOUT_MS
+          DEFAULT_TIMEOUT_MS,
         );
 
         if (!res.ok) {
           const status = res.status;
-          const errorBody = await res.text().catch(() => "");
-          console.warn(
-            `[AI] provider=${provider.name} status=${status} attempt=${attempt + 1} body=${errorBody.slice(0, MAX_ERROR_BODY_LOG_LENGTH)}`
-          );
-          // Retry on these status codes
-          if (status === 429 || status === 402 || (status >= 500 && status <= 599)) {
-            const msg = `${provider.name} returned ${status}`;
-            console.warn(`[AI] ${msg}, will retry...`);
-            lastError = new Error(msg);
-            if (attempt < MAX_RETRIES) continue; // Retry with this provider
-            break; // Max retries exhausted, try next provider
-          }
-          // Move to next provider on invalid key
-          if (status === 401) {
-            const msg = `${provider.name} returned 401 invalid key`;
-            console.warn(`[AI] ${msg}, trying next provider`);
-            lastError = new Error(msg);
-            break;
-          }
-          throw new Error(`AI error ${status}: ${errorBody.slice(0, MAX_ERROR_BODY_LOG_LENGTH)}`);
+          const bodyText = await res.text().catch(() => "");
+          const category = classifyError(bodyText, status);
+          const retryable = isRetryableCategory(category);
+          lastError = {
+            code: category,
+            message: `${provider.name} returned ${status}`,
+            retryable,
+            upstreamStatus: status,
+          };
+          logOrchestratorEvent({
+            request_id: requestId,
+            user_id: userId,
+            action,
+            primary_provider: providers[0]?.name ?? null,
+            provider_used: provider.name,
+            fallback_used: fallbackUsed,
+            session_refresh_status: "not_attempted",
+            retry_attempt: attempt,
+            failover_count: failoverCount,
+            upstream_status: status,
+            final_error_category: category,
+            outcome: "provider_error",
+          });
+          if (retryable && attempt < MAX_RETRIES) continue;
+          markProviderFailure(provider.name);
+          if (isFallbackCategory(category)) break;
+          return {
+            request_id: requestId,
+            status: "failed",
+            message: `${provider.name} failed`,
+            error_code: category,
+            retryable,
+            provider_used: provider.name,
+            fallback_used: fallbackUsed,
+            session_refresh_status: "not_attempted",
+            retry_count: totalRetryCount,
+            failover_count: failoverCount,
+            upstream_status: status,
+          };
         }
 
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content?.trim();
         if (!content) throw new Error("Empty response from AI");
-
-        // Log token usage for cost tracking
         const inputTokens = data.usage?.prompt_tokens || 0;
         const outputTokens = data.usage?.completion_tokens || 0;
         logTokenUsage(provider.name, inputTokens, outputTokens, provider.model);
-
-        return content;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        // Timeout or transient error: retry this provider
-        if (msg.includes("timeout") && attempt < MAX_RETRIES) {
-          lastError = e instanceof Error ? e : new Error(msg);
-          console.warn(`[AI] ${provider.name} timeout, retrying...`);
-          continue; // Retry this provider
-        }
-        // Other errors: try next provider
-        lastError = e instanceof Error ? e : new Error(msg);
-        console.warn(`[AI] ${provider.name} failed after attempt ${attempt + 1}: ${msg}`);
-        break; // Move to next provider
+        markProviderSuccess(provider.name);
+        const status: AIOrchestratorStatus = fallbackUsed || totalRetryCount > 0 ? "recovered" : "success";
+        logOrchestratorEvent({
+          request_id: requestId,
+          user_id: userId,
+          action,
+          primary_provider: providers[0]?.name ?? null,
+          provider_used: provider.name,
+          fallback_provider: fallbackUsed ? provider.name : null,
+          fallback_used: fallbackUsed,
+          session_refresh_status: "not_attempted",
+          retry_count: totalRetryCount,
+          failover_count: failoverCount,
+          upstream_status: res.status,
+          final_error_category: null,
+          outcome: status,
+        });
+        return {
+          request_id: requestId,
+          status,
+          message: "AI response generated",
+          retryable: false,
+          provider_used: provider.name,
+          fallback_used: fallbackUsed,
+          session_refresh_status: "not_attempted",
+          retry_count: totalRetryCount,
+          failover_count: failoverCount,
+          upstream_status: res.status,
+          text: content,
+        };
+      } catch (error) {
+        const category = classifyError(error);
+        const retryable = isRetryableCategory(category);
+        lastError = {
+          code: category,
+          message: error instanceof Error ? error.message : String(error),
+          retryable,
+        };
+        logOrchestratorEvent({
+          request_id: requestId,
+          user_id: userId,
+          action,
+          primary_provider: providers[0]?.name ?? null,
+          provider_used: provider.name,
+          fallback_used: fallbackUsed,
+          session_refresh_status: "not_attempted",
+          retry_attempt: attempt,
+          failover_count: failoverCount,
+          upstream_status: null,
+          final_error_category: category,
+          outcome: "network_or_unknown_error",
+        });
+        if (retryable && attempt < MAX_RETRIES) continue;
+        markProviderFailure(provider.name);
+        if (isFallbackCategory(category)) break;
+        return {
+          request_id: requestId,
+          status: "failed",
+          message: lastError.message,
+          error_code: category,
+          retryable,
+          provider_used: provider.name,
+          fallback_used: fallbackUsed,
+          session_refresh_status: "not_attempted",
+          retry_count: totalRetryCount,
+          failover_count: failoverCount,
+        };
       }
     }
   }
 
-  throw lastError;
+  return {
+    request_id: requestId,
+    status: "degraded",
+    message: "All AI providers failed. You can continue manually.",
+    error_code: lastError?.code ?? "UNKNOWN_UPSTREAM_ERROR",
+    retryable: lastError?.retryable ?? false,
+    provider_used: null,
+    fallback_used: fallbackUsed,
+    session_refresh_status: "not_attempted",
+    retry_count: totalRetryCount,
+    failover_count: failoverCount,
+    upstream_status: lastError?.upstreamStatus,
+  };
+}
+
+/**
+ * Call AI with automatic runtime fallback across OpenAI-compatible providers.
+ * Grok → GROQ → OpenAI → Lovable. On 429 / 5xx / timeout, tries the next one.
+ * Enforces timeout per provider and implements exponential backoff.
+ * Use callClaude() for Script Engine pipeline calls (Claude is primary).
+ */
+export async function callAI(
+  messages: { role: MessageRole; content: string }[],
+  temperature = 0.7,
+): Promise<string> {
+  const result = await callAIWithResilience(messages, temperature);
+  if (result.text) return result.text;
+  throw new Error(result.message);
 }
