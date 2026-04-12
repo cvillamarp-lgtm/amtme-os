@@ -55,7 +55,9 @@ function mapAiProviderError(message: string): { code: string; status: number } |
   ) {
     return { code: "AI_GATEWAY_UNAUTHORIZED", status: 401 };
   }
-  if (normalized.includes("ai error") || normalized.includes("returned 5") || /\b500\b/.test(normalized)) {
+  // callAI/callClaude include "returned <status>" / "AI error <status>" in their error messages.
+  // Any upstream provider 5xx is treated as AI gateway instability for client handling.
+  if (normalized.includes("ai error") || /returned\s+5\d{2}\b/.test(normalized) || /\b500\b/.test(normalized)) {
     return { code: "AI_GATEWAY_ERROR", status: 500 };
   }
   return null;

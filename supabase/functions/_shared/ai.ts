@@ -14,6 +14,7 @@ import "./deno-shims.d.ts";
 const DEFAULT_TIMEOUT_MS = 30_000; // 30 seconds for AI calls
 const EXPONENTIAL_BACKOFF_BASE_MS = 500;
 const MAX_RETRIES = 2;
+const MAX_ERROR_BODY_LOG_LENGTH = 400;
 
 /**
  * Wrap a fetch call with timeout enforcement.
@@ -142,7 +143,7 @@ export async function callClaude(
   if (!res.ok) {
     const status = res.status;
     const body = await res.text().catch(() => "");
-    console.error(`[AI][claude] status=${status} body=${body.slice(0, 400)}`);
+    console.error(`[AI][claude] status=${status} body=${body.slice(0, MAX_ERROR_BODY_LOG_LENGTH)}`);
     if (status === 429) throw new Error("Claude rate limit — retry later.");
     if (status === 402) throw new Error("Claude quota exhausted — check billing at console.anthropic.com.");
     if (status === 401) throw new Error("Invalid ANTHROPIC_API_KEY.");
@@ -263,7 +264,7 @@ export async function callAI(
           const status = res.status;
           const errorBody = await res.text().catch(() => "");
           console.warn(
-            `[AI] provider=${provider.name} status=${status} attempt=${attempt + 1} body=${errorBody.slice(0, 400)}`
+            `[AI] provider=${provider.name} status=${status} attempt=${attempt + 1} body=${errorBody.slice(0, MAX_ERROR_BODY_LOG_LENGTH)}`
           );
           // Retry on these status codes
           if (status === 429 || status === 402 || (status >= 500 && status <= 599)) {
@@ -280,7 +281,7 @@ export async function callAI(
             lastError = new Error(msg);
             break;
           }
-          throw new Error(`AI error ${status}: ${errorBody.slice(0, 400)}`);
+          throw new Error(`AI error ${status}: ${errorBody.slice(0, MAX_ERROR_BODY_LOG_LENGTH)}`);
         }
 
         const data = await res.json();

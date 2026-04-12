@@ -19,6 +19,7 @@ import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 const mockGetSession = supabase.auth.getSession as ReturnType<typeof vi.fn>;
 const mockRefreshSession = supabase.auth.refreshSession as ReturnType<typeof vi.fn>;
 const mockInvoke = supabase.functions.invoke as ReturnType<typeof vi.fn>;
+const ONE_HOUR_IN_SECONDS = 3_600;
 
 function httpError(status: number, message: string): FunctionsHttpError {
   return new FunctionsHttpError(
@@ -36,7 +37,7 @@ describe("invokeEdgeFunction — 401 recovery", () => {
       data: {
         session: {
           access_token: "stale-token",
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          expires_at: Math.floor(Date.now() / 1000) + ONE_HOUR_IN_SECONDS,
         },
       },
     });
@@ -103,5 +104,6 @@ describe("invokeEdgeFunction — 401 recovery", () => {
 
     expect(mockInvoke).toHaveBeenCalledTimes(2);
     expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("returned 401"));
   });
 });

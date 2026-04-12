@@ -76,7 +76,10 @@ export async function invokeEdgeFunction<T = unknown>(
 
     // ── Ensure fresh token before every attempt ─────────────────────────────
     const accessToken = forcedAccessToken ?? await ensureFreshToken();
-    forcedAccessToken = null;
+    if (forcedAccessToken) {
+      // Consume refreshed token override for a single retry attempt only.
+      forcedAccessToken = null;
+    }
 
     try {
       const invokePromise = supabase.functions.invoke(name, {
