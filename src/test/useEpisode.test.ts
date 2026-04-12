@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEpisode } from "@/hooks/useEpisode";
 import * as supabaseModule from "@/integrations/supabase/client";
@@ -175,8 +175,18 @@ describe("useEpisode", () => {
       }),
     });
 
+    const updatedEpisode = {
+      ...mockEpisode,
+      title: "Updated Title",
+      idea_principal: "Nueva idea principal",
+    } as Episode;
+
     const mockUpdate = vi.fn().mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+      eq: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: updatedEpisode, error: null }),
+        }),
+      }),
     });
 
     vi.spyOn(supabaseModule, "supabase", "get").mockReturnValue({
@@ -197,11 +207,16 @@ describe("useEpisode", () => {
       expect(result.current.episode).toBeTruthy();
     });
 
-    // Test update
-    const updatePromise = result.current.updateEpisode.mutateAsync({
-      title: "Updated Title",
+    await act(async () => {
+      await result.current.updateEpisode.mutateAsync({
+        title: "Updated Title",
+        idea_principal: "Nueva idea principal",
+      });
     });
 
-    expect(updatePromise).toBeDefined();
+    await waitFor(() => {
+      expect(result.current.episode?.title).toBe("Updated Title");
+      expect((result.current.episode as Episode).idea_principal).toBe("Nueva idea principal");
+    });
   });
 });

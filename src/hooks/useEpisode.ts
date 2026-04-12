@@ -64,18 +64,59 @@ export function useEpisode(id?: string) {
   const updateEpisode = useMutation({
     mutationFn: async (updates: Partial<Episode>) => {
       if (!id) throw new Error("Episode id required");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("episodes")
         .update(updates)
-        .eq("id", id);
+        .eq("id", id)
+        .select("*")
+        .single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onMutate: async (updates) => {
+      if (!id) return {};
+
+      await queryClient.cancelQueries({ queryKey: ["episode", id] });
+      await queryClient.cancelQueries({ queryKey: ["episodes"] });
+
+      const previousEpisode = queryClient.getQueryData<Episode | null>(["episode", id]);
+      const previousEpisodes = queryClient.getQueryData<Episode[]>(["episodes"]);
+
+      if (previousEpisode) {
+        queryClient.setQueryData<Episode>(["episode", id], {
+          ...previousEpisode,
+          ...updates,
+        });
+      }
+
+      if (previousEpisodes) {
+        queryClient.setQueryData<Episode[]>(["episodes"], previousEpisodes.map((episode) => (
+          episode.id === id ? { ...episode, ...updates } : episode
+        )));
+      }
+
+      return { previousEpisode, previousEpisodes };
+    },
+    onError: (_error, _updates, context) => {
+      if (!id) return;
+      if (context?.previousEpisode) {
+        queryClient.setQueryData(["episode", id], context.previousEpisode);
+      }
+      if (context?.previousEpisodes) {
+        queryClient.setQueryData(["episodes"], context.previousEpisodes);
+      }
+    },
+    onSuccess: (updatedEpisode) => {
+      if (updatedEpisode && id) {
+        queryClient.setQueryData(["episode", id], updatedEpisode);
+        queryClient.setQueryData<Episode[]>(["episodes"], (episodes = []) => episodes.map((episode) => (
+          episode.id === id ? updatedEpisode : episode
+        )));
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["episode", id] });
       queryClient.invalidateQueries({ queryKey: ["episodes"] });
-    },
-    onError: (error: Error) => {
-      // Error updating episode - reported via mutation state
     },
   });
 
