@@ -169,22 +169,27 @@ describe("useEpisode", () => {
   });
 
   it("should update episode successfully", async () => {
-    const mockSelect = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        maybeSingle: vi.fn().mockResolvedValue({ data: mockEpisode, error: null }),
-      }),
-    });
-
     const updatedEpisode = {
       ...mockEpisode,
       title: "Updated Title",
       idea_principal: "Nueva idea principal",
     } as Episode;
 
+    let currentEpisode = mockEpisode;
+
+    const mockSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockImplementation(async () => ({ data: currentEpisode, error: null })),
+      }),
+    });
+
     const mockUpdate = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: updatedEpisode, error: null }),
+          single: vi.fn().mockImplementation(async () => {
+            currentEpisode = updatedEpisode;
+            return { data: updatedEpisode, error: null };
+          }),
         }),
       }),
     });
