@@ -219,6 +219,10 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Regenerate single field ──────────────────────────────────────
   const regenerateField = async (fieldName: string) => {
+    if (!form.idea_principal.trim()) {
+      toast.error("Agrega una idea principal al episodio antes de regenerar el campo");
+      return;
+    }
     setRegeneratingField(fieldName);
     try {
       const data = await invokeEdgeFunction<{ value?: string }>("generate-episode-fields", {
@@ -284,6 +288,10 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Generate options (3) for a single field ─────────────────
   const generateOptions = async (fieldName: string) => {
+    if (!form.idea_principal.trim()) {
+      toast.error("Agrega una idea principal al episodio antes de generar opciones");
+      return;
+    }
     setGeneratingOptionsFor(fieldName);
     try {
       const data = await invokeEdgeFunction<{ options: BlockOption[] }>("generate-episode-fields", {
