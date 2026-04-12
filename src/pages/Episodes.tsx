@@ -395,6 +395,8 @@ export default function Episodes() {
       const fnData = await invokeEdgeFunction<{
         fields?: Record<string, string>;
         metadata?: unknown;
+        status?: "success" | "recovered" | "degraded" | "failed";
+        message?: string;
       }>(
         "generate-episode-fields",
         {
@@ -407,6 +409,10 @@ export default function Episodes() {
         },
         { timeoutMs: 60_000 }
       );
+
+      if (fnData?.status === "failed" || fnData?.status === "degraded") {
+        throw new Error(fnData.message || "No se pudieron generar los campos del episodio");
+      }
 
       if (fnData?.fields) {
         const fields = fnData.fields;

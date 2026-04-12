@@ -54,6 +54,16 @@ interface Props {
   isSaving: boolean;
 }
 
+interface AIStableEnvelope {
+  status?: "success" | "recovered" | "degraded" | "failed";
+  error_code?: string;
+  retryable?: boolean;
+  provider_used?: string | null;
+  fallback_used?: boolean;
+  message?: string;
+  request_id?: string;
+}
+
 /** Fields that trigger dependency propagation when changed */
 const PROPAGATING_FIELDS = ["idea_principal", "theme", "core_thesis", "summary", "hook", "cta", "template_id", "visual_preset_id"];
 
@@ -221,7 +231,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const regenerateField = async (fieldName: string) => {
     setRegeneratingField(fieldName);
     try {
-      const data = await invokeEdgeFunction<{ value?: string }>("generate-episode-fields", {
+      const data = await invokeEdgeFunction<{ value?: string } & AIStableEnvelope>("generate-episode-fields", {
         mode: "regenerate_field",
         field_name: fieldName,
         idea_principal: form.idea_principal,
@@ -238,6 +248,9 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         },
       }, { timeoutMs: 60_000 });
 
+      if (data?.status === "failed" || data?.status === "degraded") {
+        throw new Error(data.message || "No se pudo regenerar el campo");
+      }
       if (!data?.value) throw new Error("No value returned");
 
       // Save current to history
@@ -286,7 +299,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const generateOptions = async (fieldName: string) => {
     setGeneratingOptionsFor(fieldName);
     try {
-      const data = await invokeEdgeFunction<{ options: BlockOption[] }>("generate-episode-fields", {
+      const data = await invokeEdgeFunction<{ options: BlockOption[] } & AIStableEnvelope>("generate-episode-fields", {
         mode: "generate_options",
         field_name: fieldName,
         idea_principal: form.idea_principal,
@@ -303,6 +316,9 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
           descripcion_spotify: form.descripcion_spotify,
         },
       }, { timeoutMs: 60_000 });
+      if (data?.status === "failed" || data?.status === "degraded") {
+        throw new Error(data.message || "No se pudieron generar opciones");
+      }
       if (!data?.options?.length) throw new Error("No options returned");
       setFieldOptions((prev) => ({ ...prev, [fieldName]: data.options }));
     } catch (e: unknown) {
@@ -343,12 +359,15 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
     }
     setGeneratingAll(true);
     try {
-      const data = await invokeEdgeFunction<{ fields: Record<string, string> }>("generate-episode-fields", {
+      const data = await invokeEdgeFunction<{ fields: Record<string, string> } & AIStableEnvelope>("generate-episode-fields", {
         idea_principal: form.idea_principal,
         episode_number: episode.number,
         conflicto_central: (episode as Record<string, unknown>).conflicto_central,
         intencion_del_episodio: (episode as Record<string, unknown>).intencion_del_episodio,
       }, { timeoutMs: 60_000 });
+      if (data?.status === "failed" || data?.status === "degraded") {
+        throw new Error(data.message || "No se pudieron generar los campos");
+      }
       if (!data?.fields) throw new Error("No fields returned");
 
       let newHistory = { ...versionHistory };

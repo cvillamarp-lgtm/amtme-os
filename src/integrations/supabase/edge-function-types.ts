@@ -113,13 +113,43 @@ export interface ExtractContentResponse {
 // ── generate-episode-fields ───────────────────────────────────────────────────
 
 export interface GenerateEpisodeFieldsRequest {
-  episode_id: string;
-  cleaned_text?: string;
-  semantic_json?: Record<string, unknown>;
+  mode?: "regenerate_field" | "generate_options";
+  field_name?: string;
+  idea_principal: string;
+  current_fields?: Record<string, string>;
+  episode_number?: string;
+  conflicto_central?: string;
+  intencion_del_episodio?: string;
+  tono?: string;
+  restricciones?: string;
+  count?: number;
 }
 
+export type AICallStatus = "success" | "recovered" | "degraded" | "failed";
+export type AICallErrorCode =
+  | "USER_AUTH_EXPIRED"
+  | "USER_AUTH_INVALID"
+  | "MISSING_PROVIDER_SECRET"
+  | "INVALID_PROVIDER_SECRET"
+  | "PROVIDER_401"
+  | "PROVIDER_429"
+  | "PROVIDER_5XX"
+  | "NETWORK_TIMEOUT"
+  | "BAD_REQUEST_PAYLOAD"
+  | "UNKNOWN_UPSTREAM_ERROR";
+
 export interface GenerateEpisodeFieldsResponse {
-  updated_fields: Record<string, unknown>;
+  status: AICallStatus;
+  error_code?: AICallErrorCode;
+  retryable: boolean;
+  provider_used: string | null;
+  fallback_used: boolean;
+  message: string;
+  request_id?: string;
+  value?: string;
+  options?: Array<{ value: string; rationale?: string }>;
+  fields?: Record<string, string>;
+  metadata?: Record<string, unknown>;
 }
 
 // ── assistant-constructor ─────────────────────────────────────────────────────
