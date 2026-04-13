@@ -206,7 +206,7 @@ describe("callGenerateOutputs helper", () => {
       }),
     );
 
-    const result = await callGenerateOutputs({ theme: "tech" });
+    const result = await callGenerateOutputs("map-id-123", { theme: "tech" });
 
     expect(result).toMatchObject({ outputs: [] });
     const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string];

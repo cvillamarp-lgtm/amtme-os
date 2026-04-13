@@ -233,12 +233,20 @@ serve(async (req) => {
     const now = Math.floor(Date.now() / 1000);
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60;
 
-    // Run parallel fetches
-    const [dailyInsights, followers, recentMedia] = await Promise.all([
+    // Run parallel fetches — use allSettled so one failure doesn't block the others
+    const [dailyResult, followersResult, recentMediaResult] = await Promise.allSettled([
       fetchDailyInsights(igUserId, accessToken, thirtyDaysAgo, now),
       fetchFollowers(igUserId, accessToken),
       fetchRecentMedia(igUserId, accessToken),
     ]);
+
+    const dailyInsights = dailyResult.status === "fulfilled" ? dailyResult.value : {};
+    const followers = followersResult.status === "fulfilled" ? followersResult.value : 0;
+    if (dailyResult.status === "rejected") console.error("fetchDailyInsights failed:", dailyResult.reason);
+    if (followersResult.status === "rejected") console.error("fetchFollowers failed:", followersResult.reason);
+
+    const recentMedia = recentMediaResult.status === "fulfilled" ? recentMediaResult.value : [];
+    if (recentMediaResult.status === "rejected") console.error("fetchRecentMedia failed:", recentMediaResult.reason);
 
     // ── Upsert daily account stats ─────────────────────────────────────────
     const today = new Date().toISOString().split("T")[0];
@@ -287,7 +295,10 @@ serve(async (req) => {
       };
     });
 
-    const mediaRows = await Promise.all(mediaInsightPromises);
+    const mediaInsightSettled = await Promise.allSettled(mediaInsightPromises);
+    const mediaRows = mediaInsightSettled
+      .filter((r): r is PromiseFulfilledResult<Awaited<typeof mediaInsightPromises[number]>> => r.status === "fulfilled")
+      .map((r) => r.value);
 
     if (mediaRows.length > 0) {
       const { error: mediaError } = await serviceClient

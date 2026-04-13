@@ -49,7 +49,8 @@ export interface SemanticMapResponse {
 
 export interface GenerateOutputItem {
   outputNumber: number;
-  content: Record<string, unknown>;
+  content?: Record<string, unknown>;
+  error?: string;
 }
 
 export interface GenerateOutputsRequest {
@@ -99,15 +100,15 @@ export interface ClaudeCallResponse {
 // ── extract-content ───────────────────────────────────────────────────────────
 
 export interface ExtractContentRequest {
-  url: string;
-  episode_id?: string;
+  script?: string;
+  title?: string;
+  theme?: string;
 }
 
 export interface ExtractContentResponse {
-  title: string;
-  content: string;
-  word_count: number;
-  raw_input_id: string | null;
+  thesis: string;
+  keyPhrases: string[];
+  pieceCopy: Record<string, string[]>;
 }
 
 // ── generate-episode-fields ───────────────────────────────────────────────────
@@ -154,98 +155,115 @@ export interface GenerateEpisodeFieldsResponse {
 
 // ── assistant-constructor ─────────────────────────────────────────────────────
 
+export type AssistantConstructorMode = "plan" | "apply" | "cancel" | "history" | "rollback";
+
 export interface AssistantConstructorRequest {
-  systemPrompt: string;
-  userPrompt: string;
-  context?: Record<string, unknown>;
-  maxTokens?: number;
+  episode_id: string;
+  mode: AssistantConstructorMode;
+  run_id?: string;
+  instruction?: string;
 }
 
 export interface AssistantConstructorResponse {
-  text: string;
-  usage?: Record<string, number>;
+  mode: AssistantConstructorMode;
+  run_id?: string;
+  plan?: unknown;
+  applied?: boolean;
+  rolled_back?: boolean;
+  history?: unknown[];
 }
 
 // ── copilot-dispatch ──────────────────────────────────────────────────────────
 
 export interface CopilotDispatchRequest {
-  action: string;
-  payload?: Record<string, unknown>;
+  episode_id: string;
+  command: string;
 }
 
 export interface CopilotDispatchResponse {
-  result: unknown;
-  action: string;
+  plan: {
+    intent: string;
+    description: string;
+    fields_to_update: string[];
+  };
+  diff: Record<string, { before: unknown; after: unknown }>;
+  extra: Record<string, unknown>;
+  audit_id: string | null;
 }
 
 // ── fetch-instagram-insights ──────────────────────────────────────────────────
 
-export interface FetchInstagramInsightsRequest {
-  account_id: string;
-  period?: "day" | "week" | "month";
-}
+/** No request body required — the function reads the connected account from the DB using the JWT. */
+export type FetchInstagramInsightsRequest = Record<string, never>;
 
 export interface FetchInstagramInsightsResponse {
-  insights: Record<string, unknown>[];
-  fetched_at: string;
+  success: boolean;
+  days_fetched: number;
+  posts_fetched: number;
+  followers: number;
+  username: string;
+  avg_reach: number;
+  avg_engagement: number;
+  synced_at: string;
 }
 
 // ── oauth-init ────────────────────────────────────────────────────────────────
 
 export interface OAuthInitRequest {
-  provider: string;
-  redirect_uri?: string;
+  platform: "instagram" | "youtube" | "tiktok";
+  user_id: string;
 }
 
 export interface OAuthInitResponse {
-  auth_url: string;
+  url: string;
 }
 
 // ── sync-platform-account ─────────────────────────────────────────────────────
 
 export interface SyncPlatformAccountRequest {
-  platform_account_id: string;
+  platform: "instagram" | "youtube" | "tiktok";
 }
 
 export interface SyncPlatformAccountResponse {
-  synced: boolean;
-  updated_at: string;
+  success: boolean;
+  account_name: string;
+  account_id: string;
+  metadata: Record<string, unknown>;
 }
 
 // ── queue-audio-master ────────────────────────────────────────────────────────
 
 export interface QueueAudioMasterRequest {
-  episode_id: string;
-  audio_url: string;
+  audioTakeId: string;
+  preset?: string;
 }
 
 export interface QueueAudioMasterResponse {
-  job_id: string;
-  status: "queued" | "processing";
+  ok: boolean;
+  job: Record<string, unknown>;
 }
 
 // ── queue-audio-transcript ────────────────────────────────────────────────────
 
 export interface QueueAudioTranscriptRequest {
-  episode_id: string;
-  audio_url: string;
+  audioTakeId: string;
+  language?: string;
 }
 
 export interface QueueAudioTranscriptResponse {
-  job_id: string;
-  status: "queued" | "processing";
+  ok: boolean;
+  transcript: Record<string, unknown>;
 }
 
 // ── queue-audio-clip-export ───────────────────────────────────────────────────
 
 export interface QueueAudioClipExportRequest {
-  episode_id: string;
-  clip_start: number;
-  clip_end: number;
-  audio_url: string;
+  audioTakeId: string;
+  startSeconds: number;
+  endSeconds: number;
+  label?: string;
 }
 
 export interface QueueAudioClipExportResponse {
-  job_id: string;
-  status: "queued" | "processing";
+  ok: boolean;
 }

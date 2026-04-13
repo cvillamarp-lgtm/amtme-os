@@ -181,7 +181,7 @@ describe("useScriptEngineOutputs", () => {
       expect(result.current.state.progress).toBe(100);
     });
 
-    expect(mockCallGenerateOutputs).toHaveBeenCalledWith(mockSemanticJson);
+    expect(mockCallGenerateOutputs).toHaveBeenCalledWith("map-1", mockSemanticJson);
   });
 
   it("should map outputs by type", async () => {

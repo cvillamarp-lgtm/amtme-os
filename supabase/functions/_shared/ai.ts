@@ -282,6 +282,7 @@ function classifyError(error: unknown, status?: number): AIErrorCategory {
     return "INVALID_PROVIDER_SECRET";
   }
   if (status === 401) return "PROVIDER_401";
+  if (status === 402) return "PROVIDER_429"; // quota exhausted — same fallback behavior as rate-limit
   if (status === 429) return "PROVIDER_429";
   if (typeof status === "number" && status >= 500 && status <= 599) return "PROVIDER_5XX";
   if (status === 400 || status === 422) return "BAD_REQUEST_PAYLOAD";
@@ -298,7 +299,7 @@ function isValidRole(role: unknown): role is MessageRole {
 }
 
 function isFallbackCategory(category: AIErrorCategory): boolean {
-  return category === "PROVIDER_401" || category === "INVALID_PROVIDER_SECRET" || isRetryableCategory(category);
+  return category === "PROVIDER_401" || category === "INVALID_PROVIDER_SECRET" || isRetryableCategory(category) || category === "UNKNOWN_UPSTREAM_ERROR";
 }
 
 function isCircuitOpen(provider: AIProviderName): boolean {
