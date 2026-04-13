@@ -65,6 +65,8 @@ export async function invokeEdgeFunction<T = unknown>(
   } = options ?? {};
 
   let lastError: EdgeFunctionError | undefined;
+  let forcedAccessToken: string | null = null;
+  let recoveredFrom401 = false;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
@@ -73,7 +75,11 @@ export async function invokeEdgeFunction<T = unknown>(
     }
 
     // ── Ensure fresh token before every attempt ─────────────────────────────
-    const accessToken = await ensureFreshToken();
+    const accessToken = forcedAccessToken ?? await ensureFreshToken();
+    if (forcedAccessToken) {
+      // Consume refreshed token override for a single retry attempt only.
+      forcedAccessToken = null;
+    }
 
     try {
       const invokePromise = supabase.functions.invoke(name, {
@@ -116,13 +122,25 @@ export async function invokeEdgeFunction<T = unknown>(
 
         // ── 401 special path: try ONE refresh then retry once ─────────────
         if (statusCode === 401) {
-          if (attempt < maxRetries) {
-            const { data: refreshData } = await supabase.auth.refreshSession();
-            if (!refreshData.session) {
+          if (!recoveredFrom401 && attempt < maxRetries) {
+            console.warn(
+              `[invokeEdgeFunction] "${name}" returned 401 on attempt ${attempt + 1}. Refreshing session and retrying once with a refreshed token.`,
+            );
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            const refreshedToken = refreshData.session?.access_token ?? null;
+            if (refreshError || !refreshedToken) {
+              console.error(
+                `[invokeEdgeFunction] Session refresh failed after 401 in "${name}".`,
+                refreshError ?? "No refreshed session returned",
+              );
               // Refresh token also expired — no point retrying
               throw makeError("Sesión expirada, inicia sesión nuevamente", 401, false, attempt);
             }
-            // Refresh succeeded — loop will re-run with the fresh token
+            recoveredFrom401 = true;
+            forcedAccessToken = refreshedToken;
+            console.info(
+              `[invokeEdgeFunction] Session refreshed for "${name}". Retrying request with refreshed Authorization header.`,
+            );
             continue;
           }
           // Out of retries
