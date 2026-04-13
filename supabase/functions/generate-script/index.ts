@@ -3,8 +3,35 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-import { resolveAI } from "../_shared/ai.ts";
+import { callAI, callClaude } from "../_shared/ai.ts";
 import { errorResponse } from "../_shared/response.ts";
+
+function streamScriptAsSSE(text: string, cors: Record<string, string>): Response {
+  const encoder = new TextEncoder();
+  const chunks = text
+    .split(/(\s+)/)
+    .filter(Boolean)
+    .map((part) => `data: ${JSON.stringify({ choices: [{ delta: { content: part } }] })}\n\n`);
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...cors,
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
+}
 
 serve(async (req) => {
   const cors = getCorsHeaders(req);
@@ -33,8 +60,6 @@ serve(async (req) => {
     if (!theme && !title) {
       return errorResponse(cors, "VALIDATION_ERROR", "Se requiere un tema o título", 400);
     }
-    const ai = resolveAI();
-
     const systemPrompt = `Eres el guionista del podcast A Mí Tampoco Me Explicaron (AMTME).
 Host: Christian Villamar (@yosoyvillamar). Español neutro LATAM. Duración: 13-15 minutos.
 FILOSOFÍA: "Aquí no juzgamos. Acompañamos."
@@ -61,37 +86,37 @@ Responde SOLO con el guión en texto plano, sin explicaciones adicionales.`;
 
 El guión debe seguir los 8 bloques, ser conversacional, auténtico y listo para grabar.`;
 
-    const response = await fetch(ai.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ai.key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: ai.model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: true,
-      }),
-    });
+      let scriptText = "";
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return errorResponse(cors, "RATE_LIMIT", "Límite de uso alcanzado, intenta de nuevo más tarde.", 429);
+      try {
+        if (Deno.env.get("ANTHROPIC_API_KEY")) {
+          scriptText = await callClaude(systemPrompt, userPrompt, 2200);
+        } else {
+          scriptText = await callAI([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ], 0.7);
+        }
+      } catch (primaryError) {
+        console.error("[generate-script] primary AI call failed:", primaryError);
+        try {
+          scriptText = await callAI([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ], 0.7);
+        } catch (fallbackError) {
+          console.error("[generate-script] fallback AI call failed:", fallbackError);
+          const message = fallbackError instanceof Error ? fallbackError.message : "Error del servicio de IA";
+          const status = message.toLowerCase().includes("rate") ? 429 : 500;
+          return errorResponse(cors, "AI_ERROR", message, status);
+        }
       }
-      if (response.status === 402) {
-        return errorResponse(cors, "QUOTA_EXCEEDED", "Créditos agotados.", 402);
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return errorResponse(cors, "INTERNAL_ERROR", "Error del servicio de IA", 500);
-    }
 
-    return new Response(response.body, {
-      headers: { ...cors, "Content-Type": "text/event-stream" },
-    });
+      if (!scriptText.trim()) {
+        return errorResponse(cors, "AI_ERROR", "La IA no devolvió contenido para el guión.", 502);
+      }
+
+      return streamScriptAsSSE(scriptText, cors);
   } catch (e) {
     console.error("generate-script error:", e);
     return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
