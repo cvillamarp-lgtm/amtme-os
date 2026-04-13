@@ -385,10 +385,6 @@ ${fieldInstructions}
   } catch (error) {
     console.error("generate-episode-fields error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    const aiError = mapAiProviderError(message);
-    if (aiError) {
-      return errorResponse(cors, aiError.code, message, aiError.status);
-    }
     return errorResponse(cors, "INTERNAL_ERROR", message, 500);
   }
 });

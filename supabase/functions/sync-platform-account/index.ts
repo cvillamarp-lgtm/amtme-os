@@ -146,7 +146,7 @@ serve(async (req) => {
 
     const { platform } = await req.json();
     if (!platform) {
-      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere platform", 200);
+      return errorResponse(cors, "VALIDATION_ERROR", "Se requiere platform", 400);
     }
 
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -160,15 +160,15 @@ serve(async (req) => {
       .single();
 
     if (accountError || !account) {
-      return errorResponse(cors, "NOT_FOUND", "Cuenta no encontrada.", 200);
+      return errorResponse(cors, "NOT_FOUND", "Cuenta no encontrada.", 404);
     }
 
     if (!account.access_token) {
-      return errorResponse(cors, "INTERNAL_ERROR", "No hay token de acceso. Conecta la cuenta vía OAuth primero.", 200);
+      return errorResponse(cors, "INTERNAL_ERROR", "No hay token de acceso. Conecta la cuenta vía OAuth primero.", 422);
     }
 
     if (account.token_expiry && new Date(account.token_expiry) < new Date()) {
-      return errorResponse(cors, "INTERNAL_ERROR", "Token expirado. Ve a Cuentas y reconecta.", 200);
+      return errorResponse(cors, "INTERNAL_ERROR", "Token expirado. Ve a Cuentas y reconecta.", 422);
     }
 
     // Mark as syncing
@@ -198,7 +198,7 @@ serve(async (req) => {
         synced_at: new Date().toISOString(),
       }).eq("id", account.id);
 
-      return errorResponse(cors, "INTERNAL_ERROR", msg, 200);
+      return errorResponse(cors, "INTERNAL_ERROR", msg, 502);
     }
 
     // Merge metadata: preserve existing fields (notes, avg_reach, etc.) and overlay API data
@@ -228,6 +228,6 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error("sync-platform-account error:", e);
-    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 200);
+    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Error desconocido", 500);
   }
 });

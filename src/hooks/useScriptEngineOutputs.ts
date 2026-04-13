@@ -193,7 +193,7 @@ export function useScriptEngineOutputs() {
           }));
         }, 500);
 
-        const result = await callGenerateOutputs(semanticJson);
+        const result = await callGenerateOutputs(semanticMapId, semanticJson);
         clearInterval(progressInterval);
 
         const mappedOutputs: GeneratedAsset[] = (result.outputs || []).map((output, idx) => {

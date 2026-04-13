@@ -94,9 +94,9 @@ export async function callSemanticMap(cleanedText: string): Promise<SemanticMapR
 /**
  * Generate Outputs - Genera 10 tipos de contenido en paralelo
  */
-export async function callGenerateOutputs(semanticJson: Record<string, unknown>): Promise<GenerateOutputsResponse> {
+export async function callGenerateOutputs(semanticMapId: string, semanticJson: Record<string, unknown>): Promise<GenerateOutputsResponse> {
   return callEdgeFunction<GenerateOutputsResponse>("generate-outputs", {
-    body: { semantic_json: semanticJson },
+    body: { semantic_map_id: semanticMapId, semantic_json: semanticJson },
   });
 }
 

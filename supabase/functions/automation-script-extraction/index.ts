@@ -193,8 +193,8 @@ serve(async (req: Request) => {
 
     const userContent = `${episodeContext ? episodeContext + "\n\n" : ""}GUIÓN:\n${scriptTruncated}`;
 
-    // Run quotes + insights in parallel
-    const [quotesResp, insightsResp] = await Promise.all([
+    // Run quotes + insights in parallel — use allSettled so one failure doesn't kill both
+    const [quotesResult, insightsResult] = await Promise.allSettled([
       fetch(ai.url, {
         method: "POST",
         headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
@@ -221,16 +221,6 @@ serve(async (req: Request) => {
       }),
     ]);
 
-    if (!quotesResp.ok)
-      throw new Error(`AI quotes error: ${quotesResp.status}`);
-    if (!insightsResp.ok)
-      throw new Error(`AI insights error: ${insightsResp.status}`);
-
-    const [quotesData, insightsData] = await Promise.all([
-      quotesResp.json(),
-      insightsResp.json(),
-    ]);
-
     type QuoteItem = { text: string; quote_type: string; timestamp_hint: string };
     type InsightItem = { hypothesis: string; category: string; potential_action: string };
 
@@ -241,8 +231,33 @@ serve(async (req: Request) => {
       return parsed[field] ?? [];
     };
 
-    const quotesContent = quotesData.choices?.[0]?.message?.content?.trim() ?? "";
-    const insightsContent = insightsData.choices?.[0]?.message?.content?.trim() ?? "";
+    // Process quotes — best-effort: log error but continue with insights
+    let quotesContent = "";
+    if (quotesResult.status === "fulfilled") {
+      const quotesResp = quotesResult.value;
+      if (quotesResp.ok) {
+        const quotesData = await quotesResp.json();
+        quotesContent = quotesData.choices?.[0]?.message?.content?.trim() ?? "";
+      } else {
+        console.error(`AI quotes error: ${quotesResp.status}`);
+      }
+    } else {
+      console.error(`AI quotes fetch failed: ${quotesResult.reason}`);
+    }
+
+    // Process insights — best-effort
+    let insightsContent = "";
+    if (insightsResult.status === "fulfilled") {
+      const insightsResp = insightsResult.value;
+      if (insightsResp.ok) {
+        const insightsData = await insightsResp.json();
+        insightsContent = insightsData.choices?.[0]?.message?.content?.trim() ?? "";
+      } else {
+        console.error(`AI insights error: ${insightsResp.status}`);
+      }
+    } else {
+      console.error(`AI insights fetch failed: ${insightsResult.reason}`);
+    }
 
     const quotes: QuoteItem[] = parseJson(quotesContent, "quotes");
     const insights: InsightItem[] = parseJson(insightsContent, "insights");
