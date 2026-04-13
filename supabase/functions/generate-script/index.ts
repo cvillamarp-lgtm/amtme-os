@@ -90,7 +90,7 @@ El guión debe seguir los 8 bloques, ser conversacional, auténtico y listo para
 
       try {
         if (Deno.env.get("ANTHROPIC_API_KEY")) {
-          scriptText = await callClaude(systemPrompt, userPrompt, 2200);
+          scriptText = await callClaude(systemPrompt, userPrompt, 2200, 55_000);
         } else {
           scriptText = await callAI([
             { role: "system", content: systemPrompt },

@@ -116,7 +116,8 @@ const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 export async function callClaude(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 4096
+  maxTokens = 4096,
+  timeoutMs = DEFAULT_TIMEOUT_MS
 ): Promise<string> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured in Edge Function secrets.");
@@ -137,7 +138,7 @@ export async function callClaude(
         messages: [{ role: "user", content: userPrompt }],
       }),
     },
-    DEFAULT_TIMEOUT_MS
+    timeoutMs
   );
 
   if (!res.ok) {

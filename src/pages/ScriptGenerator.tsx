@@ -47,8 +47,8 @@ export default function ScriptGenerator() {
       );
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${resp.status}`);
+        const err = await resp.json().catch(() => ({ message: "Error desconocido" }));
+        throw new Error(err.message || `Error ${resp.status}`);
       }
 
       if (!resp.body) throw new Error("No stream body");
