@@ -21,6 +21,7 @@ export function useSessionRecovery() {
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
+        setRecovering(false);
         setShowLoginRequired(true);
         return;
       }
@@ -29,6 +30,7 @@ export function useSessionRecovery() {
       setPending(null);
       setRecovering(false);
     } catch (e) {
+      setRecovering(false);
       setShowLoginRequired(true);
       action.onError?.(e as Error);
     }
@@ -36,12 +38,15 @@ export function useSessionRecovery() {
 
   const retryAfterLogin = async () => {
     if (!pending) return;
+    setRecovering(true);
     try {
       await pending.execute();
       setPending(null);
       setShowLoginRequired(false);
     } catch (e) {
       pending.onError?.(e as Error);
+    } finally {
+      setRecovering(false);
     }
   };
 

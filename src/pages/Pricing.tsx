@@ -57,7 +57,6 @@ const PRICING_TIERS: PricingTier[] = [
     featured: true,
     features: [
       "Análisis ilimitado de episodios",
-      "Acceso completo a la librería de skills (86 frameworks)",
       "Descarga de podcast en HD",
       "Análisis de viralidad con scores",
       "Participación en comunidad",

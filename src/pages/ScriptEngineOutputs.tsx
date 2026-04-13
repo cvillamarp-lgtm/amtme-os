@@ -53,6 +53,25 @@ export default function ScriptEngineOutputs() {
     navigate("/visual");
   };
 
+  const handleDownloadJSON = () => {
+    if (!activeOutput) return;
+    const payload = JSON.stringify(activeOutput.content, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeName = String(activeOutput.asset_type || activeTab)
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-_]/g, "");
+
+    link.href = url;
+    link.download = `${safeName || "output"}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const activeOutput = state.outputs.find((o) => o.output_number === OUTPUT_TYPES.find((t) => t.id === activeTab)?.num);
 
   return (
@@ -125,7 +144,7 @@ export default function ScriptEngineOutputs() {
                   </div>
                 )}
 
-                <Button variant="outline">
+                  <Button variant="outline" onClick={handleDownloadJSON}>
                   <Download className="mr-2" size={16} />
                   Descargar como JSON
                 </Button>

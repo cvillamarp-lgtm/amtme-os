@@ -5,12 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 
 export default function Auth() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const redirectParam = searchParams.get("redirect") || "/";
+  const safeRedirect = redirectParam.startsWith("/") ? redirectParam : "/";
 
   const {
     register,
@@ -27,7 +32,7 @@ export default function Auth() {
       </div>
     );
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={safeRedirect} replace />;
 
   const onSubmit = async (data: LoginInput) => {
     const { error } = await supabase.auth.signInWithPassword(data);
@@ -35,6 +40,7 @@ export default function Auth() {
       toast.error(error.message);
     } else {
       toast.success("Sesión iniciada");
+      navigate(safeRedirect, { replace: true });
     }
   };
 
