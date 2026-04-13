@@ -71,22 +71,37 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         return;
       }
 
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-script`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          theme: episode.theme,
-          title: episode.final_title || episode.working_title,
-          format: "solo",
-        }),
+      const body = JSON.stringify({
+        theme: episode.theme,
+        title: episode.final_title || episode.working_title,
+        format: "solo",
       });
 
+      const callGenerate = (token: string) =>
+        fetch(`${SUPABASE_URL}/functions/v1/generate-script`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body,
+        });
+
+      let resp = await callGenerate(session.access_token);
+
+      if (resp.status === 401) {
+        const { data, error } = await supabase.auth.refreshSession();
+        const refreshedToken = data.session?.access_token;
+        if (error || !refreshedToken) {
+          showSessionExpiredToast();
+          return;
+        }
+        resp = await callGenerate(refreshedToken);
+      }
+
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(err.error || `Error ${resp.status}`);
+        const err = await resp.json().catch(() => ({ message: "Error desconocido" }));
+        throw new Error(err.message || `Error ${resp.status}`);
       }
 
       if (!resp.body) throw new Error("No stream body");
