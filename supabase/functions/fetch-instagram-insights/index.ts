@@ -297,8 +297,7 @@ serve(async (req) => {
 
     const mediaInsightSettled = await Promise.allSettled(mediaInsightPromises);
     const mediaRows = mediaInsightSettled
-      .filter((r): r is PromiseFulfilledResult<Awaited<typeof mediaInsightPromises[number]>> => r.status === "fulfilled")
-      .map((r) => r.value);
+      .flatMap((r) => r.status === "fulfilled" ? [r.value] : []);
 
     if (mediaRows.length > 0) {
       const { error: mediaError } = await serviceClient

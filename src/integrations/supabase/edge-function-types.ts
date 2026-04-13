@@ -133,6 +133,7 @@ export type AICallErrorCode =
   | "MISSING_PROVIDER_SECRET"
   | "INVALID_PROVIDER_SECRET"
   | "PROVIDER_401"
+  | "PROVIDER_402"
   | "PROVIDER_429"
   | "PROVIDER_5XX"
   | "NETWORK_TIMEOUT"
@@ -193,7 +194,10 @@ export interface CopilotDispatchResponse {
 
 // ── fetch-instagram-insights ──────────────────────────────────────────────────
 
-/** No request body required — the function reads the connected account from the DB using the JWT. */
+/**
+ * No request body required. The function reads the connected Instagram account
+ * from the database using the JWT supplied in the Authorization header.
+ */
 export type FetchInstagramInsightsRequest = Record<string, never>;
 
 export interface FetchInstagramInsightsResponse {
