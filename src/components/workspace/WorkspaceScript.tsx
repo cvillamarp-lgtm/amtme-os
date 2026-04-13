@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { onScriptSaved } from "@/services/automation/onScriptSaved";
-import { showEdgeFunctionError } from "@/services/functions/edgeFunctionErrors";
+import {
+  isAuthError,
+  showEdgeFunctionError,
+  showSessionExpiredToast,
+} from "@/services/functions/edgeFunctionErrors";
 import { AutomationStatusBadge } from "@/components/automation/AutomationStatusBadge";
 
 // Supabase URL with hardcoded fallback for streaming SSE calls
@@ -62,7 +66,10 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Sesión expirada");
+      if (!session?.access_token) {
+        showSessionExpiredToast();
+        return;
+      }
 
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/generate-script`, {
         method: "POST",
@@ -77,21 +84,35 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
         }),
       });
 
-      if (!resp.ok || !resp.body) throw new Error("Error al generar");
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Error desconocido" }));
+        throw new Error(err.error || `Error ${resp.status}`);
+      }
+
+      if (!resp.body) throw new Error("No stream body");
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
       let fullText = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-        for (const line of lines) {
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
           if (!line.startsWith("data: ")) continue;
+
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") break;
+
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
@@ -100,14 +121,19 @@ export function WorkspaceScript({ episode, onSave, isSaving }: Props) {
               setScriptGenerated(fullText);
             }
           } catch {
-            /* skip malformed SSE lines */
+            buffer = line + "\n" + buffer;
+            break;
           }
         }
       }
 
       toast.success("Guión generado");
     } catch (e: unknown) {
-      showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
+      if (isAuthError(e)) {
+        showEdgeFunctionError(e);
+        return;
+      }
+      toast.error(e instanceof Error ? e.message : "Error al generar guión");
     } finally {
       setGenerating(false);
     }
