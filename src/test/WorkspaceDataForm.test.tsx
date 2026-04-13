@@ -88,6 +88,69 @@ describe("WorkspaceDataForm", () => {
     });
   });
 
+  it("preserves local idea_principal across unchanged episode rerenders", () => {
+    const { rerender } = render(
+      <WorkspaceDataForm
+        episode={baseEpisode as any}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        isSaving={false}
+      />,
+    );
+
+    const ideaField = screen.getByDisplayValue("Idea inicial");
+    fireEvent.change(ideaField, { target: { value: "Nueva idea principal" } });
+
+    rerender(
+      <WorkspaceDataForm
+        episode={{ ...baseEpisode } as any}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        isSaving={false}
+      />,
+    );
+
+    expect(screen.getByDisplayValue("Nueva idea principal")).toBeInTheDocument();
+  });
+
+  it("uses the latest local idea_principal when regenerating", async () => {
+    vi.mocked(invokeEdgeFunction).mockResolvedValueOnce({
+      value: "Título regenerado",
+      status: "success",
+    } as never);
+
+    const { rerender } = render(
+      <WorkspaceDataForm
+        episode={baseEpisode as any}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        isSaving={false}
+      />,
+    );
+
+    const ideaField = screen.getByDisplayValue("Idea inicial");
+    fireEvent.change(ideaField, { target: { value: "Nueva idea principal" } });
+
+    rerender(
+      <WorkspaceDataForm
+        episode={{ ...baseEpisode } as any}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+        isSaving={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "regen-working_title" }));
+
+    await waitFor(() => {
+      expect(invokeEdgeFunction).toHaveBeenCalledWith(
+        "generate-episode-fields",
+        expect.objectContaining({
+          mode: "regenerate_field",
+          field_name: "working_title",
+          idea_principal: "Nueva idea principal",
+        }),
+        expect.any(Object),
+      );
+    });
+  });
+
   it("handles stable failed AI responses on regenerate", async () => {
     vi.mocked(invokeEdgeFunction).mockResolvedValueOnce({
       status: "failed",

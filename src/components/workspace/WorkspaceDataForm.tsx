@@ -70,6 +70,41 @@ const PROPAGATING_FIELDS = ["idea_principal", "theme", "core_thesis", "summary",
 /** Fields wrapped with BlockWrapper (AI-tracked) */
 const BLOCK_FIELDS = [...BASE_FIELDS] as string[];
 
+function hydrateFormFromEpisode(episode: Episode): FormFields {
+  return {
+    number: episode.number || "",
+    idea_principal: episode.idea_principal || "",
+    working_title: episode.working_title || episode.title || "",
+    final_title: episode.final_title || "",
+    titulo_original: episode.titulo_original || "",
+    theme: episode.theme || "",
+    core_thesis: episode.core_thesis || "",
+    summary: episode.summary || "",
+    descripcion_spotify: episode.descripcion_spotify || "",
+    link_spotify: episode.link_spotify || "",
+    hook: episode.hook || "",
+    cta: episode.cta || "",
+    quote: episode.quote || "",
+    release_date: episode.release_date || "",
+    duration: episode.duration || "",
+    nota_trazabilidad: episode.nota_trazabilidad || "",
+    conflicto_detectado: episode.conflicto_detectado || false,
+    conflicto_nota: episode.conflicto_nota || "",
+    fecha_es_estimada: episode.fecha_es_estimada || false,
+    nivel_completitud: episode.nivel_completitud || "D",
+  };
+}
+
+function buildSavePayload(formData: FormFields, states: BlockStatesMap, history: VersionHistoryMap) {
+  return {
+    ...formData,
+    title: formData.final_title || formData.working_title,
+    block_states: states,
+    version_history: history,
+    release_date: formData.release_date || null,
+  };
+}
+
 export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const [form, setForm] = useState<FormFields>({
     number: "",
@@ -102,46 +137,44 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
   const [generatingAll, setGeneratingAll] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>("");
+  const previousEpisodeSnapshotRef = useRef<string>("");
+  const formRef = useRef(form);
+  const blockStatesRef = useRef(blockStates);
+  const versionHistoryRef = useRef(versionHistory);
+
+  const syncLocalState = useCallback((nextForm: FormFields, nextStates: BlockStatesMap, nextHistory: VersionHistoryMap) => {
+    formRef.current = nextForm;
+    blockStatesRef.current = nextStates;
+    versionHistoryRef.current = nextHistory;
+    setForm(nextForm);
+    setBlockStates(nextStates);
+    setVersionHistory(nextHistory);
+  }, []);
 
   useEffect(() => {
     if (episode) {
-      setForm({
-        number: episode.number || "",
-        idea_principal: episode.idea_principal || "",
-        working_title: episode.working_title || episode.title || "",
-        final_title: episode.final_title || "",
-        titulo_original: episode.titulo_original || "",
-        theme: episode.theme || "",
-        core_thesis: episode.core_thesis || "",
-        summary: episode.summary || "",
-        descripcion_spotify: episode.descripcion_spotify || "",
-        link_spotify: episode.link_spotify || "",
-        hook: episode.hook || "",
-        cta: episode.cta || "",
-        quote: episode.quote || "",
-        release_date: episode.release_date || "",
-        duration: episode.duration || "",
-        nota_trazabilidad: episode.nota_trazabilidad || "",
-        conflicto_detectado: episode.conflicto_detectado || false,
-        conflicto_nota: episode.conflicto_nota || "",
-        fecha_es_estimada: episode.fecha_es_estimada || false,
-        nivel_completitud: episode.nivel_completitud || "D",
+      const nextForm = hydrateFormFromEpisode(episode);
+      const nextStates = (episode.block_states as BlockStatesMap) || {};
+      const nextHistory = (episode.version_history as VersionHistoryMap) || {};
+      const snapshot = JSON.stringify({
+        form: nextForm,
+        blockStates: nextStates,
+        versionHistory: nextHistory,
       });
-      setBlockStates((episode.block_states as BlockStatesMap) || {});
-      setVersionHistory((episode.version_history as VersionHistoryMap) || {});
+
+      if (snapshot === previousEpisodeSnapshotRef.current) {
+        return;
+      }
+
+      previousEpisodeSnapshotRef.current = snapshot;
+      lastSavedRef.current = JSON.stringify(buildSavePayload(nextForm, nextStates, nextHistory));
+      syncLocalState(nextForm, nextStates, nextHistory);
     }
-  }, [episode]);
+  }, [episode, syncLocalState]);
 
   // ─── Autosave with 2s debounce ─────────────────────────────────────
   const doAutoSave = useCallback(async (formData: FormFields, states: BlockStatesMap, history: VersionHistoryMap) => {
-    const payload = {
-      ...formData,
-      title: formData.final_title || formData.working_title,
-      block_states: states,
-      version_history: history,
-      // Date columns must be null, not empty string
-      release_date: formData.release_date || null,
-    };
+    const payload = buildSavePayload(formData, states, history);
     const hash = JSON.stringify(payload);
     if (hash === lastSavedRef.current) return;
 
@@ -163,14 +196,17 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Field update with dependency propagation ──────────────────────
   const update = (key: keyof FormFields, value: FormFields[keyof FormFields]) => {
-    const newForm = { ...form, [key]: value };
-    let newStates = { ...blockStates };
-    let newHistory = { ...versionHistory };
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    const currentHistory = versionHistoryRef.current;
+    const newForm = { ...currentForm, [key]: value };
+    let newStates = { ...currentStates };
+    let newHistory = { ...currentHistory };
 
     // If this is a block field being manually edited, track it
     if (BLOCK_FIELDS.includes(key)) {
       // Save current value to version history before changing
-      const currentValue = form[key];
+      const currentValue = currentForm[key];
       if (currentValue && typeof currentValue === "string") {
         newHistory = addVersionEntry(newHistory, key, currentValue, newStates[key]?.source_type || "initial");
       }
@@ -194,28 +230,32 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       }
     }
 
-    setForm(newForm);
-    setBlockStates(newStates);
-    setVersionHistory(newHistory);
+    syncLocalState(newForm, newStates, newHistory);
     scheduleAutoSave(newForm, newStates, newHistory);
   };
 
   // ─── Approve a block ──────────────────────────────────────────────
   const approveBlock = (fieldName: string) => {
-    const newStates = { ...blockStates };
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    const currentHistory = versionHistoryRef.current;
+    const newStates = { ...currentStates };
     newStates[fieldName] = {
       status: "approved",
       updated_at: new Date().toISOString(),
       source_type: "approved",
     };
-    setBlockStates(newStates);
-    scheduleAutoSave(form, newStates, versionHistory);
+    syncLocalState(currentForm, newStates, currentHistory);
+    scheduleAutoSave(currentForm, newStates, currentHistory);
     toast.success(`${FIELD_LABELS[fieldName] || fieldName} aprobado`);
   };
 
   // ─── Dismiss stale ────────────────────────────────────────────────
   const dismissStale = (fieldName: string) => {
-    const newStates = { ...blockStates };
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    const currentHistory = versionHistoryRef.current;
+    const newStates = { ...currentStates };
     if (newStates[fieldName]) {
       newStates[fieldName] = {
         ...newStates[fieldName],
@@ -223,28 +263,31 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         stale_reason: undefined,
       };
     }
-    setBlockStates(newStates);
-    scheduleAutoSave(form, newStates, versionHistory);
+    syncLocalState(currentForm, newStates, currentHistory);
+    scheduleAutoSave(currentForm, newStates, currentHistory);
   };
 
   // ─── Regenerate single field ──────────────────────────────────────
   const regenerateField = async (fieldName: string) => {
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    const currentHistory = versionHistoryRef.current;
     setRegeneratingField(fieldName);
     try {
       const data = await invokeEdgeFunction<{ value?: string } & AIStableEnvelope>("generate-episode-fields", {
         mode: "regenerate_field",
         field_name: fieldName,
-        idea_principal: form.idea_principal,
+        idea_principal: currentForm.idea_principal,
         episode_number: episode.number,
         current_fields: {
-          working_title: form.working_title,
-          theme: form.theme,
-          core_thesis: form.core_thesis,
-          summary: form.summary,
-          hook: form.hook,
-          cta: form.cta,
-          quote: form.quote,
-          descripcion_spotify: form.descripcion_spotify,
+          working_title: currentForm.working_title,
+          theme: currentForm.theme,
+          core_thesis: currentForm.core_thesis,
+          summary: currentForm.summary,
+          hook: currentForm.hook,
+          cta: currentForm.cta,
+          quote: currentForm.quote,
+          descripcion_spotify: currentForm.descripcion_spotify,
         },
       }, { timeoutMs: 60_000 });
 
@@ -254,25 +297,23 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       if (!data?.value) throw new Error("No value returned");
 
       // Save current to history
-      let newHistory = { ...versionHistory };
-      const currentFieldValue = form[fieldName];
-      if (currentFieldValue && typeof currentFieldValue === "string") {
-        newHistory = addVersionEntry(newHistory, fieldName, currentFieldValue, blockStates[fieldName]?.source_type || "initial");
-      }
+       let newHistory = { ...currentHistory };
+       const currentFieldValue = currentForm[fieldName as keyof FormFields];
+       if (currentFieldValue && typeof currentFieldValue === "string") {
+         newHistory = addVersionEntry(newHistory, fieldName, currentFieldValue, currentStates[fieldName]?.source_type || "initial");
+       }
 
-      const newForm = { ...form, [fieldName]: data.value };
-      const newStates = { ...blockStates };
-      newStates[fieldName] = {
-        status: "generated",
-        updated_at: new Date().toISOString(),
-        source_type: "ai_regenerated",
-      };
+       const newForm = { ...currentForm, [fieldName]: data.value };
+       const newStates = { ...currentStates };
+       newStates[fieldName] = {
+         status: "generated",
+         updated_at: new Date().toISOString(),
+         source_type: "ai_regenerated",
+       };
 
-      setForm(newForm);
-      setBlockStates(newStates);
-      setVersionHistory(newHistory);
-      scheduleAutoSave(newForm, newStates, newHistory);
-      toast.success(`${FIELD_LABELS[fieldName] || fieldName} regenerado`);
+       syncLocalState(newForm, newStates, newHistory);
+       scheduleAutoSave(newForm, newStates, newHistory);
+       toast.success(`${FIELD_LABELS[fieldName] || fieldName} regenerado`);
     } catch (e: unknown) {
       showEdgeFunctionError(e instanceof Error ? e : new Error(String(e)));
     } finally {
@@ -282,38 +323,39 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Restore version ─────────────────────────────────────────────
   const restoreVersion = (fieldName: string, entry: VersionEntry) => {
-    const newForm = { ...form, [fieldName]: entry.value };
-    const newStates = { ...blockStates };
+    const currentHistory = versionHistoryRef.current;
+    const newForm = { ...formRef.current, [fieldName]: entry.value };
+    const newStates = { ...blockStatesRef.current };
     newStates[fieldName] = {
       status: "edited",
       updated_at: new Date().toISOString(),
       source_type: "edited",
     };
-    setForm(newForm);
-    setBlockStates(newStates);
-    scheduleAutoSave(newForm, newStates, versionHistory);
+    syncLocalState(newForm, newStates, currentHistory);
+    scheduleAutoSave(newForm, newStates, currentHistory);
     toast.success(`${FIELD_LABELS[fieldName] || fieldName} restaurado`);
   };
 
   // ─── Generate options (3) for a single field ─────────────────
   const generateOptions = async (fieldName: string) => {
+    const currentForm = formRef.current;
     setGeneratingOptionsFor(fieldName);
     try {
       const data = await invokeEdgeFunction<{ options: BlockOption[] } & AIStableEnvelope>("generate-episode-fields", {
         mode: "generate_options",
         field_name: fieldName,
-        idea_principal: form.idea_principal,
+        idea_principal: currentForm.idea_principal,
         episode_number: episode.number,
         count: 3,
         current_fields: {
-          working_title: form.working_title,
-          theme: form.theme,
-          core_thesis: form.core_thesis,
-          summary: form.summary,
-          hook: form.hook,
-          cta: form.cta,
-          quote: form.quote,
-          descripcion_spotify: form.descripcion_spotify,
+          working_title: currentForm.working_title,
+          theme: currentForm.theme,
+          core_thesis: currentForm.core_thesis,
+          summary: currentForm.summary,
+          hook: currentForm.hook,
+          cta: currentForm.cta,
+          quote: currentForm.quote,
+          descripcion_spotify: currentForm.descripcion_spotify,
         },
       }, { timeoutMs: 60_000 });
       if (data?.status === "failed" || data?.status === "degraded") {
@@ -330,17 +372,17 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Apply a chosen option ────────────────────────────────────
   const applyOption = (fieldName: string, value: string) => {
-    let newHistory = { ...versionHistory };
-    const currentValue = form[fieldName as keyof FormFields];
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    let newHistory = { ...versionHistoryRef.current };
+    const currentValue = currentForm[fieldName as keyof FormFields];
     if (currentValue && typeof currentValue === "string") {
-      newHistory = addVersionEntry(newHistory, fieldName, currentValue, blockStates[fieldName]?.source_type || "initial");
+      newHistory = addVersionEntry(newHistory, fieldName, currentValue, currentStates[fieldName]?.source_type || "initial");
     }
-    const newForm = { ...form, [fieldName]: value };
-    const newStates = { ...blockStates };
+    const newForm = { ...currentForm, [fieldName]: value };
+    const newStates = { ...currentStates };
     newStates[fieldName] = { status: "generated", updated_at: new Date().toISOString(), source_type: "ai_regenerated" };
-    setForm(newForm);
-    setBlockStates(newStates);
-    setVersionHistory(newHistory);
+    syncLocalState(newForm, newStates, newHistory);
     setFieldOptions((prev) => ({ ...prev, [fieldName]: [] }));
     scheduleAutoSave(newForm, newStates, newHistory);
     toast.success(`${FIELD_LABELS[fieldName] || fieldName} aplicado`);
@@ -353,14 +395,17 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Generate ALL 8 base fields at once ──────────────────────
   const generateAll = async () => {
-    if (!form.idea_principal) {
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    const currentHistory = versionHistoryRef.current;
+    if (!currentForm.idea_principal.trim()) {
       toast.error("Agrega una idea principal al episodio antes de generar todos los campos");
       return;
     }
     setGeneratingAll(true);
     try {
       const data = await invokeEdgeFunction<{ fields: Record<string, string> } & AIStableEnvelope>("generate-episode-fields", {
-        idea_principal: form.idea_principal,
+        idea_principal: currentForm.idea_principal,
         episode_number: episode.number,
         conflicto_central: (episode as Record<string, unknown>).conflicto_central,
         intencion_del_episodio: (episode as Record<string, unknown>).intencion_del_episodio,
@@ -370,9 +415,9 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
       }
       if (!data?.fields) throw new Error("No fields returned");
 
-      let newHistory = { ...versionHistory };
-      const newForm = { ...form };
-      const newStates = { ...blockStates };
+      let newHistory = { ...currentHistory };
+      const newForm = { ...currentForm };
+      const newStates = { ...currentStates };
       const now = new Date().toISOString();
 
       for (const fieldName of BASE_FIELDS) {
@@ -387,9 +432,7 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
         }
       }
 
-      setForm(newForm);
-      setBlockStates(newStates);
-      setVersionHistory(newHistory);
+      syncLocalState(newForm, newStates, newHistory);
       scheduleAutoSave(newForm, newStates, newHistory);
       toast.success("Todos los campos generados");
     } catch (e: unknown) {
@@ -401,14 +444,13 @@ export function WorkspaceDataForm({ episode, onSave, isSaving }: Props) {
 
   // ─── Manual save ──────────────────────────────────────────────────
   const handleSave = async () => {
+    const currentForm = formRef.current;
+    const currentStates = blockStatesRef.current;
+    const currentHistory = versionHistoryRef.current;
+    const payload = buildSavePayload(currentForm, currentStates, currentHistory);
     try {
-      await onSave({
-        ...form,
-        title: form.final_title || form.working_title,
-        block_states: blockStates,
-        version_history: versionHistory,
-        release_date: form.release_date || null,
-      });
+      await onSave(payload);
+      lastSavedRef.current = JSON.stringify(payload);
       toast.success("Episodio actualizado");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Error al guardar");
