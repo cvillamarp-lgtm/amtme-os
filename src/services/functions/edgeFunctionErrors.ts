@@ -32,6 +32,7 @@ export function isAuthError(e: unknown): boolean {
     msg.includes("sesión expirada") ||
     msg.includes("session expired") ||
     msg.includes("jwt expired") ||
+    msg.includes("invalid jwt") ||
     msg.includes("invalid token") ||
     msg.includes("token expired") ||
     msg.includes("no autenticado") ||
