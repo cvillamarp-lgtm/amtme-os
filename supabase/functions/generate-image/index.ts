@@ -163,7 +163,7 @@ serve(async (req) => {
     for (const ai of aiChain) {
       if (imageDataUrl) break; // stop once we have an image
 
-    if (ai.provider === "gemini") {
+      if (ai.provider === "gemini") {
       // Google Gemini API — free tier ~1500 req/day
       // Model fallback chain: try each until one produces an image (not 404 and has inlineData)
       const GEMINI_MODELS = [
@@ -249,7 +249,7 @@ serve(async (req) => {
       if (!imageDataUrl && lastGeminiError) {
         return errorResponse(cors, "AI_ERROR", lastGeminiError, 400);
       }
-    } else {
+      } else {
       // OpenAI DALL-E 3 (paid fallback)
       const response = await fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
