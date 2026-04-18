@@ -375,17 +375,17 @@ export default function DesignStudio() {
             <h3 className="text-sm font-semibold text-foreground">Validador de Contraste WCAG</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Color de texto (foreground)</label>
+                <label htmlFor="contrastFg" className="text-xs text-muted-foreground mb-1 block">Color de texto (foreground)</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={contrastFg} onChange={(e) => setContrastFg(e.target.value)} className="w-10 h-10 rounded border-0 cursor-pointer" />
-                  <Input value={contrastFg} onChange={(e) => setContrastFg(e.target.value)} className="font-mono text-sm" />
+                  <input id="contrastFg" name="contrastFg" type="color" value={contrastFg} onChange={(e) => setContrastFg(e.target.value)} className="w-10 h-10 rounded border-0 cursor-pointer" />
+                  <Input id="contrastFgHex" name="contrastFgHex" value={contrastFg} onChange={(e) => setContrastFg(e.target.value)} className="font-mono text-sm" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Color de fondo (background)</label>
+                <label htmlFor="contrastBg" className="text-xs text-muted-foreground mb-1 block">Color de fondo (background)</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={contrastBg} onChange={(e) => setContrastBg(e.target.value)} className="w-10 h-10 rounded border-0 cursor-pointer" />
-                  <Input value={contrastBg} onChange={(e) => setContrastBg(e.target.value)} className="font-mono text-sm" />
+                  <input id="contrastBg" name="contrastBg" type="color" value={contrastBg} onChange={(e) => setContrastBg(e.target.value)} className="w-10 h-10 rounded border-0 cursor-pointer" />
+                  <Input id="contrastBgHex" name="contrastBgHex" value={contrastBg} onChange={(e) => setContrastBg(e.target.value)} className="font-mono text-sm" />
                 </div>
               </div>
             </div>
