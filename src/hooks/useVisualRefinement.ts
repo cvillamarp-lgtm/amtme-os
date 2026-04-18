@@ -1,29 +1,61 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+interface HostBounds {
+  detected: boolean;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface AnalysisResult {
+  hostDetected: boolean;
+  hostBounds: HostBounds;
+  improvements: string[];
+  restrictions: string[];
+}
+
+export interface RefinementResult {
+  originalImageUrl: string;
+  refinedImageUrl: string;
+  analysis: AnalysisResult;
+}
+
 export interface RefinementRequest {
   imageUrl: string;
   intensity: "sutil" | "media" | "alta";
   focus: "fondo" | "composicion" | "legibilidad" | "acabado" | "integral";
-  episodeId: string;
+  episodeId?: string;
 }
 
-export interface RefinementResult {
-  original: string;
-  refined: string;
-  analysis: {
-    hostDetected: boolean;
-    hostBounds?: { x: number; y: number; width: number; height: number };
-    improvements: string[];
-    restrictions: string[];
-  };
+interface RefinementHistory {
+  id: string;
+  episodeId: string;
+  originalImageUrl: string;
+  refinedImageUrl: string;
+  intensity: "sutil" | "media" | "alta";
+  focus:
+    | "fondo"
+    | "composicion"
+    | "legibilidad"
+    | "acabado"
+    | "integral";
+  analysis: AnalysisResult;
+  createdAt: string;
 }
 
 export function useVisualRefinement() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<RefinementResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refinementHistory, setRefinementHistory] = useState<
+    RefinementHistory[]
+  >([]);
 
+  /**
+   * Refine a visual composition using Claude Vision analysis and FLUX.1-pro generation
+   */
   const refine = useCallback(
     async (request: RefinementRequest): Promise<RefinementResult | null> => {
       setIsProcessing(true);
@@ -53,53 +85,91 @@ export function useVisualRefinement() {
     []
   );
 
+  /**
+   * Save a refinement to the database for version control
+   */
   const saveRefinement = useCallback(
-    async (episodeId: string, result: RefinementResult, intensity: string, focus: string) => {
+    async (
+      episodeId: string,
+      refinement: RefinementResult & {
+        intensity: "sutil" | "media" | "alta";
+        focus:
+          | "fondo"
+          | "composicion"
+          | "legibilidad"
+          | "acabado"
+          | "integral";
+      }
+    ): Promise<boolean> => {
       try {
-        const { error: insertError } = await supabase
+        const { error: dbError } = await supabase
           .from("visual_refinements")
           .insert({
             episode_id: episodeId,
-            original_image_url: result.original,
-            refined_image_url: result.refined,
-            intensity,
-            focus,
-            analysis: result.analysis,
+            original_image_url: refinement.originalImageUrl,
+            refined_image_url: refinement.refinedImageUrl,
+            intensity: refinement.intensity,
+            focus: refinement.focus,
+            analysis: refinement.analysis,
             status: "completed",
           });
 
-        if (insertError) throw insertError;
+        if (dbError) throw dbError;
         return true;
       } catch (err) {
-        // Error saving refinement to database - refinement still cached locally
         return false;
       }
     },
     []
   );
 
-  const fetchRefinements = useCallback(async (episodeId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("visual_refinements")
-        .select("*")
-        .eq("episode_id", episodeId)
-        .order("created_at", { ascending: false });
+  /**
+   * Fetch refinement history for an episode
+   */
+  const fetchRefinements = useCallback(
+    async (episodeId: string): Promise<RefinementHistory[]> => {
+      try {
+        const { data, error } = await supabase
+          .from("visual_refinements")
+          .select("*")
+          .eq("episode_id", episodeId)
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      return data || [];
-    } catch (err) {
-      // Error fetching refinements - will return empty list
-      return [];
-    }
+        if (error) throw error;
+
+        const history = (data || []) as RefinementHistory[];
+        setRefinementHistory(history);
+        return history;
+      } catch (err) {
+        return [];
+      }
+    },
+    []
+  );
+
+  /**
+   * Clear current refinement result
+   */
+  const clearResult = useCallback(() => {
+    setResult(null);
+    setError(null);
   }, []);
 
   return {
+    // State
     isProcessing,
     result,
     error,
+    refinementHistory,
+
+    // Methods
     refine,
     saveRefinement,
     fetchRefinements,
+    clearResult,
+
+    // Setters
+    setResult,
+    setError,
   };
 }
