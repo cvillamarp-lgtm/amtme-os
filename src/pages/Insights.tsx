@@ -906,12 +906,12 @@ export default function Insights() {
                   </div>
                   <div>
                     <Label>Episodio</Label>
-                    <Select name="episode_id" defaultValue="">
+                    <Select name="episode_id" defaultValue="none">
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Ninguno" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin episodio</SelectItem>
+                        <SelectItem value="none">Sin episodio</SelectItem>
                         {episodes.map((ep) => (
                           <SelectItem key={ep.id} value={ep.id}>
                             {ep.number ? `#${ep.number} ` : ""}
