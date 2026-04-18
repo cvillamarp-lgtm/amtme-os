@@ -722,7 +722,7 @@ export default function Insights() {
         hypothesis: (fd.get("hypothesis") as string) || null,
         recommendation: (fd.get("recommendation") as string) || null,
         confidence_level: (fd.get("confidence_level") as string) || "medium",
-        episode_id: episodeId || null,
+        episode_id: episodeId && episodeId !== "none" ? episodeId : null,
         status: "active",
         source: "manual",
       });
