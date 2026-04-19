@@ -5,6 +5,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import type {
   EdgeFunctionApiError,
   CleanTextResponse,
@@ -15,6 +16,7 @@ import type {
 // Construir URLs de Edge Functions dinámicamente desde VITE_SUPABASE_URL
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
+// Only used for health-check GET requests (invokeEdgeFunction only does POST)
 const EDGE_FUNCTION_URLS = {
   "clean-text": `${SUPABASE_URL}/functions/v1/clean-text`,
   "semantic-map": `${SUPABASE_URL}/functions/v1/semantic-map`,
@@ -75,28 +77,28 @@ export async function callEdgeFunction<T = unknown>(
 
 /**
  * Clean Text - Limpia texto usando Claude
+ * Uses the canonical invokeEdgeFunction client (token refresh + retry).
  */
 export async function callCleanText(rawText: string): Promise<CleanTextResponse> {
-  return callEdgeFunction<CleanTextResponse>("clean-text", {
-    body: { raw_text: rawText },
-  });
+  return invokeEdgeFunction<CleanTextResponse>("clean-text", { raw_text: rawText });
 }
 
 /**
  * Semantic Map - Genera análisis semántico
+ * Uses the canonical invokeEdgeFunction client (token refresh + retry).
  */
 export async function callSemanticMap(cleanedText: string): Promise<SemanticMapResponse> {
-  return callEdgeFunction<SemanticMapResponse>("semantic-map", {
-    body: { cleaned_text: cleanedText },
-  });
+  return invokeEdgeFunction<SemanticMapResponse>("semantic-map", { cleaned_text: cleanedText });
 }
 
 /**
  * Generate Outputs - Genera 10 tipos de contenido en paralelo
+ * Uses the canonical invokeEdgeFunction client (token refresh + retry).
  */
 export async function callGenerateOutputs(semanticMapId: string, semanticJson: Record<string, unknown>): Promise<GenerateOutputsResponse> {
-  return callEdgeFunction<GenerateOutputsResponse>("generate-outputs", {
-    body: { semantic_map_id: semanticMapId, semantic_json: semanticJson },
+  return invokeEdgeFunction<GenerateOutputsResponse>("generate-outputs", {
+    semantic_map_id: semanticMapId,
+    semantic_json: semanticJson,
   });
 }
 

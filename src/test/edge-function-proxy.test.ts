@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock Supabase client
+// Mock Supabase client (used by callEdgeFunction health-check utility)
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
@@ -9,7 +9,13 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
+// Mock the canonical invokeEdgeFunction so helper tests don't hit the network
+vi.mock("@/services/functions/invokeEdgeFunction", () => ({
+  invokeEdgeFunction: vi.fn(),
+}));
+
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/services/functions/invokeEdgeFunction";
 import {
   callEdgeFunction,
   callCleanText,
@@ -18,6 +24,7 @@ import {
 } from "@/lib/edge-function-proxy";
 
 const mockGetSession = supabase.auth.getSession as ReturnType<typeof vi.fn>;
+const mockInvoke = invokeEdgeFunction as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -141,75 +148,44 @@ describe("callEdgeFunction — HTTP error", () => {
 });
 
 describe("callCleanText helper", () => {
-  it("delegates to callEdgeFunction with correct payload", async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: "tok" } },
-    });
-
+  it("delegates to invokeEdgeFunction with correct args", async () => {
     const fakeResult = {
       cleaned_text: "Cleaned",
       cleaned_word_count: 3,
       reduction_percentage: 25,
     };
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(fakeResult),
-      }),
-    );
+    mockInvoke.mockResolvedValue(fakeResult);
 
     const result = await callCleanText("Raw text here");
 
     expect(result).toEqual(fakeResult);
-    const [url, opts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/functions/v1/clean-text");
-    const body = JSON.parse(opts.body as string);
-    expect(body.raw_text).toBe("Raw text here");
+    expect(mockInvoke).toHaveBeenCalledWith("clean-text", { raw_text: "Raw text here" });
   });
 });
 
 describe("callSemanticMap helper", () => {
-  it("calls the semantic-map edge function", async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: "tok" } },
-    });
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ semantic_json: {} }),
-      }),
-    );
+  it("delegates to invokeEdgeFunction with correct args", async () => {
+    const fakeResult = { semantic_json: {} };
+    mockInvoke.mockResolvedValue(fakeResult);
 
     const result = await callSemanticMap("some cleaned text");
 
     expect(result).toMatchObject({ semantic_json: {} });
-    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
-    expect(url).toContain("/functions/v1/semantic-map");
+    expect(mockInvoke).toHaveBeenCalledWith("semantic-map", { cleaned_text: "some cleaned text" });
   });
 });
 
 describe("callGenerateOutputs helper", () => {
-  it("calls the generate-outputs edge function", async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: { access_token: "tok" } },
-    });
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ outputs: [] }),
-      }),
-    );
+  it("delegates to invokeEdgeFunction with correct args", async () => {
+    const fakeResult = { outputs: [] };
+    mockInvoke.mockResolvedValue(fakeResult);
 
     const result = await callGenerateOutputs("map-id-123", { theme: "tech" });
 
     expect(result).toMatchObject({ outputs: [] });
-    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
-    expect(url).toContain("/functions/v1/generate-outputs");
+    expect(mockInvoke).toHaveBeenCalledWith("generate-outputs", {
+      semantic_map_id: "map-id-123",
+      semantic_json: { theme: "tech" },
+    });
   });
 });
