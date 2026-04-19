@@ -88,8 +88,6 @@ Corregir cualquier defecto anatómico o de generación MANTENIENDO EXACTAMENTE l
 ═══ NEGATIVOS ═══
 No caricatura, no ilustración, no anime, no render 3D, no CGI, no piel plástica, no exceso de suavizado, no sobreenfoque, no sobreprocesado, no manos deformes, no dedos extra, no dedos fusionados, no dedos cortados, no anatomía incorrecta, no brazos desproporcionados, no piernas asimétricas, no silla torcida, no perspectiva incorrecta, no tatuaje flotante, no logo alterado, no texto visible, no letras, no números, no UI elements, no íconos, no logos, no diseño gráfico, no cambio de ropa, no cambio de gorra, no cambio de expresión, no cambio de pose, no fondo diferente, no iluminación dramática, no color grading cinematográfico, no viñeta fuerte, no desenfoque artificial, no rostro cambiado, no identidad alterada, no composición desequilibrada, no duplicaciones, no elementos extra, no diseño de brand system, no swatches de color, no mockups.`;
 
-
-
 serve(async (req) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -103,7 +101,16 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
     const body = await req.json();
-    const { prompt, mode, imageUrl: editImageUrl, episodeId, referenceImages, hostReference, includeHost, rawPrompt } = body;
+    const {
+      prompt,
+      mode,
+      imageUrl: editImageUrl,
+      episodeId,
+      referenceImages,
+      hostReference,
+      includeHost,
+      rawPrompt,
+    } = body;
 
     if (!prompt && mode !== "edit") throw new Error("Prompt is required");
     const aiChain = resolveImageAIChain();
@@ -133,10 +140,10 @@ serve(async (req) => {
     const hostContextNote = !useHost
       ? "PIEZA SIN FOTO DEL HOST — diseño tipográfico puro. No incluir ninguna persona. Aplicar todo el sistema de composición con espacio negativo donde iría el host."
       : hostRef === "imagen01"
-      ? "La foto de referencia adjunta muestra al host REAL: hombre adulto, barba corta, cap verde, camiseta blanca AMTME, tatuaje brazo izquierdo, sentado al revés en silla de madera. PRESERVAR RASGOS EXACTOS — no modificar rostro, complexión ni tatuaje."
-      : hostRef === "imagen02"
-      ? "La foto de referencia adjunta muestra al host REAL: hombre adulto, barba corta, cap verde, camiseta azul AMTME, tatuaje brazo izquierdo, sentado relajado en el suelo. PRESERVAR RASGOS EXACTOS — no modificar rostro, complexión ni tatuaje."
-      : "Las dos fotos de referencia adjuntas muestran al host REAL en dos poses. PRESERVAR RASGOS EXACTOS — rostro, barba, cap verde, tatuaje brazo izquierdo. Elegir la pose que mejor sirva a la composición.";
+        ? "La foto de referencia adjunta muestra al host REAL: hombre adulto, barba corta, cap verde, camiseta blanca AMTME, tatuaje brazo izquierdo, sentado al revés en silla de madera. PRESERVAR RASGOS EXACTOS — no modificar rostro, complexión ni tatuaje."
+        : hostRef === "imagen02"
+          ? "La foto de referencia adjunta muestra al host REAL: hombre adulto, barba corta, cap verde, camiseta azul AMTME, tatuaje brazo izquierdo, sentado relajado en el suelo. PRESERVAR RASGOS EXACTOS — no modificar rostro, complexión ni tatuaje."
+          : "Las dos fotos de referencia adjuntas muestran al host REAL en dos poses. PRESERVAR RASGOS EXACTOS — rostro, barba, cap verde, tatuaje brazo izquierdo. Elegir la pose que mejor sirva a la composición.";
 
     let messages: any[];
 
@@ -157,128 +164,146 @@ serve(async (req) => {
 
     // Extract the text prompt from the messages array
     const textPrompt = Array.isArray(messages[0]?.content)
-      ? messages[0].content.find((p: { type: string }) => p.type === "text")?.text ?? prompt
+      ? (messages[0].content.find((p: { type: string }) => p.type === "text")?.text ?? prompt)
       : prompt;
 
     for (const ai of aiChain) {
       if (imageDataUrl) break; // stop once we have an image
 
       if (ai.provider === "gemini") {
-      // Google Gemini API — free tier ~1500 req/day
-      // Model fallback chain: try each until one produces an image (not 404 and has inlineData)
-      const GEMINI_MODELS = [
-        "gemini-2.0-flash-preview-image-generation", // Único modelo oficial GA para imagen
-      ];
+        // Google Gemini API — free tier ~1500 req/day
+        // Model fallback chain: try each until one produces an image (not 404 and has inlineData)
+        const GEMINI_MODELS = [
+          "gemini-2.0-flash-preview-image-generation", // Único modelo oficial GA para imagen
+        ];
 
-      // Fetch host reference images and convert to base64 for Gemini inline data
-      const hostImageParts: Array<{ inlineData: { mimeType: string; data: string } }> = [];
-      for (const url of allReferenceImages) {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) {
-            console.warn("Could not fetch reference image:", url, res.status);
-            continue;
+        // Fetch host reference images and convert to base64 for Gemini inline data
+        const hostImageParts: Array<{ inlineData: { mimeType: string; data: string } }> = [];
+        for (const url of allReferenceImages) {
+          try {
+            const res = await fetch(url);
+            if (!res.ok) {
+              console.warn("Could not fetch reference image:", url, res.status);
+              continue;
+            }
+            const buf = await res.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            let binary = "";
+            for (let i = 0; i < bytes.byteLength; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            const b64 = btoa(binary);
+            const mimeType = res.headers.get("content-type") ?? "image/png";
+            hostImageParts.push({ inlineData: { mimeType, data: b64 } });
+          } catch (err) {
+            console.warn("Failed to fetch reference image:", url, err);
           }
-          const buf = await res.arrayBuffer();
-          const bytes = new Uint8Array(buf);
-          let binary = "";
-          for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-          }
-          const b64 = btoa(binary);
-          const mimeType = res.headers.get("content-type") ?? "image/png";
-          hostImageParts.push({ inlineData: { mimeType, data: b64 } });
-        } catch (err) {
-          console.warn("Failed to fetch reference image:", url, err);
         }
-      }
 
-      const geminiParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-        { text: textPrompt.slice(0, 8000) },
-        ...hostImageParts,
-      ];
+        const geminiParts: Array<
+          { text: string } | { inlineData: { mimeType: string; data: string } }
+        > = [{ text: textPrompt.slice(0, 8000) }, ...hostImageParts];
 
-      const geminiBody = JSON.stringify({
-        contents: [{ parts: geminiParts }],
-        generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
-      });
-
-      let lastGeminiError = "";
-
-      for (const model of GEMINI_MODELS) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${ai.key}`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: geminiBody,
+        const geminiBody = JSON.stringify({
+          contents: [{ parts: geminiParts }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
         });
 
-        if (res.status === 404) {
-          console.warn("Gemini model not found:", model, "— trying next");
-          continue;
-        }
+        let lastGeminiError = "";
 
-        if (res.status === 429) {
-          return errorResponse(cors, "RATE_LIMIT", "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo.", 429);
-        }
+        for (const model of GEMINI_MODELS) {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${ai.key}`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: geminiBody,
+          });
 
-        if (!res.ok) {
-          const t = await res.text();
-          console.error("Gemini error:", model, res.status, t);
-          try { lastGeminiError = JSON.parse(t)?.error?.message ?? t; } catch { lastGeminiError = t; }
-          continue;
-        }
-
-        const data = await res.json();
-        const parts = data.candidates?.[0]?.content?.parts ?? [];
-        for (const part of parts) {
-          if (part.inlineData?.data) {
-            imageDataUrl = `data:${part.inlineData.mimeType ?? "image/png"};base64,${part.inlineData.data}`;
+          if (res.status === 404) {
+            console.warn("Gemini model not found:", model, "— trying next");
+            continue;
           }
-          if (part.text) text = part.text;
+
+          if (res.status === 429) {
+            return errorResponse(
+              cors,
+              "RATE_LIMIT",
+              "Límite de Gemini alcanzado. Espera 1 minuto e intenta de nuevo.",
+              429
+            );
+          }
+
+          if (!res.ok) {
+            const t = await res.text();
+            console.error("Gemini error:", model, res.status, t);
+            try {
+              lastGeminiError = JSON.parse(t)?.error?.message ?? t;
+            } catch {
+              lastGeminiError = t;
+            }
+            continue;
+          }
+
+          const data = await res.json();
+          const parts = data.candidates?.[0]?.content?.parts ?? [];
+          for (const part of parts) {
+            if (part.inlineData?.data) {
+              imageDataUrl = `data:${part.inlineData.mimeType ?? "image/png"};base64,${part.inlineData.data}`;
+            }
+            if (part.text) text = part.text;
+          }
+
+          if (imageDataUrl) {
+            console.log("Gemini model used:", model);
+            break;
+          }
+
+          console.warn("Gemini model", model, "returned 200 but no image — trying next");
         }
 
-        if (imageDataUrl) {
-          console.log("Gemini model used:", model);
-          break;
+        if (!imageDataUrl && lastGeminiError) {
+          return errorResponse(cors, "AI_ERROR", lastGeminiError, 400);
         }
-
-        console.warn("Gemini model", model, "returned 200 but no image — trying next");
-      }
-
-      if (!imageDataUrl && lastGeminiError) {
-        return errorResponse(cors, "AI_ERROR", lastGeminiError, 400);
-      }
       } else {
-      // OpenAI DALL-E 3 (paid fallback)
-      const response = await fetch("https://api.openai.com/v1/images/generations", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "dall-e-3",
-          // DALL-E 3 limit: 4000 chars. Skip the full brand prompt (~5400 chars)
-          // and use a condensed version so the piece-specific instructions are not truncated.
-          prompt: [
-            "Fotografía editorial hiperrealista. Podcast 'A Mí Tampoco Me Explicaron'. Fondo sólido cobalt #1A1AE6. Host en zona derecha (X 440–990px), zona izquierda completamente despejada para texto editorial. SIN texto, letras, números, íconos ni logos en la imagen.",
-            hostContextNote,
-            `Crear: ${prompt}`,
-          ].join("\n\n").slice(0, 4000),
-          n: 1,
-          size: "1024x1024",
-          response_format: "b64_json",
-        }),
-      });
-      if (!response.ok) {
-        if (response.status === 429) return errorResponse(cors, "RATE_LIMIT", "Límite de uso alcanzado, intenta de nuevo más tarde.", 429);
-        const t = await response.text();
-        console.error("OpenAI DALL-E error:", response.status, t);
-        return errorResponse(cors, "AI_ERROR", `Error de OpenAI (${response.status})`, 500, { upstream_status: response.status });
+        // OpenAI DALL-E 3 (paid fallback)
+        const response = await fetch("https://api.openai.com/v1/images/generations", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${ai.key}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "dall-e-3",
+            // DALL-E 3 limit: 4000 chars. Skip the full brand prompt (~5400 chars)
+            // and use a condensed version so the piece-specific instructions are not truncated.
+            prompt: [
+              "Fotografía editorial hiperrealista. Podcast 'A Mí Tampoco Me Explicaron'. Fondo sólido cobalt #1A1AE6. Host en zona derecha (X 440–990px), zona izquierda completamente despejada para texto editorial. SIN texto, letras, números, íconos ni logos en la imagen.",
+              hostContextNote,
+              `Crear: ${prompt}`,
+            ]
+              .join("\n\n")
+              .slice(0, 4000),
+            n: 1,
+            size: "1024x1024",
+            response_format: "b64_json",
+          }),
+        });
+        if (!response.ok) {
+          if (response.status === 429)
+            return errorResponse(
+              cors,
+              "RATE_LIMIT",
+              "Límite de uso alcanzado, intenta de nuevo más tarde.",
+              429
+            );
+          const t = await response.text();
+          console.error("OpenAI DALL-E error:", response.status, t);
+          return errorResponse(cors, "AI_ERROR", `Error de OpenAI (${response.status})`, 500, {
+            upstream_status: response.status,
+          });
+        }
+        const data = await response.json();
+        const b64 = data.data?.[0]?.b64_json;
+        if (b64) imageDataUrl = `data:image/png;base64,${b64}`;
+        text = data.data?.[0]?.revised_prompt || "";
       }
-      const data = await response.json();
-      const b64 = data.data?.[0]?.b64_json;
-      if (b64) imageDataUrl = `data:image/png;base64,${b64}`;
-      text = data.data?.[0]?.revised_prompt || "";
-    }
     } // end for aiChain
 
     if (!imageDataUrl) {
@@ -299,11 +324,12 @@ serve(async (req) => {
 
     // Organized path: episodes/{id}/piece_{n}.png (overwritable) or standalone/piece_{n}_{ts}.png
     const pieceId = body.pieceId as number | undefined;
-    const fileName = episodeId && pieceId
-      ? `episodes/${episodeId}/piece_${pieceId}.png`
-      : episodeId
-      ? `episodes/${episodeId}/img_${Date.now()}.png`
-      : `standalone/piece_${pieceId ?? "x"}_${Date.now()}.png`;
+    const fileName =
+      episodeId && pieceId
+        ? `episodes/${episodeId}/piece_${pieceId}.png`
+        : episodeId
+          ? `episodes/${episodeId}/img_${Date.now()}.png`
+          : `standalone/piece_${pieceId ?? "x"}_${Date.now()}.png`;
 
     // Handle both base64 data URLs and plain https:// URLs
     let binaryData: Uint8Array;
@@ -332,7 +358,9 @@ serve(async (req) => {
       });
     }
 
-    const { data: publicUrlData } = supabase.storage.from("generated-images").getPublicUrl(fileName);
+    const { data: publicUrlData } = supabase.storage
+      .from("generated-images")
+      .getPublicUrl(fileName);
     const finalUrl = publicUrlData.publicUrl;
 
     // Decode user_id from JWT payload (no API call needed)
@@ -342,7 +370,9 @@ serve(async (req) => {
       const payloadB64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
       const decoded = JSON.parse(atob(payloadB64));
       userId = decoded.sub ?? null;
-    } catch { /* non-JWT bearer (e.g. service key) — skip content_assets upsert */ }
+    } catch {
+      /* non-JWT bearer (e.g. service key) — skip content_assets upsert */
+    }
 
     // Upsert image_url into content_assets (service role bypasses RLS)
     if (userId && episodeId && pieceId) {
@@ -356,7 +386,7 @@ serve(async (req) => {
           status: "generated",
           episode_id: episodeId,
         },
-        { onConflict: "user_id,piece_id,episode_id" },
+        { onConflict: "user_id,piece_id,episode_id" }
       );
       if (assetError) console.error("content_assets upsert error:", assetError);
     }
@@ -366,15 +396,23 @@ serve(async (req) => {
       await supabase.from("episodes").update({ cover_image_url: finalUrl }).eq("id", episodeId);
     }
 
-    return new Response(JSON.stringify({
-      imageUrl: finalUrl,
-      text,
-      stored: true,
-    }), {
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        imageUrl: finalUrl,
+        text,
+        stored: true,
+      }),
+      {
+        headers: { ...cors, "Content-Type": "application/json" },
+      }
+    );
   } catch (e) {
     console.error("generate-image error:", e);
-    return errorResponse(cors, "INTERNAL_ERROR", e instanceof Error ? e.message : "Unknown error", 500);
+    return errorResponse(
+      cors,
+      "INTERNAL_ERROR",
+      e instanceof Error ? e.message : "Unknown error",
+      500
+    );
   }
 });
